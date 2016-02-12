@@ -71,12 +71,24 @@ CheckPlaying
                 jr      nz, CheckWaiting
 
                 call    MoveBall
+                ld      ix, ObjectMovingBlock1
+                call    UpdateMovingBlock
+                ld      ix, ObjectMovingBlock2
+                call    UpdateMovingBlock
                 call    ReadControlKeys
+                call    DrawBall
+                ld      ix, ObjectMovingBlock1
+                call    DrawMovingBlock                
+                ld      ix, ObjectMovingBlock2
+                call    DrawMovingBlock                
                 call    DrawBat                     ; Draw the ball and bat
-                call    DrawBall
                 halt
-                call    DrawBat                     ; Erase the ball and bat (XOR)
                 call    DrawBall
+                ld      ix, ObjectMovingBlock1
+                call    DrawMovingBlock                
+                ld      ix, ObjectMovingBlock2
+                call    DrawMovingBlock                
+                call    DrawBat                     ; Erase the ball and bat (XOR)
 
                 ld      a, (LevelBlockCount)
                 cp      0
@@ -90,6 +102,10 @@ CheckWaiting
                 jr      nz, CheckDead
 
                 ; Put the balls location at the center of the bat1
+                ld      ix, ObjectMovingBlock1
+                call    UpdateMovingBlock
+                ld      ix, ObjectMovingBlock2
+                call    UpdateMovingBlock
                 call    ReadControlKeys
                 ld      a, (ObjectBat + BAT_Y_POS)
                 ld      b, BALL_PIXEL_HEIGHT
@@ -99,11 +115,19 @@ CheckWaiting
                 ld      b, BAT_PIXEL_WIDTH / 2 - 3
                 add     a, b
                 ld      (ObjectBall + BALL_X_POS), a
+                call    DrawBall
+                ld      ix, ObjectMovingBlock1
+                call    DrawMovingBlock                
+                ld      ix, ObjectMovingBlock2
+                call    DrawMovingBlock                
                 call    DrawBat                     ; Draw the ball and bat
-                call    DrawBall
                 halt
-                call    DrawBat                     ; Erase the ball and bat (XOR)
                 call    DrawBall
+                ld      ix, ObjectMovingBlock1
+                call    DrawMovingBlock                
+                ld      ix, ObjectMovingBlock2
+                call    DrawMovingBlock
+                call    DrawBat                     ; Erase the ball and bat (XOR)
 
                 ld      bc, 32766                   ; Check to see if SPACE has been pressed
                 in      a, (c)
@@ -314,6 +338,19 @@ DrawBat
                 call    DrawSprite
                 ret
 
+;****************************************************************************************************************
+; Draw Bat
+; Draws the batn sprite at the location held in the ObjectBat structure
+;******************************************************1**********************************************************
+DrawMovingBlock 
+                ld      de, SpriteBatData           ; Point DE to the ball sprite data
+                ld      a, (ix + BAT_X_POS)  ; Load BC with the ball sprite objects location
+                ld      b, a
+                ld      a, (ix + BAT_Y_POS)
+                ld      c, a
+                call    DrawSprite
+                ret
+
 ;************************************************************************************************************************
 ; Wait for space to be pressed
 ;************************************************************************************************************************
@@ -369,6 +406,26 @@ MoveBatRight
                 ret     
 BatHitRightEdge         
                 ld      (ix + BAT_X_POS), PADDLE_MAX_RIGHT
+                ret
+
+;************************************************************************************************************************
+; Updates the position of the moving block
+;************************************************************************************************************************   
+UpdateMovingBlock
+;                 ld      ix, ObjectMovingBlock
+                ld      a, (ix + BALL_X_POS)
+                add     a, (ix + BALL_XSPEED)
+                ld      (ix + BALL_X_POS), a
+                cp      PADDLE_MAX_RIGHT
+                jp      nc, BlockHitEdge
+                cp      8
+                jp      c, BlockHitEdge
+                ret
+
+BlockHitEdge
+                ld      a, (ix + BALL_XSPEED)
+                neg
+                ld      (ix + BALL_XSPEED), a
                 ret
 
 ;****************************************************************************************************************
@@ -1137,6 +1194,26 @@ ObjectBat       db      76                          ; IX + 0 = X Position
                 db      0                           ; IX + 3 = unused   
                 db      0                           ; IX + 4 = unused   
                 db      0                           ; IX + 5 = unused
+                db      3                           ; IX + 6 = Sprite data width (bytes)
+                db      8                           ; IX + 7 = Sprite data height (bits)
+
+ObjectMovingBlock1
+                db      76                          ; IX + 0 = X position
+                db      120                         ; IX + 1 = Y position
+                db      0                           ; IX + 2 = Xdir
+                db      0                           ; IX + 3 = Ydir
+                db      2                           ; IX + 4 = XSpeed
+                db      0                           ; IX + 5 = YSpeed
+                db      3                           ; IX + 6 = Sprite data width (bytes)
+                db      8                           ; IX + 7 = Sprite data height (bits)
+
+ObjectMovingBlock2
+                db      76                          ; IX + 0 = X position
+                db      130                         ; IX + 1 = Y position
+                db      0                           ; IX + 2 = Xdir
+                db      0                           ; IX + 3 = Ydir
+                db      -2                           ; IX + 4 = XSpeed
+                db      0                           ; IX + 5 = YSpeed
                 db      3                           ; IX + 6 = Sprite data width (bytes)
                 db      8                           ; IX + 7 = Sprite data height (bits)
 
