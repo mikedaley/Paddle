@@ -1212,7 +1212,7 @@ ObjectMovingBlock2
                 db      130                         ; IX + 1 = Y position
                 db      0                           ; IX + 2 = Xdir
                 db      0                           ; IX + 3 = Ydir
-                db      -2                           ; IX + 4 = XSpeed
+                db      -1                           ; IX + 4 = XSpeed
                 db      0                           ; IX + 5 = YSpeed
                 db      3                           ; IX + 6 = Sprite data width (bytes)
                 db      8                           ; IX + 7 = Sprite data height (bits)
