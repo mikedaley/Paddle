@@ -1,5 +1,5 @@
 #!/bin/bash
-cd ~/Dropbox/Code/Spectrum/Paddle
+cd ~/Documents/Code/Paddle
 echo 'Building '$1' ...'
 pasmo -1 --tapbas $1 $1.tap
 retval=$?
