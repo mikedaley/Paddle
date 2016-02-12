@@ -1,6 +1,6 @@
 # Paddle
 
-This is my first project in ZX Spectrum Z80 for around 30 years. I've forgotten a lot of Z80 over the years so this is a project to help me get my Z80 mojo back.
+This is my first project in ZX Spectrum Z80 for around 30 years. I've forgotten a lot of Z80 over the years so this is a project to help me get back into Z80.
 
 A Breakout clone is a good place to start as it involves a number of problems to solve:
 * Drawing Sprites
