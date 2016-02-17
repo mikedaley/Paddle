@@ -24,6 +24,22 @@ SetBorder
 ; Init
 ;****************************************************************************************************************
 Init 
+                ; Create the y-axis screen memory lookup table
+                ld      hl, ScreenLineLookup
+                ld      de, SCRN_BUFFER
+                ld      b, 192
+YLookupLoop     ld      (hl), e
+                inc     hl
+                ld      (hl), d
+                inc     hl
+                push    hl
+                ld      hl, 32
+                add     hl, de
+                ld      d, h
+                ld      e, l
+                pop     hl
+                djnz    YLookupLoop
+
                 call    DrawTitleScreen
                 call    WaitForSpace
                 call    ClearScreen
