@@ -92,18 +92,21 @@ CheckPlaying
                 ld      ix, ObjectMovingBlock2
                 call    UpdateMovingBlock
                 call    ReadControlKeys
-                call    DrawBall
                 ld      ix, ObjectMovingBlock1
                 call    DrawMovingBlock                
                 ld      ix, ObjectMovingBlock2
                 call    DrawMovingBlock                
+                call    DrawBall
                 call    DrawBat                     ; Draw the ball and bat
+
                 halt
-                call    DrawBall
+                call    FastCopy
+
                 ld      ix, ObjectMovingBlock1
                 call    DrawMovingBlock                
                 ld      ix, ObjectMovingBlock2
                 call    DrawMovingBlock                
+                call    DrawBall
                 call    DrawBat                     ; Erase the ball and bat (XOR)
 
                 ld      a, (LevelBlockCount)
@@ -123,6 +126,7 @@ CheckWaiting
                 ld      ix, ObjectMovingBlock2
                 call    UpdateMovingBlock
                 call    ReadControlKeys
+
                 ld      a, (ObjectBat + BAT_Y_POS)
                 ld      b, BALL_PIXEL_HEIGHT
                 sub     b
@@ -132,12 +136,16 @@ CheckWaiting
                 add     a, b
                 ld      (ObjectBall + BALL_X_POS), a
                 call    DrawBall
+                
                 ld      ix, ObjectMovingBlock1
                 call    DrawMovingBlock                
                 ld      ix, ObjectMovingBlock2
                 call    DrawMovingBlock                
-                call    DrawBat                     ; Draw the ball and bat
+                call    DrawBat 
+
                 halt
+                call    FastCopy
+
                 call    DrawBall
                 ld      ix, ObjectMovingBlock1
                 call    DrawMovingBlock                
@@ -343,7 +351,7 @@ DrawBall
 
 ;****************************************************************************************************************
 ; Draw Bat
-; Draws the batn sprite at the location held in the ObjectBat structure
+; Draws the bat  sprite at the location held in the ObjectBat structure
 ;******************************************************1**********************************************************
 DrawBat 
                 ld      de, SpriteBatData           ; Point DE to the ball sprite data
@@ -515,6 +523,75 @@ DrawColumn
                 djnz    DrawRow                     ; If not zero process the next line
     
                 ret                                 ; All done!
+
+;****************************************************************************************************************
+; Copy the screen buffer to the screen file using a Stack based approach.
+; Original code developed by Andrew Owen in Bob.asm that was downloaded from the Z80 Assembly
+; Programming for the ZX Spectrum Facebook group
+;****************************************************************************************************************
+FastCopy
+                di
+                ld      (ScrnStackPtr), sp      ; Save the current stack pointer
+
+                ; First off we copy over the attribute data
+                ; REPT 48, attr               ; write the attributes
+                ;     ld      ix, attributes + 768 - 16 - (attr * 16)
+                ;                             ; last byte of the back_buffer - 16
+                ;     ld      iy, 16384 + 6912 - (attr * 16)
+                ;                             ; last byte of the screen
+                ;     ld      hl, $ + 9       ; set return location (no stack available)
+                ;     ld      (EndCall), hl           
+                ;     jp      Blit            ; call blit
+                ; ENDM
+
+                ; Now copy the bitmap data to the screen file
+                REPT 3, chunk               
+                    REPT 8, row
+                        REPT 8, cell
+                            REPT 2, line
+                                ld      ix, SCRN_BUFFER + BM_SCR_SIZE - 16 - (line * 16) - (cell * 32) - (row * 256) - (chunk * 2048)
+                                ld      iy, BM_SCR_ADDR + BM_SCR_SIZE - (line * 16) - (cell * 256) - (row * 32) - (chunk * 2048)
+                                ld      hl, $ + 9
+                                ld      (EndCall), hl           
+                                jp      Blit
+                            ENDM
+                        ENDM
+                    ENDM
+                ENDM
+
+                ld      sp, (ScrnStackPtr)      ; Restore stack pointer
+                ei
+                ret
+
+;****************************************************************************************************************
+; Routine to copy 16 bytes from location in IX to location in IY - 16bytes
+;****************************************************************************************************************
+Blit
+                ld      sp, ix
+                pop     af              ; read 16 bytes
+                pop     bc
+                pop     de
+                pop     hl
+                ex      af, af'         ;'
+                exx
+                pop     af
+                pop     bc
+                pop     de
+                pop     hl
+                
+                ld      sp, iy
+                push    hl              ; write 16 bytes
+                push    de
+                push    bc
+                push    af
+                ex      af, af'         ;'
+                exx
+                push    hl
+                push    de
+                push    bc
+                push    af
+                db      0xc3            ; jp endcall
+EndCall         dw      EndCall
 
 ;****************************************************************************************************************
 ; Covert the pixel coordinates into char coordinates
@@ -1182,6 +1259,7 @@ BallML          dw      0
 InfoPanelAddr   dw      0                           ; Stores a pointer to the info panel attribute data
 
 Lives           db      5                           ; Number of lives each player has at the start of the game
+ScrnStackPtr    dw      0                           ; Holds the original SP location during screen buffer copy
 
 ;****************************************************************************************************************
 ; Text
@@ -1215,7 +1293,7 @@ ObjectBat       db      76                          ; IX + 0 = X Position
 
 ObjectMovingBlock1
                 db      76                          ; IX + 0 = X position
-                db      120                         ; IX + 1 = Y position
+                db      140                         ; IX + 1 = Y position
                 db      0                           ; IX + 2 = Xdir
                 db      0                           ; IX + 3 = Ydir
                 db      2                           ; IX + 4 = XSpeed
@@ -1224,8 +1302,8 @@ ObjectMovingBlock1
                 db      8                           ; IX + 7 = Sprite data height (bits)
 
 ObjectMovingBlock2
-                db      76                          ; IX + 0 = X position
-                db      130                         ; IX + 1 = Y position
+                db      16                          ; IX + 0 = X position
+                db      16                         ; IX + 1 = Y position
                 db      0                           ; IX + 2 = Xdir
                 db      0                           ; IX + 3 = Ydir
                 db      -1                           ; IX + 4 = XSpeed
