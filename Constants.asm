@@ -1,12 +1,13 @@
 ;*******************************************************************************************
 ; Value Constants
 ;*******************************************************************************************
-BM_SCR_ADDR         equ         16384                                       ; Location in memory of the bitmap screen data
-BM_SCR_SIZE         equ         6144                                        ; Size of the bitmap screen data
-ATTR_SCRN_ADDR      equ         22528                                       ; Location in memory of the screen attribute data
-ATTR_SCRN_SIZE      equ         768                                         ; Size of the screen attribute data
-SCR_SIZE            equ         6911                                        ; Full size of both bitmap and attribute screen data
-PADDLE_MAX_RIGHT    equ         224                                         ; Furthest pixel to the right the paddle can be drawn
+SCRN_BUFFER         equ         57856
+BM_SCR_ADDR         equ         16384                            ; Location in memory of the bitmap screen data
+BM_SCR_SIZE         equ         6144                             ; Size of the bitmap screen data
+ATTR_SCRN_ADDR      equ         22528                            ; Location in memory of the screen attribute data
+ATTR_SCRN_SIZE      equ         768                              ; Size of the screen attribute data
+SCR_SIZE            equ         6911                             ; Full size of both bitmap and attribute screen data
+PADDLE_MAX_RIGHT    equ         224                              ; Furthest pixel to the right the paddle can be drawn
 SCRN_LEFT           equ         8
 SCRN_RIGHT          equ         248
 SCRN_TOP            equ         10
@@ -51,8 +52,8 @@ PLAYERDEAD          equ         32
 ; Block sprite
 ;*******************************************************************************************
 SpriteBlockData:
-                    db 2                                                    ; Width in bytes
-                    db 8                                                    ; Height in bits
+                    db 2                                         ; Width in bytes
+                    db 8                                         ; Height in bits
 
                     dw SpriteBlock0, SpriteBlock1, SpriteBlock2, SpriteBlock3
                     dw SpriteBlock4, SpriteBlock5, SpriteBlock6, SpriteBlock7
@@ -304,15 +305,6 @@ HorizBlockData
                     dw HorizBlockData0, HorizBlockData0, HorizBlockData0, HorizBlockData0
 
 HorizBlockData0
-;                   db %11111111, %00000000
-;                   db %10000001, %00000000
-;                   db %11100111, %00000000
-;                   db %00100100, %00000000
-;                   db %00100100, %00000000
-;                   db %11100111, %00000000
-;                   db %10000001, %00000000
-;                   db %11111111, %00000000
-
                     db %00000000, %00000000
                     db %00000000, %00000000
                     db %00000000, %00000000
