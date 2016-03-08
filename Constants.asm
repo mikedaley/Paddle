@@ -1,60 +1,52 @@
 ;*******************************************************************************************
 ; Value Constants
 ;*******************************************************************************************
-SCRN_BUFFER         equ         57856
-BM_SCR_ADDR         equ         16384                            ; Location in memory of the bitmap screen data
-BM_SCR_SIZE         equ         6144                             ; Size of the bitmap screen data
-ATTR_SCRN_ADDR      equ         22528                            ; Location in memory of the screen attribute data
-ATTR_SCRN_SIZE      equ         768                              ; Size of the screen attribute data
-SCR_SIZE            equ         6911                             ; Full size of both bitmap and attribute screen data
-PADDLE_MAX_RIGHT    equ         224                              ; Furthest pixel to the right the paddle can be drawn
-SCRN_LEFT           equ         8
-SCRN_RIGHT          equ         248
-SCRN_TOP            equ         10
-SCRN_BOTTOM         equ         175
+SCRNBFFR            equ         57856
+BTMPSCRNSDDR        equ         16384                            ; Location in memory of the bitmap screen data
+BTMPSCRSZ           equ         6144                             ; Size of the bitmap screen data
+ATTRSCRNADDR        equ         22528                            ; Location in memory of the screen attribute data
+ATTRSCRNSZ          equ         768                              ; Size of the screen attribute data
+SCRNSZ              equ         6911                             ; Full size of both bitmap and attribute screen data
+BTMXRGHT            equ         224                              ; Furthest pixel to the right the paddle can be drawn
+SCRNLFT             equ         8
+SCRNRGHT            equ         248
+SCRNTP              equ         10
+SCRNBTTM            equ         175
+SCRNEDGSZ           equ         4
 
 NUM_BLOCKS          equ         3
 
 ; Offsets into the BALL structure
-BALL_X_POS          equ         0
-BALL_Y_POS          equ         1
-BALL_X_DIR          equ         2
-BALL_Y_DIR          equ         3
-BALL_XSPEED         equ         4
-BALL_YSPEED         equ         5
-BALL_WIDTH          equ         6
-BALL_HEIGHT         equ         7
+BLLXPS              equ         0
+BLLXSPD             equ         1
+BLLYPS              equ         2
+BLLYSPD             equ         3
 
 ; BALL constants
-BALL_PIXEL_HEIGHT   equ         8
-BALL_PIXEL_WIDTH    equ         8
+BLLPXLHGHT          equ         4
+BLLPXLWIDTH         equ         4
 
 ; Offsets into the BAT structure
-BAT_X_POS           equ         0
-BAT_Y_POS           equ         1
-BAT_SPEED           equ         2
-BAT_WIDTH           equ         6
-BAT_HEIGHT          equ         7
+BTXPS               equ         0
+BTYPS               equ         1
+BTSPD               equ         2
 
 ; BAT constants
-BAT_PIXEL_HEIGHT    equ         8
-BAT_PIXEL_WIDTH     equ         23
+BTPXLHGHT           equ         8
+BTPXLWDTH           equ         24
 
 ; Game States
-PLAYING             equ         1
-WAITING             equ         2
-DEAD                equ         4
-DISPLAYLEVEL        equ         8
-NEXTLEVEL           equ         16
-PLAYERDEAD          equ         32
+GMESTTE_PLYNG       equ         1
+GMESTTE_WTNG        equ         2
+GMESTTE_DEAD        equ         4
+GMESTTE_DSPLYLVL    equ         8
+GMESTTE_NXTLVL      equ         16
+GMESTTE_LSTLFE    equ         32
 
 ;*******************************************************************************************
 ; Block sprite
 ;*******************************************************************************************
 SpriteBlockData:
-                    db 2                                         ; Width in bytes
-                    db 8                                         ; Height in bits
-
                     dw SpriteBlock0, SpriteBlock1, SpriteBlock2, SpriteBlock3
                     dw SpriteBlock4, SpriteBlock5, SpriteBlock6, SpriteBlock7
 
@@ -134,9 +126,6 @@ SpriteBlock7:       db %00000000, %00000000, %00000000
 ; Ball Sprite
 ;*******************************************************************************************
 SpriteBallData:
-                    db 1                                                    ; Width in bytes
-                    db 8                                                    ; Height in bits
-
                     dw SpriteBall0, SpriteBall1, SpriteBall2, SpriteBall3   ; Sprite shift lookup table
                     dw SpriteBall4, SpriteBall5, SpriteBall6, SpriteBall7
 
@@ -213,12 +202,57 @@ SpriteBall7:        db %00000000, %01111000
                     db %00000000, %01111000
 
 ;*******************************************************************************************
+; Small Ball Data
+;*******************************************************************************************
+SmallBallData
+                    dw SmallBallData0, SmallBallData1, SmallBallData2, SmallBallData3
+                    dw SmallBallData4, SmallBallData5, SmallBallData6, SmallBallData7
+
+SmallBallData0
+                    db %01100000, %00000000
+                    db %11110000, %00000000
+                    db %11110000, %00000000
+                    db %01100000, %00000000
+SmallBallData1
+                    db %00110000, %00000000
+                    db %01111000, %00000000
+                    db %01111000, %00000000
+                    db %00110000, %00000000
+SmallBallData2
+                    db %00011000, %00000000
+                    db %00111100, %00000000
+                    db %00111100, %00000000
+                    db %00011000, %00000000
+SmallBallData3
+                    db %00001100, %00000000
+                    db %00011110, %00000000
+                    db %00011110, %00000000
+                    db %00001100, %00000000
+SmallBallData4
+                    db %00000110, %00000000
+                    db %00001111, %00000000
+                    db %00001111, %00000000
+                    db %00000110, %00000000
+SmallBallData5
+                    db %00000011, %00000000
+                    db %00000111, %10000000
+                    db %00000111, %10000000
+                    db %00000011, %00000000
+SmallBallData6
+                    db %00000001, %10000000
+                    db %00000011, %11000000
+                    db %00000011, %11000000
+                    db %00000001, %10000000
+SmallBallData7
+                    db %00000000, %11000000
+                    db %00000001, %11100000
+                    db %00000001, %11100000
+                    db %00000000, %11000000
+
+;*******************************************************************************************
 ; Bat Sprite
 ;*******************************************************************************************
 SpriteBatData:  
-                    db 3                                                    ; Width in bytes
-                    db 8                                                    ; Height in bits
-
                     dw SpriteBatData0, SpriteBatData1, SpriteBatData2, SpriteBatData3
                     dw SpriteBatData4, SpriteBatData5, SpriteBatData6, SpriteBatData7
     
@@ -298,69 +332,246 @@ SpriteBatData7:     db %00000000, %01111111, %11111111, %11111000
 ; Horizontal block graphic
 ;*******************************************************************************************
 HorizBlockData
-                    db 1                                                    ; Width in bytes
-                    db 8                                                    ; Height in bits
-
                     dw HorizBlockData0, HorizBlockData0, HorizBlockData0, HorizBlockData0
                     dw HorizBlockData0, HorizBlockData0, HorizBlockData0, HorizBlockData0
 
 HorizBlockData0
-                    db %00000000, %00000000
-                    db %00000000, %00000000
-                    db %00000000, %00000000
-                    db %00000000, %00000000
-                    db %00000000, %00000000
-                    db %00000000, %00000000
-                    db %00000000, %00000000
-                    db %11111111, %00000000
+                    db %00000000
+                    db %00000000
+                    db %00000000
+                    db %00000000
+                    db %00000000
+                    db %00000000
+                    db %00000000
+                    db %11111111
 
 ;*******************************************************************************************
 ; Vertical block graphic right edge
 ;*******************************************************************************************
 VertRBlockData
-                    db 1                                                    ; Width in bytes
-                    db 8                                                    ; Height in bits
-
                     dw VertRBlockData0, VertRBlockData0, VertRBlockData0, VertRBlockData0
                     dw VertRBlockData0, VertRBlockData0, VertRBlockData0, VertRBlockData0
 
 VertRBlockData0
-                    db %00000001, %00000000
-                    db %00000011, %00000000
-                    db %00000101, %00000000
-                    db %00001001, %00000000
-                    db %00010001, %00000000
-                    db %00100001, %00000000
-                    db %01000001, %00000000
-                    db %10000001, %00000000
+                    db %00000001
+                    db %00000011
+                    db %00000101
+                    db %00001001
+                    db %00010001
+                    db %00100001
+                    db %01000001
+                    db %10000001
 
 ;*******************************************************************************************
 ; Vertical block graphic left edge
 ;*******************************************************************************************
 VertLBlockData
-                    db 1                                                    ; Width in bytes
-                    db 8                                                    ; Height in bits
-
                     dw VertLBlockData0, VertLBlockData0, VertLBlockData0, VertLBlockData0
                     dw VertLBlockData0, VertLBlockData0, VertLBlockData0, VertLBlockData0
 
 VertLBlockData0
-                    db %10000000, %00000000
-                    db %11000000, %00000000
-                    db %10100000, %00000000
-                    db %10010000, %00000000
-                    db %10001000, %00000000
-                    db %10000100, %00000000
-                    db %10000010, %00000000
-                    db %10000001, %00000000
-
-;*******************************************************************************************
-; Right hand info panel data
-;*******************************************************************************************
-InfoPanel:
-                    db 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+                    db %10000000
+                    db %11000000
+                    db %10100000
+                    db %10010000
+                    db %10001000
+                    db %10000100
+                    db %10000010
+                    db %10000001
 
 ;*******************************************************************************************
 ; Y-Axis screen memory lookup table
 ;*******************************************************************************************   
-ScreenLineLookup:   ds 2 * 192
+scrnLnLkup:   
+                    dw 4000h
+                    dw 4100h
+                    dw 4200h
+                    dw 4300h
+                    dw 4400h
+                    dw 4500h
+                    dw 4600h
+                    dw 4700h
+                    dw 4020h
+                    dw 4120h
+                    dw 4220h
+                    dw 4320h
+                    dw 4420h
+                    dw 4520h
+                    dw 4620h
+                    dw 4720h
+                    dw 4040h
+                    dw 4140h
+                    dw 4240h
+                    dw 4340h
+                    dw 4440h
+                    dw 4540h
+                    dw 4640h
+                    dw 4740h
+                    dw 4060h
+                    dw 4160h
+                    dw 4260h
+                    dw 4360h
+                    dw 4460h
+                    dw 4560h
+                    dw 4660h
+                    dw 4760h
+                    dw 4080h
+                    dw 4180h
+                    dw 4280h
+                    dw 4380h
+                    dw 4480h
+                    dw 4580h
+                    dw 4680h
+                    dw 4780h
+                    dw 40A0h
+                    dw 41A0h
+                    dw 42A0h
+                    dw 43A0h
+                    dw 44A0h
+                    dw 45A0h
+                    dw 46A0h
+                    dw 47A0h
+                    dw 40C0h
+                    dw 41C0h
+                    dw 42C0h
+                    dw 43C0h
+                    dw 44C0h
+                    dw 45C0h
+                    dw 46C0h
+                    dw 47C0h
+                    dw 40E0h
+                    dw 41E0h
+                    dw 42E0h
+                    dw 43E0h
+                    dw 44E0h
+                    dw 45E0h
+                    dw 46E0h
+                    dw 47E0h
+                    dw 4800h
+                    dw 4900h
+                    dw 4A00h
+                    dw 4B00h
+                    dw 4C00h
+                    dw 4D00h
+                    dw 4E00h
+                    dw 4F00h
+                    dw 4820h
+                    dw 4920h
+                    dw 4A20h
+                    dw 4B20h
+                    dw 4C20h
+                    dw 4D20h
+                    dw 4E20h
+                    dw 4F20h
+                    dw 4840h
+                    dw 4940h
+                    dw 4A40h
+                    dw 4B40h
+                    dw 4C40h
+                    dw 4D40h
+                    dw 4E40h
+                    dw 4F40h
+                    dw 4860h
+                    dw 4960h
+                    dw 4A60h
+                    dw 4B60h
+                    dw 4C60h
+                    dw 4D60h
+                    dw 4E60h
+                    dw 4F60h
+                    dw 4880h
+                    dw 4980h
+                    dw 4A80h
+                    dw 4B80h
+                    dw 4C80h
+                    dw 4D80h
+                    dw 4E80h
+                    dw 4F80h
+                    dw 48A0h
+                    dw 49A0h
+                    dw 4AA0h
+                    dw 4BA0h
+                    dw 4CA0h
+                    dw 4DA0h
+                    dw 4EA0h
+                    dw 4FA0h
+                    dw 48C0h
+                    dw 49C0h
+                    dw 4AC0h
+                    dw 4BC0h
+                    dw 4CC0h
+                    dw 4DC0h
+                    dw 4EC0h
+                    dw 4FC0h
+                    dw 48E0h
+                    dw 49E0h
+                    dw 4AE0h
+                    dw 4BE0h
+                    dw 4CE0h
+                    dw 4DE0h
+                    dw 4EE0h
+                    dw 4FE0h
+                    dw 5000h
+                    dw 5100h
+                    dw 5200h
+                    dw 5300h
+                    dw 5400h
+                    dw 5500h
+                    dw 5600h
+                    dw 5700h
+                    dw 5020h
+                    dw 5120h
+                    dw 5220h
+                    dw 5320h
+                    dw 5420h
+                    dw 5520h
+                    dw 5620h
+                    dw 5720h
+                    dw 5040h
+                    dw 5140h
+                    dw 5240h
+                    dw 5340h
+                    dw 5440h
+                    dw 5540h
+                    dw 5640h
+                    dw 5740h
+                    dw 5060h
+                    dw 5160h
+                    dw 5260h
+                    dw 5360h
+                    dw 5460h
+                    dw 5560h
+                    dw 5660h
+                    dw 5760h
+                    dw 5080h
+                    dw 5180h
+                    dw 5280h
+                    dw 5380h
+                    dw 5480h
+                    dw 5580h
+                    dw 5680h
+                    dw 5780h
+                    dw 50A0h
+                    dw 51A0h
+                    dw 52A0h
+                    dw 53A0h
+                    dw 54A0h
+                    dw 55A0h
+                    dw 56A0h
+                    dw 57A0h
+                    dw 50C0h
+                    dw 51C0h
+                    dw 52C0h
+                    dw 53C0h
+                    dw 54C0h
+                    dw 55C0h
+                    dw 56C0h
+                    dw 57C0h
+                    dw 50E0h
+                    dw 51E0h
+                    dw 52E0h
+                    dw 53E0h
+                    dw 54E0h
+                    dw 55E0h
+                    dw 56E0h
+                    dw 57E0h 

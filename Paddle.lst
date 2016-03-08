@@ -1,0 +1,1448 @@
+              	; --------------------------------------
+              	; zasm: assemble "Paddle.asm"
+              	; opts: --reqcolon
+              	; date: 2016-02-17 13:56:10
+              	; --------------------------------------
+
+
+              	;****************************************************************************************************************
+              	; Paddle - Mike Daley
+              	; 26/09/15
+              	;
+              	; Paddle is a Break Out clone used to learn Z80 Assembly on the ZX Spectrum
+              	;
+              	; Notes
+              	; * Using IM1 so IY can't be used as the IM1 interrupt doesn't prtext it. Using IM2 would allow for IY to be used.                  
+              	;****************************************************************************************************************
+              	
+8000:         	                org     32768
+              	
+              	;****************************************************************************************************************
+              	; Init
+              	;****************************************************************************************************************           
+              	SetBorder 
+***ERROR***   	         ^ unknown instruction
+8000: 3E00    	                ld      a, 0
+8002: D3FE    	                out     (254), a                    
+              	                        
+8004: 3E05    	                ld      a, 5                        ; Set the ink colour
+8006: 328D5C  	                ld      (23693), a  
+              	                
+              	;****************************************************************************************************************
+              	; Init
+              	;****************************************************************************************************************
+              	Init 
+***ERROR***   	    ^ unknown instruction
+              	                ; Create the y-axis screen memory lookup table
+8009: 210000  	                ld      hl, ScreenLineLookup
+800C: 110000  	                ld      de, SCRN_BUFFER
+800F: 06C0    	                ld      b, 192
+              	YLookupLoop     ld      (hl), e
+***ERROR***   	           ^ unknown instruction
+8011: 23      	                inc     hl
+8012: 72      	                ld      (hl), d
+8013: 23      	                inc     hl
+8014: E5      	                push    hl
+8015: 212000  	                ld      hl, 32
+8018: 19      	                add     hl, de
+8019: 54      	                ld      d, h
+801A: 5D      	                ld      e, l
+801B: E1      	                pop     hl
+801C: 1000    	                djnz    YLookupLoop
+              	
+801E: CD0000  	                call    DrawTitleScreen
+8021: CD0000  	                call    WaitForSpace
+8024: CD0000  	                call    ClearScreen
+              	
+8027: 110000  	                ld      de, LivesText
+802A: 010800  	                ld      bc, 8
+802D: CD3C20  	                call    8252
+              	
+8030: 3E00    	                ld      a, 0
+8032: 320000  	                ld      (CurLvl), a
+8035: CD0000  	                call    LoadLevel
+              	
+8038: 3E00    	                ld      a, DISPLAYLEVEL
+803A: 320000  	                ld      (GameState), a
+              	
+803D: C30000  	                jp      MainLoop
+              	
+              	ClearScreen     
+***ERROR***   	           ^ unknown instruction
+8040: CDAF0D  	                call    3503    
+              	
+8043: CD0000  	                call    DrawInfoPanel       
+              	
+8046: 110000  	                ld      de, ScoreLabelText
+8049: 010A00  	                ld      bc, 10
+804C: CD3C20  	                call    8252
+              	
+804F: 110000  	                ld      de, ScoreText
+8052: 010C00  	                ld      bc, 12
+8055: CD3C20  	                call    8252
+              	
+8058: 110000  	                ld      de, LivesLabelText
+805B: 010A00  	                ld      bc, 10
+805E: CD3C20  	                call    8252
+              	
+8061: CD0000  	                call    DrawBorders
+8064: C9      	                ret
+              	
+              	;****************************************************************************************************************
+              	; Main loop
+              	;****************************************************************************************************************
+              	MainLoop 
+***ERROR***   	        ^ unknown instruction
+8065: 3A0000  	                ld      a, (GameState)              ; Check the game state
+              	CheckPlaying
+***ERROR***   	            ^ unknown instruction
+8068: FE00    	                cp      PLAYING 
+806A: 2000    	                jr      nz, CheckWaiting
+              	
+806C: CD0000  	                call    MoveBall
+806F: DD210000	                ld      ix, ObjectMovingBlock1
+8073: CD0000  	                call    UpdateMovingBlock
+8076: DD210000	                ld      ix, ObjectMovingBlock2
+807A: CD0000  	                call    UpdateMovingBlock
+807D: CD0000  	                call    ReadControlKeys
+8080: DD210000	                ld      ix, ObjectMovingBlock1
+8084: CD0000  	                call    DrawMovingBlock                
+8087: DD210000	                ld      ix, ObjectMovingBlock2
+808B: CD0000  	                call    DrawMovingBlock                
+808E: CD0000  	                call    DrawBall
+8091: CD0000  	                call    DrawBat                     ; Draw the ball and bat
+              	
+8094: 76      	                halt
+8095: CD0000  	                call    FastCopy
+              	
+8098: DD210000	                ld      ix, ObjectMovingBlock1
+809C: CD0000  	                call    DrawMovingBlock                
+809F: DD210000	                ld      ix, ObjectMovingBlock2
+80A3: CD0000  	                call    DrawMovingBlock                
+80A6: CD0000  	                call    DrawBall
+80A9: CD0000  	                call    DrawBat                     ; Erase the ball and bat (XOR)
+              	
+80AC: 3A0000  	                ld      a, (LevelBlockCount)
+80AF: FE00    	                cp      0
+80B1: 2000    	                jr      nz, MainLoop
+80B3: 3E00    	                ld      a, NEXTLEVEL
+80B5: 320000  	                ld      (GameState), a
+80B8: C30000  	                jp      MainLoop
+              	
+              	CheckWaiting
+***ERROR***   	            ^ unknown instruction
+80BB: FE00    	                cp      WAITING
+80BD: 2000    	                jr      nz, CheckDead
+              	
+              	                ; Put the balls location at the center of the bat1
+80BF: DD210000	                ld      ix, ObjectMovingBlock1
+80C3: CD0000  	                call    UpdateMovingBlock
+80C6: DD210000	                ld      ix, ObjectMovingBlock2
+80CA: CD0000  	                call    UpdateMovingBlock
+80CD: CD0000  	                call    ReadControlKeys
+              	
+80D0: 3A0000  	                ld      a, (ObjectBat + BAT_Y_POS)
+80D3: 0600    	                ld      b, BALL_PIXEL_HEIGHT
+80D5: 90      	                sub     b
+80D6: 320000  	                ld      (ObjectBall + BALL_Y_POS), a
+80D9: 3A0000  	                ld      a, (ObjectBat + BAT_X_POS)
+80DC: 0600    	                ld      b, BAT_PIXEL_WIDTH / 2 - 3
+80DE: 80      	                add     a, b
+80DF: 320000  	                ld      (ObjectBall + BALL_X_POS), a
+80E2: CD0000  	                call    DrawBall
+              	                
+80E5: DD210000	                ld      ix, ObjectMovingBlock1
+80E9: CD0000  	                call    DrawMovingBlock                
+80EC: DD210000	                ld      ix, ObjectMovingBlock2
+80F0: CD0000  	                call    DrawMovingBlock                
+80F3: CD0000  	                call    DrawBat 
+              	
+80F6: 76      	                halt
+80F7: CD0000  	                call    FastCopy
+              	
+80FA: CD0000  	                call    DrawBall
+80FD: DD210000	                ld      ix, ObjectMovingBlock1
+8101: CD0000  	                call    DrawMovingBlock                
+8104: DD210000	                ld      ix, ObjectMovingBlock2
+8108: CD0000  	                call    DrawMovingBlock
+810B: CD0000  	                call    DrawBat                     ; Erase the ball and bat (XOR)
+              	
+810E: 01FE7F  	                ld      bc, 32766                   ; Check to see if SPACE has been pressed
+8111: ED78    	                in      a, (c)
+8113: 1F      	                rra
+8114: DA0000  	                jp      c, MainLoop                 ; If not then keep looping
+8117: 3E00    	                ld      a, PLAYING                  ; Otherwise update the game state to PLAYING
+8119: 320000  	                ld      (GameState), a
+811C: C30000  	                jp      MainLoop
+              	
+              	CheckDead
+***ERROR***   	         ^ unknown instruction
+811F: FE00    	                cp      DEAD
+8121: 2000    	                jr      nz, NextLevel
+8123: 3A0000  	                ld      a, (Lives)
+8126: 3D      	                dec     a
+              	
+8127: F5      	                push    af
+8128: 320000  	                ld      (Lives), a
+812B: C630    	                add     a, 48
+812D: 320000  	                ld      (LivesText + 5), a
+              	
+8130: 110000  	                ld      de, LivesText
+8133: 010600  	                ld      bc, 6
+8136: CD3C20  	                call    8252
+8139: F1      	                pop     af
+813A: FE00    	                cp      0
+813C: 2800    	                jr      z, PlayerDead
+              	
+813E: CD0000  	                call    ResetBat
+8141: CD0000  	                call    PlayDeath
+              	
+8144: 3E00    	                ld      a, WAITING
+8146: 320000  	                ld      (GameState), a
+              	
+              	NextLevel
+***ERROR***   	         ^ unknown instruction
+8149: FE00    	                cp      NEXTLEVEL
+814B: 2000    	                jr      nz, CheckDisplayLevel
+814D: 3A0000  	                ld      a, (CurLvl)
+8150: 3C      	                inc     a
+8151: 320000  	                ld      (CurLvl), a
+8154: FE02    	                cp      2
+8156: 2000    	                jr      nz, IncreaseLevel
+8158: 3E01    	                ld      a, 1
+815A: 320000  	                ld      (CurLvl), a
+              	IncreaseLevel   ld      a, DISPLAYLEVEL
+***ERROR***   	             ^ unknown instruction
+815D: 320000  	                ld      (GameState), a
+8160: CD0000  	                call    LoadLevel
+8163: C30000  	                jp      MainLoop
+              	PlayerDead      ld      a, PLAYERDEAD
+***ERROR***   	          ^ unknown instruction
+8166: 320000  	                ld      (GameState), a
+8169: C30000  	                jp      MainLoop
+              	
+              	CheckDisplayLevel
+***ERROR***   	                 ^ unknown instruction
+816C: FE00    	                cp      DISPLAYLEVEL
+816E: C20000  	                jp      nz, CheckPlayerDead
+8171: 2A0000  	                ld      hl, (CurLvlAddr)
+8174: 110000  	                ld      de, LEVEL_TITLE
+8177: 19      	                add     hl, de
+8178: 0600    	                ld      b, 0
+817A: 4E      	                ld      c, (hl)
+817B: 54      	                ld      d, h 
+817C: 5D      	                ld      e, l
+817D: 13      	                inc     de
+817E: CD3C20  	                call    8252
+8181: 116400  	                ld      de, 100
+              	LevelDispWait   halt
+***ERROR***   	             ^ unknown instruction
+8184: 1B      	                dec     de
+8185: 7A      	                ld      a, d
+8186: B3      	                or      e
+8187: 2000    	                jr      nz, LevelDispWait
+8189: 2A0000  	                ld      hl, (CurLvlAddr)
+818C: 110000  	                ld      de, LEVEL_TITLE
+818F: 19      	                add     hl, de
+8190: 0600    	                ld      b, 0
+8192: 4E      	                ld      c, (hl)
+8193: 09      	                add     hl, bc
+8194: 0600    	                ld      b, 0
+8196: 23      	                inc     hl
+8197: 4E      	                ld      c, (hl)
+8198: 54      	                ld      d, h 
+8199: 5D      	                ld      e, l
+819A: 13      	                inc     de
+819B: CD3C20  	                call    8252
+              	
+819E: 3E00    	                ld      a, WAITING
+81A0: 320000  	                ld      (GameState), a
+81A3: C30000  	                jp      MainLoop
+              	
+              	CheckPlayerDead
+***ERROR***   	               ^ unknown instruction
+81A6: FE00    	                cp      PLAYERDEAD
+81A8: C20000  	                jp      nz, MainLoop
+81AB: 110000  	                ld      de, GameOverText
+81AE: 011100  	                ld      bc, 17
+81B1: CD3C20  	                call    8252
+81B4: CD0000  	                call    WaitForSpace
+81B7: CD0000  	                call    ClearScreen
+81BA: 3E05    	                ld      a, 5 
+81BC: 320000  	                ld      (Lives), a
+81BF: 3E35    	                ld      a, 53                       ; The number five in the character set
+81C1: 320000  	                ld      (LivesText + 5), a
+81C4: 110000  	                ld      de, LivesText
+81C7: 010600  	                ld      bc, 6
+81CA: CD3C20  	                call    8252
+81CD: CD0000  	                call    ResetScore
+81D0: 3E00    	                ld      a, 0
+81D2: 320000  	                ld      (CurLvl), a
+81D5: CD0000  	                call    LoadLevel
+81D8: 3E00    	                ld      a, DISPLAYLEVEL
+81DA: 320000  	                ld      (GameState), a
+81DD: CD0000  	                call    ResetBat
+81E0: C30000  	                jp      MainLoop
+              	
+              	;****************************************************************************************************************
+              	; Load the title screen for the game
+              	;****************************************************************************************************************
+              	DrawTitleScreen
+***ERROR***   	               ^ unknown instruction
+81E3: 110000  	                ld      de, BM_SCR_ADDR
+81E6: 210000  	                ld      hl, TitleScreen
+81E9: 010000  	                ld      bc, BM_SCR_SIZE + ATTR_SCRN_SIZE
+81EC: EDB0    	                ldir
+81EE: C9      	                ret
+              	
+              	;****************************************************************************************************************
+              	; Load the title screen for the game
+              	;****************************************************************************************************************
+              	DrawBorders
+***ERROR***   	           ^ unknown instruction
+              	                ; Draw top wall
+81EF: 2600    	                ld      h, 0
+81F1: 0608    	                ld      b, 8
+81F3: 0E02    	                ld      c, 2
+              	HorizLoop1      
+***ERROR***   	          ^ unknown instruction
+81F5: E5      	                push    hl
+81F6: C5      	                push    bc
+81F7: 110000  	                ld      de, HorizBlockData
+81FA: CD0000  	                call    DrawSprite
+81FD: C1      	                pop     bc
+81FE: E1      	                pop     hl
+81FF: 78      	                ld      a, b
+8200: C608    	                add     a, 8
+8202: 47      	                ld      b, a
+8203: 24      	                inc     h
+8204: 7C      	                ld      a, h
+8205: FE1E    	                cp      30
+8207: 2000    	                jr      nz, HorizLoop1
+              	
+              	                ; Draw right hand wall
+8209: 2600    	                ld      h, 0
+820B: 0600    	                ld      b, SCRN_RIGHT
+820D: 0E09    	                ld      c, 9
+              	VertLoop1
+***ERROR***   	         ^ unknown instruction
+820F: E5      	                push    hl
+8210: C5      	                push    bc
+8211: 110000  	                ld      de, VertLBlockData
+8214: CD0000  	                call    DrawSprite
+8217: C1      	                pop     bc
+8218: E1      	                pop     hl
+8219: 79      	                ld      a,c
+821A: C608    	                add     a, 8
+821C: 4F      	                ld      c, a
+821D: 24      	                inc     h
+821E: 7C      	                ld      a, h
+821F: FE16    	                cp      22
+8221: 2000    	                jr      nz, VertLoop1
+              	
+              	                ; Draw Left hand wall
+8223: 2600    	                ld      h, 0
+8225: 0600    	                ld      b, 0
+8227: 0E09    	                ld      c, 9
+              	VertLoop2
+***ERROR***   	         ^ unknown instruction
+8229: E5      	                push    hl
+822A: C5      	                push    bc
+822B: 110000  	                ld      de, VertRBlockData
+822E: CD0000  	                call    DrawSprite
+8231: C1      	                pop     bc
+8232: E1      	                pop     hl
+8233: 79      	                ld      a,c
+8234: C608    	                add     a, 8
+8236: 4F      	                ld      c, a
+8237: 24      	                inc     h
+8238: 7C      	                ld      a, h
+8239: FE16    	                cp      22
+823B: 2000    	                jr      nz, VertLoop2
+              	
+823D: C9      	                ret
+              	
+              	;****************************************************************************************************************
+              	; Draw Ball
+              	; Draws the ball sprite at the location held in the ObjectBall structure
+              	;****************************************************************************************************************
+              	DrawBall 
+***ERROR***   	        ^ unknown instruction
+823E: 110000  	                ld      de, SpriteBallData          ; Point DE to the ball sprite data
+8241: 3A0000  	                ld      a, (ObjectBall + BALL_X_POS); Load BC with the ball sprite objects location
+8244: 47      	                ld      b, a
+8245: 3A0000  	                ld      a, (ObjectBall + BALL_Y_POS)
+8248: 4F      	                ld      c, a
+8249: CD0000  	                call    DrawSprite
+824C: C9      	                ret
+              	
+              	;****************************************************************************************************************
+              	; Draw Bat
+              	; Draws the bat sprite at the location held in the ObjectBat structure
+              	;******************************************************1**********************************************************
+              	DrawBat 
+***ERROR***   	       ^ unknown instruction
+824D: 110000  	                ld      de, SpriteBatData           ; Point DE to the ball sprite data
+8250: 3A0000  	                ld      a, (ObjectBat + BAT_X_POS)  ; Load BC with the ball sprite objects location
+8253: 47      	                ld      b, a
+8254: 3A0000  	                ld      a, (ObjectBat + BAT_Y_POS)
+8257: 4F      	                ld      c, a
+8258: CD0000  	                call    DrawSprite
+825B: C9      	                ret
+              	
+              	;****************************************************************************************************************
+              	; Draw Bat
+              	; Draws the batn sprite at the location held in the ObjectBat structure
+              	;******************************************************1**********************************************************
+              	DrawMovingBlock 
+***ERROR***   	               ^ unknown instruction
+825C: 110000  	                ld      de, SpriteBatData           ; Point DE to the ball sprite data
+825F: DD7E00  	                ld      a, (ix + BAT_X_POS)  ; Load BC with the ball sprite objects location
+8262: 47      	                ld      b, a
+8263: DD7E00  	                ld      a, (ix + BAT_Y_POS)
+8266: 4F      	                ld      c, a
+8267: CD0000  	                call    DrawSprite
+826A: C9      	                ret
+              	
+              	;************************************************************************************************************************
+              	; Wait for space to be pressed
+              	;************************************************************************************************************************
+              	WaitForSpace
+***ERROR***   	            ^ unknown instruction
+826B: 01FE7F  	                ld      bc, 32766
+826E: ED78    	                in      a, (c)
+8270: 1F      	                rra 
+8271: D0      	                ret     nc
+8272: C30000  	                jp      WaitForSpace
+              	
+              	;************************************************************************************************************************
+              	; Read Control Keys
+              	;************************************************************************************************************************
+              	ReadControlKeys 
+***ERROR***   	               ^ unknown instruction
+              	                ; Check if keys one 1 or 2 have been pressed which move the bat
+8275: 01FEF7  	                ld      bc, 63486                   ; Load BC with the port to read 5, 4, 3, 2, 1
+8278: ED78    	                in      a, (c)                      ; Load A with the keys that have been pressed
+827A: 1F      	                rra                                 ; Outermost bit = key 1
+827B: F5      	                push    af                          ; Remember that value
+827C: D40000  	                call    nc, MoveBatLeft             ; Move the bat left
+827F: F1      	                pop     af                          ; Restore A
+8280: 1F      	                rra                                 ; Next bit is key 2
+8281: F5      	                push    af
+8282: D40000  	                call    nc, MoveBatRight            ; Move the bat right
+8285: F1      	                pop     af
+8286: C9      	                ret 
+              	
+              	;************************************************************************************************************************
+              	; Move the bat to the left
+              	;************************************************************************************************************************
+              	MoveBatLeft     
+***ERROR***   	           ^ unknown instruction
+8287: DD210000	                ld      ix, ObjectBat   
+828B: DD7E00  	                ld      a, (ix + BAT_X_POS)         ; IX + 0 = X Position
+828E: DD9600  	                sub     (ix + BAT_SPEED)            ; IX + 2 = Speed
+8291: FE08    	                cp      8                           ; Check if we are past the 0
+8293: DA0000  	                jp      c, HitLeftEdge              ; and jump if we are
+8296: DD7700  	                ld      (ix + BAT_X_POS), a         ; Update the X position with A
+8299: C9      	                ret     
+              	HitLeftEdge         
+***ERROR***   	           ^ unknown instruction
+829A: DD360008	                ld      (ix + BAT_X_POS), 8         ; Hit the edge so set the X pos to 0
+829E: C9      	                ret 
+              	
+              	;************************************************************************************************************************
+              	; Move bat to the right
+              	;************************************************************************************************************************   
+              	MoveBatRight    
+***ERROR***   	            ^ unknown instruction
+829F: DD210000	                ld      ix, ObjectBat   
+82A3: DD7E00  	                ld      a, (ix + BAT_X_POS)         ; IX + 0 = X Position
+82A6: DD8600  	                add     a, (ix + BAT_SPEED)         ; IX + 2 = Speed
+82A9: FE00    	                cp      PADDLE_MAX_RIGHT            ; Check if the bat is past right edge
+82AB: D20000  	                jp      nc, BatHitRightEdge         ; and jump if it is
+82AE: DD7700  	                ld      (ix + BAT_X_POS), a         ; Update the X Position with A
+82B1: C9      	                ret     
+              	BatHitRightEdge         
+***ERROR***   	               ^ unknown instruction
+82B2: DD360000	                ld      (ix + BAT_X_POS), PADDLE_MAX_RIGHT
+82B6: C9      	                ret
+              	
+              	;************************************************************************************************************************
+              	; Updates the position of the moving block
+              	;************************************************************************************************************************   
+              	UpdateMovingBlock
+***ERROR***   	                 ^ unknown instruction
+              	;                 ld      ix, ObjectMovingBlock
+82B7: DD7E00  	                ld      a, (ix + BALL_X_POS)
+82BA: DD8600  	                add     a, (ix + BALL_XSPEED)
+82BD: DD7700  	                ld      (ix + BALL_X_POS), a
+82C0: FE00    	                cp      PADDLE_MAX_RIGHT
+82C2: D20000  	                jp      nc, BlockHitEdge
+82C5: FE08    	                cp      8
+82C7: DA0000  	                jp      c, BlockHitEdge
+82CA: C9      	                ret
+              	
+              	BlockHitEdge
+***ERROR***   	            ^ unknown instruction
+              	                ld      a, (ix + BALL_XSPEED)
+              	                neg
+              	                ld      (ix + BALL_XSPEED), a
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Draw Sprite 
+              	; Call with DE = Sprite data, B = X, C = Y
+              	;****************************************************************************************************************
+              	DrawSprite      
+              	                ; Grab the width and height of the sprite we are going to draw
+              	                ld      a, (de)
+              	                ld      (_SpriteWidth + 1), a
+              	                inc     de
+              	                ld      a, (de)
+              	                ld      (_SpriteHeight + 1), a
+              	                inc     de
+              	
+              	                ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
+              	                and     7   
+              	        
+              	                ; Load DE with the address of the sprite we need to use based on the x location offset in memory
+              	                ld      l, a                        ; Load A with the number of shifts needed
+              	                ld      h, 0                        ; Reset the HL high byte
+              	                add     hl, hl                      ; Double HL as the lookup table entries are words
+              	                add     hl, de                      ; Add base address of sprite table which is held in DE
+              	                ld      e, (hl)                     ; Load E with the contents of (HL)
+              	                inc     hl                          ; Move HL to the next byte of address in the table
+              	                ld      d, (hl)                     ; Load D with the high byte
+              	        
+              	                ; Work out the X offset for the screen memory address
+              	                ld      a, b                        ; Work out the X Offset using the shift value
+              	                rra
+              	                rra
+              	                rra
+              	                and     31
+              	                ld      (_XOffset + 1), a           ; Store the X Byte Offset
+              	        
+              	                ; Load IX with the first address of the y-axis lookup table
+              	                ld      b, 0                        ; Clear B
+              	                ld      ix, ScreenLineLookup        ; Load IY with the lookup table address
+              	                add     ix, bc                      ; Increment IX by the Y pixel position
+              	                add     ix, bc                      ; twice as the table contains word values
+              	                
+              	_SpriteHeight   ld      b, 0                        ; Load the pixel height of the sprite (bits)
+              	    
+              	DrawRow             
+              	                ld      a, (ix + 0)                 ; Get the current line
+              	_XOffset        or      0                           ; Merge in our X Offset
+              	                ld      l, a                        ; Load the merged low byte in L
+              	                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
+              	                inc     ix  
+              	                inc     ix                          ; Move to the next line which is a word away
+              	    
+              	                push    bc                          ; Save B as we will load it with the sprite width
+              	_SpriteWidth    ld      b, 0                        ; Load B with the number of bytes the sprite is wide
+              	    
+              	DrawColumn  
+              	                ld      a, (de)                     ; Grab the first byte of sprite data into A             
+              	                inc     de                          ; Move to the next byte of sprite data
+              	                xor     (hl)                        ; Merge the screen contents with the sprite data
+              	                ld      (hl), a                     ; Load the merged data back into the screen
+              	                inc     l                           ; Move to the next byte of screen memory
+              	                djnz    DrawColumn                  ; Draw another column if needed
+              	    
+              	                pop     bc                          ; Restore B which holds the row count
+              	                
+              	                ld      a, (de)                     ; Again for byte 2          
+              	                inc     de  
+              	                xor     (hl)                            
+              	                ld      (hl), a     
+              	                inc     l   
+              	                    
+              	                djnz    DrawRow                     ; If not zero process the next line
+              	    
+              	                ret                                 ; All done!
+              	
+              	;****************************************************************************************************************
+              	; Copy the screen buffer to the screen file using a Stack based approach.
+              	; Original code developed by Andrew Owen in Bob.asm that was downloaded from the Z80 Assembly
+              	; Programming for the ZX Spectrum Facebook group
+              	;****************************************************************************************************************
+              	FastCopy
+              	                di                              ; Don't want any interrupts while we are moving the buffer!
+              	                ld      (ScrnStackPtr), sp      ; Save the current stack pointer
+              	
+              	                ; First we copy over the attribute data
+              	                ; REPT 48, attr               ; write the attributes
+              	                ;     ld      ix, attributes + 768 - 16 - (attr * 16)
+              	                ;                             ; last byte of the back_buffer - 16
+              	                ;     ld      iy, 16384 + 6912 - (attr * 16)
+              	                ;                             ; last byte of the screen
+              	                ;     ld      hl, $ + 9       ; set return location (no stack available)
+              	                ;     ld      (EndCall), hl           
+              	                ;     jp      Blit            ; call blit
+              	                ; ENDM
+              	
+              	                ; Now copy the bitmap data to the screen file
+              	                REPT 3, chunk               
+              	                    REPT 8, row
+              	                        REPT 8, cell
+              	                            REPT 2, line
+              	                                ld      ix, SCRN_BUFFER + BM_SCR_SIZE - 16 - (line * 16) - (cell * 32) - (row * 256) - (chunk * 2048)
+              	                                ld      iy, BM_SCR_ADDR + BM_SCR_SIZE - (line * 16) - (cell * 256) - (row * 32) - (chunk * 2048)
+              	                                ld      hl, $ + 9
+              	                                ld      (EndCall), hl           
+              	                                jp      Blit
+              	                            ENDM
+              	                        ENDM
+              	                    ENDM
+              	                ENDM
+              	
+              	                ld      sp, (ScrnStackPtr)      ; Restore stack pointer
+              	                ei
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Routine to copy 16 bytes from location in IX to location in IY - 16bytes
+              	;****************************************************************************************************************
+              	Blit
+              	                ld      sp, ix
+              	                pop     af              ; read 16 bytes
+              	                pop     bc
+              	                pop     de
+              	                pop     hl
+              	                ex      af, af'         ;'
+              	                exx
+              	                pop     af
+              	                pop     bc
+              	                pop     de
+              	                pop     hl
+              	                
+              	                ld      sp, iy
+              	                push    hl              ; write 16 bytes
+              	                push    de
+              	                push    bc
+              	                push    af
+              	                ex      af, af'         ;'
+              	                exx
+              	                push    hl
+              	                push    de
+              	                push    bc
+              	                push    af
+              	                db      0xc3            ; jp endcall
+              	EndCall         dw      EndCall
+              	
+              	;****************************************************************************************************************
+              	; Covert the pixel coordinates into char coordinates
+              	; D = Pixel X, E = Pixel Y returning B = Char X, C = Char Y
+              	;****************************************************************************************************************
+              	GetCharLocation 
+              	                ld      a, d
+              	                srl     a                           ; Divide by 8 to get the char X position
+              	                srl     a
+              	                srl     a
+              	                ld      c, a
+              	
+              	                ld      a, e                        ; Divide by 8 to get the char y position
+              	                srl     a
+              	                srl     a
+              	                srl     a
+              	                ld      b, a
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; MOVEBALL
+              	; Responsible for bouncing the ball sprite around the screen, detecting when it hits the edges of the screen
+              	; and any tile objects
+              	;****************************************************************************************************************
+              	MoveBall 
+              	                ld      ix, ObjectBall
+              	MoveX
+              	                ld      a, (ix + BALL_X_POS)
+              	                add     a, (ix + BALL_XSPEED)
+              	                cp      SCRN_RIGHT - BALL_PIXEL_WIDTH
+              	                jr      nc, BounceX
+              	                cp      SCRN_LEFT
+              	                jr      c, BounceX
+              	                ld      (ix + BALL_X_POS), a
+              	MoveY           
+              	                ld      a, (ix + BALL_Y_POS)
+              	                add     a, (ix + BALL_YSPEED)
+              	                cp      SCRN_BOTTOM
+              	                jr      nc, HitBottom
+              	                cp      SCRN_TOP
+              	                jr      c, BounceY
+              	                ld      (ix + BALL_Y_POS), a
+              	                ld      a, (ix + BALL_YSPEED)
+              	                cp      0
+              	                jp      m, BallCharPos              ; Only check for a bat collision of the ball is moving down the screen
+              	                call    CheckBatCollison
+              	                jp      BallCharPos
+              	HitBottom
+              	                ld      a, DEAD
+              	                ld      (GameState), a
+              	                jp      BallCharPos
+              	BounceX         
+              	                ld      a, (ix + BALL_XSPEED)
+              	                neg
+              	                ld      (ix + BALL_XSPEED), a
+              	                cp      0
+              	                jp      m, AlignRight
+              	                ld      a, SCRN_LEFT
+              	                ld      (ix + BALL_X_POS), a
+              	                jp      MoveY
+              	AlignRight      ld      a, SCRN_RIGHT - BALL_PIXEL_WIDTH
+              	                ld      (ix + BALL_X_POS), a 
+              	                jp      MoveY
+              	BounceY         
+              	                ld      a, (ix + BALL_YSPEED)
+              	                neg
+              	                ld      (ix + BALL_YSPEED), a
+              	                ld      a, SCRN_TOP
+              	                ld      (ix + BALL_Y_POS), a
+              	
+              	BallCharPos     ; Update the balls character position used in block collision detection
+              	                ld      a, (ix + BALL_X_POS)        ; Middle Top
+              	                add     a, BALL_PIXEL_WIDTH / 2
+              	                ld      d, a
+              	                ld      e, (ix + BALL_Y_POS)
+              	                dec     e                           ; Move 1 pixel left
+              	                call    GetCharLocation
+              	                ld      (BallMT), bc
+              	
+              	                ld      a, (ix + BALL_X_POS)        ; Middle Right
+              	                add     a, BALL_PIXEL_WIDTH - 1
+              	                ld      d, a
+              	                ld      a, (ix + BALL_Y_POS)
+              	                add     a, BALL_PIXEL_HEIGHT / 2
+              	                ld      e, a
+              	                call    GetCharLocation
+              	                ld      (BallMR), bc
+              	
+              	                ld      a, (ix + BALL_X_POS)        ; Middle Bottom
+              	                add     a, BALL_PIXEL_WIDTH / 2
+              	                ld      d, a
+              	                ld      a, (ix + BALL_Y_POS)
+              	                add     a, BALL_PIXEL_HEIGHT - 1    ; Move 1 pixel up into the ball
+              	                ld      e, a
+              	                call    GetCharLocation
+              	                ld      (BallMB), bc
+              	
+              	                ld      d, (ix + BALL_X_POS)        ; Middle Left
+              	                inc     d                           ; Move 1 pixel right
+              	                ld      a, (ix + BALL_Y_POS)
+              	                add     a, BALL_PIXEL_HEIGHT / 2
+              	                ld      e, a
+              	                call    GetCharLocation
+              	                ld      (BallML), bc
+              	
+              	                call    CheckBlockCollision         ; Now go see if the ball has hit something :)
+              	
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Check to see if the ball has collided with the bat and if so update the properties of the ball as necessart
+              	;****************************************************************************************************************
+              	CheckBatCollison 
+              	
+              	                ; First check if the bottom of the ball has reached the top of the bat
+              	                ld      a, (ObjectBat + BAT_Y_POS)  ; Load the Y position of the bat
+              	                sub     (ix + BAT_HEIGHT)           ; Sub off the height of the ball in pixels
+              	                cp      (ix + BAT_Y_POS)            ; Compare that with the balls y position
+              	                ret     nc                          ; NC = A > B so we are done
+              	                
+              	                ; If the ball has already passed the top of the bat then carry on
+              	                ld      a, (ObjectBat + BAT_Y_POS)
+              	                cp      (ix + BALL_Y_POS)
+              	                ret     c
+              	
+              	                ; To check where on the bat the ball has collided we put the ball into bat space coordinates
+              	                ; by subtracting the x position of the bat from the x position of the ball
+              	                ld      a, (ObjectBat + BAT_X_POS)
+              	                ld      b, a
+              	                ld      a, (ix + BALL_X_POS)
+              	                add     a, BALL_PIXEL_WIDTH / 2
+              	                sub     b                           ; Subtract the bat.x from ball.x
+              	                ret     c                           ; A < 0 so the ball is left of the bat
+              	                cp      BAT_PIXEL_WIDTH             ; Check if ball.x > bat.pixel_width
+              	                ret     nc                          ; If it is then ball to the right of the bat
+              	
+              	                push    af
+              	
+              	                ld      b, 20
+              	                call    PlayClick
+              	
+              	                ; Check the balls x direction and based on that perform the bats collision checks
+              	                ld      a, (ix + BALL_XSPEED)
+              	                cp      0 
+              	                jp      m, LeftDirection
+              	
+              	RightDirection  
+              	                pop     af
+              	                cp      6
+              	                jr      nc, RArea2
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LEVEL_BAT_SPEEDS + 0
+              	                add     hl, de
+              	                ld      a, (hl)
+              	                ld      (ix + BALL_XSPEED), a
+              	                jp      AdjustYDir
+              	RArea2          cp      12
+              	                jr      nc, RArea3
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LEVEL_BAT_SPEEDS + 1
+              	                add     hl, de
+              	                ld      a, (hl)
+              	                ld      (ix + BALL_XSPEED), a
+              	                jp      AdjustYDir
+              	RArea3          cp      18
+              	                jr      nc, RArea4
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LEVEL_BAT_SPEEDS + 2
+              	                add     hl, de
+              	                ld      a, (hl)
+              	                ld      (ix + BALL_XSPEED), a
+              	                jp      AdjustYDir
+              	RArea4          cp      24
+              	                jr      nc, AdjustYDir
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LEVEL_BAT_SPEEDS + 3
+              	                add     hl, de
+              	                ld      a, (hl)
+              	                ld      (ix + BALL_XSPEED), a
+              	                jp      AdjustYDir
+              	
+              	LeftDirection  
+              	                pop     af
+              	                cp      6
+              	                jr      nc, LArea2
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LEVEL_BAT_SPEEDS + 3
+              	                add     hl, de
+              	                ld      a, (hl)
+              	                neg
+              	                ld      (ix + BALL_XSPEED), a
+              	                jp      AdjustYDir
+              	LArea2          cp      12
+              	                jr      nc, LArea3
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LEVEL_BAT_SPEEDS + 2
+              	                add     hl, de
+              	                ld      a, (hl)
+              	                neg
+              	                ld      (ix + BALL_XSPEED), a
+              	                jp      AdjustYDir
+              	LArea3          cp      18
+              	                jr      nc, LArea4
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LEVEL_BAT_SPEEDS + 1
+              	                add     hl, de
+              	                ld      a, (hl)
+              	                neg
+              	                ld      (ix + BALL_XSPEED), a
+              	                jp      AdjustYDir
+              	LArea4          cp      24
+              	                jr      nc, AdjustYDir
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LEVEL_BAT_SPEEDS + 0
+              	                add     hl, de
+              	                ld      a, (hl)
+              	                neg
+              	                ld      (ix + BALL_XSPEED), a
+              	
+              	AdjustYDir 
+              	                ld      a, (ObjectBat + BAT_Y_POS)  ; Update the Y pos of the ball so that it rests ontop of the bat
+              	                sub     8   
+              	                ld      (ix + BALL_Y_POS), a
+              	                ld      a, (ix + BALL_YSPEED)
+              	                neg                                 ; Change the balls Y direction
+              	                ld      (ix + BALL_YSPEED), a   
+              	                ret 
+              	
+              	;****************************************************************************************************************
+              	; Check the edge point on the ball to see if they have collided with a block based on the blocks attribute colour
+              	;****************************************************************************************************************
+              	CheckBlockCollision 
+              	                ld      a, (BallMT)
+              	                ld      d, a
+              	                ld      a, (BallMT + 1)
+              	                ld      e, a
+              	                push    de
+              	                call    GetCharAttr
+              	                pop     de
+              	                cp      5               
+              	                jr      z, MiddleRight  
+              	                ld      a, (ObjectBall + BALL_YSPEED)
+              	                cp      0
+              	                jp      p, MT0
+              	                neg
+              	                ld      (ObjectBall + BALL_YSPEED), a
+              	MT0             call    RemoveBlock
+              	                ret
+              	MiddleRight 
+              	                ld      a, (BallMR)
+              	                ld      d, a
+              	                ld      a, (BallMR + 1)
+              	                ld      e, a
+              	                push    de
+              	                call    GetCharAttr
+              	                pop     de
+              	                cp      5
+              	                jr      z, MiddleBottom
+              	                ld      a, (ObjectBall + BALL_XSPEED)
+              	                neg
+              	                ld      (ObjectBall + BALL_XSPEED), a
+              	                call    RemoveBlock
+              	                ret
+              	MiddleBottom
+              	                ld      a, (BallMB)
+              	                ld      d, a
+              	                ld      a, (BallMB + 1)
+              	                ld      e, a
+              	                push    de
+              	                call    GetCharAttr
+              	                pop     de
+              	                cp      5
+              	                jr      z, MiddleLeft
+              	                ld      a, (ObjectBall + BALL_YSPEED)
+              	                neg
+              	                ld      (ObjectBall + BALL_YSPEED), a   
+              	                call    RemoveBlock
+              	                ret
+              	MiddleLeft 
+              	                ld      a, (BallML)
+              	                ld      d, a
+              	                ld      a, (BallML + 1)
+              	                ld      e, a
+              	                push    de
+              	                call    GetCharAttr
+              	                pop     de
+              	                cp      5
+              	                ret     z
+              	                ld      a, (ObjectBall + BALL_XSPEED)
+              	                neg
+              	                ld      (ObjectBall + BALL_XSPEED), a   
+              	                call    RemoveBlock
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Remove the block that contains the x,y provided in DE
+              	;****************************************************************************************************************
+              	RemoveBlock
+              	                ld      b, 100
+              	                call    PlayClick
+              	
+              	                ld      hl, ScoreText + 10      
+              	                ld      b, 6                
+              	                call    UpdateScore                 
+              	                ld      hl, ScoreText + 11          
+              	                ld      b, 5                        
+              	                call    UpdateScore    
+              	
+              	                push    de
+              	                push    bc
+              	                ld      de, ScoreText               ; Print the score on the screen
+              	                ld      bc, 12
+              	                call    8252
+              	                pop     bc
+              	                pop     de
+              	
+              	                ld      a, (LevelBlockCount) 
+              	                dec     a                           ; Decrement the number of blocks 
+              	                ld      (LevelBlockCount), a                    
+              	
+              	                ; Remove the block
+              	                ld      a, d
+              	                and     1                           ; Check to see if the number is odd
+              	                cp      0
+              	                jr      z, Even
+              	
+              	Odd             ld      a, 5
+              	                push    de
+              	                call    SetCharAttr
+              	                pop     de
+              	                ld      a, d
+              	                sub     1
+              	                ld      d, a
+              	                ld      a, 5
+              	                push    de
+              	                call    SetCharAttr
+              	                pop     de
+              	
+              	                ld      a, d
+              	                add     a, a
+              	                add     a, a
+              	                add     a, a
+              	                ld      b, a
+              	
+              	                ld      a, e
+              	                add     a, a
+              	                add     a, a
+              	                add     a, a
+              	                ld      c, a
+              	                ld      de, SpriteBlockData
+              	                call    DrawSprite
+              	                ret
+              	
+              	Even            ld      a, 5
+              	                push    de
+              	                call    SetCharAttr
+              	                pop     de
+              	                inc     d
+              	                ld      a, 5
+              	                push    de
+              	                call    SetCharAttr
+              	                pop     de
+              	                dec     d
+              	                ld      a, d
+              	                add     a, a
+              	                add     a, a
+              	                add     a, a
+              	                ld      b, a
+              	
+              	                ld      a, e
+              	                add     a, a
+              	                add     a, a
+              	                add     a, a
+              	                ld      c, a
+              	                ld      de, SpriteBlockData
+              	                call    DrawSprite
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Set the attribute at the given X, Y
+              	; D = X, E = Y, A = value to set
+              	;****************************************************************************************************************
+              	SetCharAttr 
+              	                ld      h, 0                        ; Get the Y pos from the corner
+              	                ld      l, e
+              	
+              	                add     hl, hl                      ; Multiply the Y position by 32
+              	                add     hl, hl
+              	                add     hl, hl
+              	                add     hl, hl
+              	                add     hl, hl
+              	
+              	                ld      b, 0                        ; Get the X position
+              	                ld      c, d
+              	                add     hl, bc                      ; Add it to the Y position 
+              	
+              	                ld      de, ATTR_SCRN_ADDR          ; Add on the base ATTR screen address
+              	                add     hl, de
+              	
+              	                ld      (hl), a                     ; Load the attribute at HL
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Get the attribute at the given X, Y
+              	; D = X, E = Y, returns A = given attribute
+              	;****************************************************************************************************************
+              	GetCharAttr 
+              	
+              	                ld      h, 0                        ; Get the Y pos from the corner
+              	                ld      l, e
+              	
+              	                add     hl, hl                      ; Multiply the Y position by 32
+              	                add     hl, hl
+              	                add     hl, hl
+              	                add     hl, hl
+              	                add     hl, hl
+              	
+              	                ld      b, 0                        ; Get the X position
+              	                ld      c, d
+              	                add     hl, bc                      ; Add it to the Y position 
+              	
+              	                ld      de, ATTR_SCRN_ADDR          ; Add on the base ATTR screen address
+              	                add     hl, de
+              	
+              	                ld      a, (hl)                     ; Load the attribute at HL
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Reset the bats X pos to the center of play area
+              	;****************************************************************************************************************
+              	ResetBat    
+              	                ld      a, 76                       
+              	                ld      (ObjectBat + BALL_X_POS), a
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Load Level
+              	; A = Level to load 
+              	;****************************************************************************************************************
+              	LoadLevel 
+              	                ld      de, LevelLookup             ; Load DE with the address of the Level Loopup Table
+              	                ld      a, (CurLvl)                 ; Load A with the level number to load
+              	                ld      l, a
+              	                ld      h, 0                        ; Reset the HL high byte
+              	                add     hl, hl                      ; Double HL as the level lookup table entries are words
+              	                add     hl, de                      ; Add base address of level lookup table which is held in DE
+              	                ld      e, (hl)                     ; Pop the address at HL into DE
+              	                inc     hl
+              	                ld      d, (hl)
+              	                ld      (CurLvlAddr), de            ; Store away 
+              	                ld      hl, (CurLvlAddr)            ; and load HL with that address
+              	
+              	                ; Load the block colours from the level data
+              	                ld      de, ATTR_SCRN_ADDR + (32 * 4)
+              	                ld      bc, ROW_CLR_BYTES
+              	                ldir
+              	
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LVL_CLR_ROW_2
+              	                add     hl, de
+              	                ld      de, ATTR_SCRN_ADDR + (32 * 5)
+              	                ld      bc, ROW_CLR_BYTES
+              	                ldir
+              	
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LVL_CLR_ROW_3
+              	                add     hl, de
+              	                ld      de, ATTR_SCRN_ADDR + (32 * 6)
+              	                ld      bc, ROW_CLR_BYTES
+              	                ldir
+              	
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LVL_CLR_ROW_4
+              	                add     hl, de
+              	                ld      de, ATTR_SCRN_ADDR + (32 * 7)
+              	                ld      bc, ROW_CLR_BYTES
+              	                ldir
+              	
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LVL_CLR_ROW_5
+              	                add     hl, de
+              	                ld      de, ATTR_SCRN_ADDR + (32 * 8)
+              	                ld      bc, ROW_CLR_BYTES
+              	                ldir
+              	
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LVL_CLR_ROW_6
+              	                add     hl, de
+              	                ld      de, ATTR_SCRN_ADDR + (32 * 9)
+              	                ld      bc, ROW_CLR_BYTES
+              	                ldir
+              	
+              	                ld      hl, (CurLvlAddr)
+              	                ld      de, LVL_CLR_ROW_7
+              	                add     hl, de
+              	                ld      de, ATTR_SCRN_ADDR + (32 * 10)
+              	                ld      bc, ROW_CLR_BYTES
+              	                ldir
+              	
+              	                ; Draw the blocks based on the levels block loopup table
+              	NextBlockRow    ld      a, 0
+              	                ld      (CurBlockCol), a
+              	                ld      (CurBlockRow), a
+              	                ld      (CurBlockX), a
+              	                ld      a, 32
+              	                ld      (CurBlockY), a
+              	
+              	DrawNextBlock   ld      bc, (CurBlockY)
+              	                ld      a, (hl)
+              	                inc     hl
+              	                cp      1
+              	                jr      nz, SkipBlock
+              	
+              	                ld      a, (LevelBlockCount)
+              	                inc     a
+              	                ld      (LevelBlockCount), a
+              	
+              	                push    hl
+              	                ld      de, SpriteBlockData
+              	                call    DrawSprite
+              	                pop     hl
+              	
+              	SkipBlock       ld      a, (CurBlockX)
+              	                add     a, 16
+              	                ld      (CurBlockX), a
+              	                ld      a, (CurBlockCol)
+              	                inc     a
+              	                ld      (CurBlockCol), a
+              	                cp      15
+              	                jr      nz, DrawNextBlock
+              	
+              	                ld      a, 0
+              	                ld      (CurBlockX), a
+              	                ld      a, (CurBlockY)
+              	                add     a, 8
+              	                ld      (CurBlockY), a
+              	                ld      a, 0
+              	                ld      (CurBlockCol), a
+              	
+              	                ld      a, (CurBlockRow)
+              	                inc     a
+              	                ld      (CurBlockRow), a
+              	                cp      7
+              	                jr      nz, DrawNextBlock
+              	
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Update the score
+              	;****************************************************************************************************************
+              	UpdateScore     ld      a, (hl)                     ; current value of digit.
+              	                add     a, b                        ; add points to this digit.
+              	                ld      (hl), a                     ; place new digit back in string.
+              	                cp      58                          ; more than ASCII value '9'?
+              	                ret     c                           ; no - relax.
+              	                sub     10                          ; subtract 10.
+              	                ld      (hl), a                     ; put new character back in string.
+              	UpdateScore0    dec     hl                          ; previous character in string.
+              	                inc     (hl)                        ; up this by one.
+              	                ld      a, (hl)                     ; what's the new value?
+              	                cp      58                          ; gone past ASCII nine?
+              	                ret     c                           ; no, scoring done.
+              	                sub     10                          ; down by ten.
+              	                ld      (hl), a                     ; put it back
+              	                jp      UpdateScore0                ; go round again.
+              	
+              	;****************************************************************************************************************
+              	; Reset score to 0000000
+              	;****************************************************************************************************************
+              	ResetScore
+              	                ld      de, ScoreText + 5
+              	                ld      b, 7
+              	                ld      a, '0'
+              	MakeZero        ld      (de), a
+              	                inc     de
+              	                djnz    MakeZero
+              	                ld      de, ScoreText               ; Print the score on the screen
+              	                ld      bc, 12
+              	                call    8252
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Draw the info panel
+              	;****************************************************************************************************************
+              	DrawInfoPanel 
+              	                ld      b, 24
+              	                ld      de, ATTR_SCRN_ADDR + 22
+              	                ld      (InfoPanelAddr), de
+              	
+              	InfoPanelLoop   
+              	                push    bc
+              	                ld      hl, InfoPanel
+              	                ld      bc, 10
+              	                ldir
+              	
+              	                ld      de, 32
+              	                ld      hl, (InfoPanelAddr)
+              	                add     hl, de
+              	                ld      d, h
+              	                ld      e, l
+              	                ld      (InfoPanelAddr), de
+              	
+              	                pop     bc
+              	                djnz    InfoPanelLoop
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Play click sound with b = length of the loop
+              	;****************************************************************************************************************
+              	PlayClick       
+              	                ld      a, 16
+              	                and     248
+              	                out     (254), a
+              	ClickLoop0      djnz    ClickLoop0
+              	                ld      a, 0
+              	                and     248
+              	                out     (254), a
+              	
+              	                ld      a, 16
+              	                and     248
+              	                out     (254), a
+              	ClickLoop1      djnz    ClickLoop1
+              	                ld      a, 0
+              	                and     248
+              	                out     (254), a
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Play death sound with b = length of the loop
+              	;****************************************************************************************************************
+              	PlayDeath
+              	                ld      a, 0
+              	                ld      (23624), a                  ; Set the Border colour BASIC variable to black
+              	                ld      hl,500                      ; starting pitch.
+              	                ld      b,150                       ; length of pitch bend.
+              	DeathLoop       push    bc
+              	                push    hl                          ; store pitch.
+              	                ld      de,1                        ; very short duration.
+              	                call    949                         ; ROM beeper routine.
+              	                pop     hl                          ; restore pitch.
+              	                inc     hl                          ; pitch going up.
+              	                pop     bc
+              	                djnz    DeathLoop                   ; repeat.
+              	                ret
+              	
+              	;****************************************************************************************************************
+              	; Variables
+              	;****************************************************************************************************************
+              	GameState       db      0                           ; 1 = Playing, 2 = Waiting to Start, 4 = Dead
+              	LevelBlockCount db      0                           ; Number of blocks in this level
+              	
+              	CurLvl          db      0                           ; Stores the current level
+              	
+              	CurBlockRow     db      0                           ; Variables used to store detalis of the blocks when rendering
+              	CurBlockCol     db      0
+              	CurBlockY       db      0
+              	CurBlockX       db      0
+              	CurLvlAddr      dw      0
+              	
+              	BallMT          dw      0                           ; Stores the x, y attr position of the balls collision points
+              	BallMR          dw      0
+              	BallMB          dw      0
+              	BallML          dw      0
+              	
+              	InfoPanelAddr   dw      0                           ; Stores a pointer to the info panel attribute data
+              	
+              	Lives           db      5                           ; Number of lives each player has at the start of the game
+              	ScrnStackPtr    dw      0                           ; Holds the original SP location during screen buffer copy
+              	
+              	;****************************************************************************************************************
+              	; Text
+              	;****************************************************************************************************************
+              	ScoreLabelText  db      16, 6, 22, 0, 1, 'SCORE'
+              	ScoreText       db      16, 6, 22, 0, 8, '0000000'
+              	LivesLabelText  db      16, 6, 22, 0, 24, 'LIVES'
+              	LivesText       db      16, 6, 22, 0, 30, '5'
+              	GameOverText    db      16, 2, 17, 2, 22, 15, 11, 'GAME  OVER'
+              	
+              	;****************************************************************************************************************
+              	; Object data
+              	;****************************************************************************************************************
+              	ObjectBall      db      92                          ; IX + 0 = X position
+              	                db      130                         ; IX + 1 = Y position
+              	                db      1                           ; IX + 2 = Xdir
+              	                db      1                           ; IX + 3 = Ydir
+              	                db      1                           ; IX + 4 = XSpeed
+              	                db      2                           ; IX + 5 = YSpeed
+              	                db      1                           ; IX + 6 = Sprite data width (bytes)
+              	                db      8                           ; IX + 7 = Sprite data height (bits)
+              	                        
+              	ObjectBat       db      76                          ; IX + 0 = X Position                       
+              	                db      175                         ; IX + 1 = Y Position
+              	                db      4                           ; IX + 2 = Speed
+              	                db      0                           ; IX + 3 = unused   
+              	                db      0                           ; IX + 4 = unused   
+              	                db      0                           ; IX + 5 = unused
+              	                db      3                           ; IX + 6 = Sprite data width (bytes)
+              	                db      8                           ; IX + 7 = Sprite data height (bits)
+              	
+              	ObjectMovingBlock1
+              	                db      76                          ; IX + 0 = X position
+              	                db      140                         ; IX + 1 = Y position
+              	                db      0                           ; IX + 2 = Xdir
+              	                db      0                           ; IX + 3 = Ydir
+              	                db      2                           ; IX + 4 = XSpeed
+              	                db      0                           ; IX + 5 = YSpeed
+              	                db      3                           ; IX + 6 = Sprite data width (bytes)
+              	                db      8                           ; IX + 7 = Sprite data height (bits)
+              	
+              	ObjectMovingBlock2
+              	                db      16                          ; IX + 0 = X position
+              	                db      16                         ; IX + 1 = Y position
+              	                db      0                           ; IX + 2 = Xdir
+              	                db      0                           ; IX + 3 = Ydir
+              	                db      -1                           ; IX + 4 = XSpeed
+              	                db      0                           ; IX + 5 = YSpeed
+              	                db      3                           ; IX + 6 = Sprite data width (bytes)
+              	                db      8                           ; IX + 7 = Sprite data height (bits)
+              	
+              	;****************************************************************************************************************
+              	; Includes
+              	;****************************************************************************************************************
+              	include     Constants.asm
+              	include     Levels.asm
+              	include     Title.asm
+              	
+              	                END SetBorder
+
+
+; +++ segments +++
+
+#CODE :        start=32768 len=VOID 
+
+; +++ global symbols +++
+
+ATTR_SCRN_SIZE     = ***UNDEFINED***
+BALL_PIXEL_HEIGHT  = ***UNDEFINED***
+BALL_XSPEED        = ***UNDEFINED***
+BALL_X_POS         = ***UNDEFINED***
+BALL_Y_POS         = ***UNDEFINED***
+BAT_PIXEL_WIDTH    = ***UNDEFINED***
+BAT_SPEED          = ***UNDEFINED***
+BAT_X_POS          = ***UNDEFINED***
+BAT_Y_POS          = ***UNDEFINED***
+BM_SCR_ADDR        = ***UNDEFINED***
+BM_SCR_SIZE        = ***UNDEFINED***
+BatHitRightEdge    = ***UNDEFINED***
+BlockHitEdge       = ***UNDEFINED***
+CheckDead          = ***UNDEFINED***
+CheckDisplayLevel  = ***UNDEFINED***
+CheckPlayerDead    = ***UNDEFINED***
+CheckWaiting       = ***UNDEFINED***
+ClearScreen        = ***UNDEFINED***
+CurLvl             = ***UNDEFINED***
+CurLvlAddr         = ***UNDEFINED***
+DEAD               = ***UNDEFINED***
+DISPLAYLEVEL       = ***UNDEFINED***
+DrawBall           = ***UNDEFINED***
+DrawBat            = ***UNDEFINED***
+DrawBorders        = ***UNDEFINED***
+DrawInfoPanel      = ***UNDEFINED***
+DrawMovingBlock    = ***UNDEFINED***
+DrawSprite         = ***UNDEFINED***
+DrawTitleScreen    = ***UNDEFINED***
+FastCopy           = ***UNDEFINED***
+GameOverText       = ***UNDEFINED***
+GameState          = ***UNDEFINED***
+HitLeftEdge        = ***UNDEFINED***
+HorizBlockData     = ***UNDEFINED***
+HorizLoop1         = ***UNDEFINED***
+IncreaseLevel      = ***UNDEFINED***
+LEVEL_TITLE        = ***UNDEFINED***
+LevelBlockCount    = ***UNDEFINED***
+LevelDispWait      = ***UNDEFINED***
+Lives              = ***UNDEFINED***
+LivesLabelText     = ***UNDEFINED***
+LivesText          = ***UNDEFINED***
+LoadLevel          = ***UNDEFINED***
+MainLoop           = ***UNDEFINED***
+MoveBall           = ***UNDEFINED***
+MoveBatLeft        = ***UNDEFINED***
+MoveBatRight       = ***UNDEFINED***
+NEXTLEVEL          = ***UNDEFINED***
+NextLevel          = ***UNDEFINED***
+ObjectBall         = ***UNDEFINED***
+ObjectBat          = ***UNDEFINED***
+ObjectMovingBlock1 = ***UNDEFINED***
+ObjectMovingBlock2 = ***UNDEFINED***
+PADDLE_MAX_RIGHT   = ***UNDEFINED***
+PLAYERDEAD         = ***UNDEFINED***
+PLAYING            = ***UNDEFINED***
+PlayDeath          = ***UNDEFINED***
+PlayerDead         = ***UNDEFINED***
+ReadControlKeys    = ***UNDEFINED***
+ResetBat           = ***UNDEFINED***
+ResetScore         = ***UNDEFINED***
+SCRN_BUFFER        = ***UNDEFINED***
+SCRN_RIGHT         = ***UNDEFINED***
+ScoreLabelText     = ***UNDEFINED***
+ScoreText          = ***UNDEFINED***
+ScreenLineLookup   = ***UNDEFINED***
+SpriteBallData     = ***UNDEFINED***
+SpriteBatData      = ***UNDEFINED***
+TitleScreen        = ***UNDEFINED***
+UpdateMovingBlock  = ***UNDEFINED***
+VertLBlockData     = ***UNDEFINED***
+VertLoop1          = ***UNDEFINED***
+VertLoop2          = ***UNDEFINED***
+VertRBlockData     = ***UNDEFINED***
+WAITING            = ***UNDEFINED***
+WaitForSpace       = ***UNDEFINED***
+YLookupLoop        = ***UNDEFINED***
+_reqcolon_         = $0001 =      1          :1 (unused)
+
+
+total time: 0.0064 sec.
+30 errors
