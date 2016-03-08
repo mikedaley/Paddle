@@ -27,54 +27,53 @@ init
 .directDraw     equ     1
 
     IF !.directDraw
-                ld      hl, scrnLnLkup
-                ld      de, SCRNBFFR
-                ld      b, 192
-yLkupLp         ld      (hl), e
-                inc     hl
-                ld      (hl), d
-                inc     hl
-                push    hl
-                ld      hl, 32
-                add     hl, de
-                ld      d, h
-                ld      e, l
-                pop     hl
-                djnz    yLkupLp
+                ld      hl, scrnLnLkup              ; Point HL at the address of the y axis loopup table
+                ld      de, SCRNBFFR                ; Point DE at the address of the screen buffer
+                ld      b, 192                      ; We need an address for all 192 lines on screen
+_yLkupLp        ld      (hl), e                     ; Save E...
+                inc     hl                          ; ...and...
+                ld      (hl), d                     ; ...D into the screen lookup table
+                inc     hl                          ; Move to the next buffer location
+                push    hl                          ; Save HL
+                ld      hl, 32                      ; HL is loaded with 32, number of bytes per screen line
+                add     hl, de                      ; Add that to DE to get the next lookup address
+                ex      de, hl                      ; Switch DE and HL
+                pop     hl                          ; Restore HL
+                djnz    _yLkupLp                    ; Loop until all lines are done
     ENDIF
 
-                call    drwTtlScrn
-                call    watFrSpc
-                call    clrScrn
-                call    drwBrdrs
+                call    drwTtlScrn                  ; Draw the title screen
+                call    watFrSpc                    ; Wait for the space key to be pressed
+                call    clrScrn                     ; Once pressed clear the screen
+                call    drwBrdrs                    ; Draw the screen borders
 
-                ld      de, lvsTxt
-                ld      bc, 8
-                call    8252
+                ld      de, lvsTxt                  ; Load DE with the address of the Lives Text
+                ld      bc, 8                       ; Set the length of the string
+                call    8252                        ; ROM print the string
 
-                ld      a, 0
-                ld      (crrntLvl), a
-                call    ldLvl
+                ld      a, 0                        ; Load A with 0 for the initial level
+                ld      (crrntLvl), a               ; Save the level 
+                call    ldLvl                       ; Load the current level
 
-                ld      a, GMESTTE_DSPLYLVL
-                ld      (gmeStte), a
+                ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISPLAY LEVEL
+                ld      (gmeStte), a                ; Save the game state
 
-                jp      mnLp
+                jp      mnLp                        ; Jump tp the main loop
 
 clrScrn     
-                call    3503    
+                call    3503                        ; ROM clear screen
 
-                ld      de, scrLblTxt
-                ld      bc, 10
-                call    8252
+                ld      de, scrLblTxt               ; Point DE to the score label text
+                ld      bc, 10                      ; Set the length of the string
+                call    8252                        ; ROM print
 
-                ld      de, scrTxt
-                ld      bc, 12
-                call    8252
+                ld      de, scrTxt                  ; Point DE to the score text
+                ld      bc, 12                      ; Set the length of the string
+                call    8252                        ; ROM print
 
-                ld      de, lvsLblTxt
-                ld      bc, 10
-                call    8252
+                ld      de, lvsLblTxt               ; Point DE to lives label text
+                ld      bc, 10                      ; Set the length of the string
+                call    8252                        ; ROM print
 
                 ret
 
@@ -234,7 +233,7 @@ _chckGmeSttePlyrDead
                 ld      de, lvsTxt
                 ld      bc, 6
                 call    8252
-                call    ResetScore
+                call    rstScr
                 ld      a, 0
                 ld      (crrntLvl), a
                 call    ldLvl
@@ -248,7 +247,7 @@ _chckGmeSttePlyrDead
 ;****************************************************************************************************************
 drwTtlScrn
                 ld      de, BTMPSCRNSDDR
-                ld      hl, TitleScreen
+                ld      hl, ttleScrn
                 ld      bc, BTMPSCRSZ + ATTRSCRNSZ
                 ldir
                 ret
@@ -261,7 +260,7 @@ drwBrdrs
                 ld      h, 0
                 ld      b, 8
                 ld      c, 2
-HorizLoop1      
+_hrzntlLp
                 push    hl
                 push    bc
                 ld      de, HorizBlockData
@@ -274,13 +273,13 @@ HorizLoop1
                 inc     h
                 ld      a, h
                 cp      30
-                jr      nz, HorizLoop1
+                jr      nz, _hrzntlLp
 
                 ; Draw right hand wall
                 ld      h, 0
                 ld      b, SCRNRGHT
                 ld      c, 9
-VertLoop1
+_vrtclLp1
                 push    hl
                 push    bc
                 ld      de, VertLBlockData
@@ -293,13 +292,13 @@ VertLoop1
                 inc     h
                 ld      a, h
                 cp      22
-                jr      nz, VertLoop1
+                jr      nz, _vrtclLp1
 
                 ; Draw Left hand wall
                 ld      h, 0
                 ld      b, 0
                 ld      c, 9
-VertLoop2
+_vrtclLp2
                 push    hl
                 push    bc
                 ld      de, VertRBlockData
@@ -312,7 +311,7 @@ VertLoop2
                 inc     h
                 ld      a, h
                 cp      22
-                jr      nz, VertLoop2
+                jr      nz, _vrtclLp2
 
                 ret
 
@@ -1008,7 +1007,7 @@ CheckBatCollison
 ;                 push    af
 
 ;                 ld      b, 20
-;                 call    PlayClick
+;                 call    plyClck
 
 ;                 ; Check the balls x direction and based on that perform the bats collision checks
 ;                 ld      a, (ix + BLLXSPD)
@@ -1169,14 +1168,14 @@ MiddleLeft
 ;****************************************************************************************************************
 RemoveBlock
                 ld      b, 100
-                call    PlayClick
+                call    plyClck
 
                 ld      hl, scrTxt + 10      
                 ld      b, 6                
-                call    UpdateScore                 
+                call    updtScr                 
                 ld      hl, scrTxt + 11          
                 ld      b, 5                        
-                call    UpdateScore    
+                call    updtScr    
 
                 push    de
                 push    bc
@@ -1373,13 +1372,13 @@ ldLvl
 
                 ; Draw the blocks based on the levels block loopup table
 NextBlockRow    ld      a, 0
-                ld      (CurBlockCol), a
-                ld      (CurBlockRow), a
-                ld      (CurBlockX), a
+                ld      (currntBlckCl), a
+                ld      (currntBlckRw), a
+                ld      (currntBlckX), a
                 ld      a, 32
-                ld      (CurBlockY), a
+                ld      (currntBlckY), a
 
-DrawNextBlock   ld      bc, (CurBlockY)
+DrawNextBlock   ld      bc, (currntBlckY)
                 ld      a, (hl)
                 inc     hl
                 cp      1
@@ -1394,26 +1393,26 @@ DrawNextBlock   ld      bc, (CurBlockY)
                 call    Draw_24x8_Sprite
                 pop     hl
 
-SkipBlock       ld      a, (CurBlockX)
+SkipBlock       ld      a, (currntBlckX)
                 add     a, 16
-                ld      (CurBlockX), a
-                ld      a, (CurBlockCol)
+                ld      (currntBlckX), a
+                ld      a, (currntBlckCl)
                 inc     a
-                ld      (CurBlockCol), a
+                ld      (currntBlckCl), a
                 cp      15
                 jr      nz, DrawNextBlock
 
                 ld      a, 0
-                ld      (CurBlockX), a
-                ld      a, (CurBlockY)
+                ld      (currntBlckX), a
+                ld      a, (currntBlckY)
                 add     a, 8
-                ld      (CurBlockY), a
+                ld      (currntBlckY), a
                 ld      a, 0
-                ld      (CurBlockCol), a
+                ld      (currntBlckCl), a
 
-                ld      a, (CurBlockRow)
+                ld      a, (currntBlckRw)
                 inc     a
-                ld      (CurBlockRow), a
+                ld      (currntBlckRw), a
                 cp      7
                 jr      nz, DrawNextBlock
 
@@ -1422,33 +1421,33 @@ SkipBlock       ld      a, (CurBlockX)
 ;****************************************************************************************************************
 ; Update the score
 ;****************************************************************************************************************
-UpdateScore     ld      a, (hl)                     ; current value of digit.
+updtScr         ld      a, (hl)                     ; current value of digit.
                 add     a, b                        ; add points to this digit.
                 ld      (hl), a                     ; place new digit back in string.
                 cp      58                          ; more than ASCII value '9'?
                 ret     c                           ; no - relax.
                 sub     10                          ; subtract 10.
                 ld      (hl), a                     ; put new character back in string.
-UpdateScore0    dec     hl                          ; previous character in string.
+_updtScr0        dec     hl                         ; previous character in string.
                 inc     (hl)                        ; up this by one.
                 ld      a, (hl)                     ; what's the new value?
                 cp      58                          ; gone past ASCII nine?
                 ret     c                           ; no, scoring done.
                 sub     10                          ; down by ten.
                 ld      (hl), a                     ; put it back
-                jp      UpdateScore0                ; go round again.
+                jp      _updtScr0                   ; go round again.
 
 ;****************************************************************************************************************
 ; Reset score to 0000000
 ;****************************************************************************************************************
-ResetScore
+rstScr
                 ld      de, scrTxt + 5
                 ld      b, 7
                 ld      a, '0'
-MakeZero        ld      (de), a
+_mkZero         ld      (de), a
                 inc     de
-                djnz    MakeZero
-                ld      de, scrTxt               ; Print the score on the screen
+                djnz    _mkZero
+                ld      de, scrTxt                  ; Print the score on the screen
                 ld      bc, 12
                 call    8252
                 ret
@@ -1456,11 +1455,11 @@ MakeZero        ld      (de), a
 ;****************************************************************************************************************
 ; Play click sound with b = length of the loop
 ;****************************************************************************************************************
-PlayClick       
+plyClck       
                 ld      a, 16
                 and     248
                 out     (254), a
-ClickLoop0      djnz    ClickLoop0
+_clickLp0       djnz    _clickLp0
                 ld      a, 0
                 and     248
                 out     (254), a
@@ -1468,7 +1467,7 @@ ClickLoop0      djnz    ClickLoop0
                 ld      a, 16
                 and     248
                 out     (254), a
-ClickLoop1      djnz    ClickLoop1
+_clickLp1       djnz    _clickLp1
                 ld      a, 0
                 and     248
                 out     (254), a
@@ -1500,18 +1499,17 @@ lvlBlckCnt      db      0                           ; Number of blocks in this l
 
 crrntLvl        db      0                           ; Stores the current level
 
-CurBlockRow     db      0                           ; Variables used to store detalis of the blocks when rendering
-CurBlockCol     db      0
-CurBlockY       db      0
-CurBlockX       db      0
+currntBlckRw    db      0                           ; Variables used to store detalis of the blocks when rendering...
+currntBlckCl    db      0                           ; ...a level
+currntBlckY     db      0
+currntBlckX     db      0
 crrntLvlAddr    dw      0
 
-ballMT          dw      0                           ; Stores the x, y attr position of the balls collision points
-ballMR          dw      0
-ballMB          dw      0
-ballML          dw      0
-
-infoPnlAddr     dw      0                           ; Stores a pointer to the info panel attribute data
+; Stores the x, y attr position of the balls collision points
+ballMT          dw      0                           ; Middle Top
+ballMR          dw      0                           ; Middle Right
+ballMB          dw      0                           ; Middle Bottom
+ballML          dw      0                           ; Middle Left
 
 lives           db      5                           ; Number of lives each player has at the start of the game
 scrnStckPtr     dw      0                           ; Holds the original SP location during screen buffer copy
