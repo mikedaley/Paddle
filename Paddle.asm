@@ -23,8 +23,6 @@ init
 ;****************************************************************************************************************
 ; init
 ;**************************************************************************************************************** 
-    .directDraw     equ     1
-
     IF !.directDraw
                 ; Create the y-axis screen memory lookup table
                 ld      hl, scrnLnLkup              ; Point HL at the address of the y axis loopup table
@@ -93,10 +91,6 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
-    IF !.directDraw
-                call    fstCpy                      ; Copy the double buffer to the screen file
-    ENDIF
-
                 call    drwBll                      ; Erase the ball (XOR)
                 call    drwBt                       ; Erase the bat (XOR)
                 ld      a, (lvlBlckCnt)             ; Load A with the number of blocks that are still visible
@@ -123,10 +117,6 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
-
-    IF !.directDraw
-                call    fstCpy                      ; Copy the double buffer to the screen file
-    ENDIF
 
                 call    drwBll                      ; Erase the ball (XOR)
                 call    drwBt                       ; Erase the bat (XOR)
@@ -718,87 +708,6 @@ Draw_16x4_Sprite
                 ret                                 ; All done!  
 
 ;****************************************************************************************************************
-; Copy the screen buffer to the screen file using a Stack based approach.
-; Original code developed by Andrew Owen in Bob.asm that was downloaded from the Z80 Assembly
-; Programming for the ZX Spectrum Facebook group
-;****************************************************************************************************************
-; fstCpy
-;                 di                              ; Don't want any interrupts while we are moving the buffer!
-;                 ld      (scrnStckPtr), sp      ; Save the current stack pointer
-
-;                 ;First we copy over the attribute data
-; ;                 REPT 48, attr               ; write the attributes
-; ;                     ld      ix, attributes + 768 - 16 - (attr * 16)
-; ;                                             ; last byte of the back_buffer - 16
-; ;                     ld      iy, 16384 + 6912 - (attr * 16)
-; ;                                             ; last byte of the screen
-; ;                     ld      hl, $ + 9       ; set return location (no stack available)
-; ;                     ld      (EndCall), hl           
-; ;                     jp      Blit            ; call blit
-; ;                 ENDM
-
-;                 ; Now copy the bitmap data to the screen file
-;                 REPT 2, chunk               
-;                     REPT 8, row
-;                         REPT 8, cell
-;                             REPT 2, line
-;                                 ld      ix, SCRNBFFR + BTMPSCRSZ - 16 - (line * (16 - SCRNEDGSZ)) - (cell * 32) - (row * 256) - (chunk * 2048)
-;                                 ld      iy, BTMPSCRNSDDR + BTMPSCRSZ - SCRNEDGSZ - (line * (16 - SCRNEDGSZ)) - (cell * 256) - (row * 32) - (chunk * 2048)
-;                                 ld      hl, $ + 9
-;                                 ld      (EndCall), hl           
-;                                 jp      Blit
-;                             ENDM
-;                         ENDM
-;                     ENDM
-;                 ENDM
-
-;                 REPT 7, row
-;                     REPT 8, cell
-;                         REPT 2, line
-;                             ld      ix, SCRNBFFR + BTMPSCRSZ - 16 - (line * (16 - SCRNEDGSZ)) - (cell * 32) - (row * 256) - (2 * 2048)
-;                             ld      iy, BTMPSCRNSDDR + BTMPSCRSZ - SCRNEDGSZ - (line * (16 - SCRNEDGSZ)) - (cell * 256) - (row * 32) - (2 * 2048)
-;                             ld      hl, $ + 9
-;                             ld      (EndCall), hl           
-;                             jp      Blit
-;                         ENDM
-;                     ENDM
-;                 ENDM
-
-;                 ld      sp, (scrnStckPtr)      ; Restore stack pointer
-;                 ei
-;                 ret
-
-;****************************************************************************************************************
-; Routine to copy 16 bytes from location in IX to location in IY - 16bytes
-;****************************************************************************************************************
-Blit
-                ld      sp, ix
-                pop     af              ; read 16 bytes
-                pop     bc
-                pop     de
-                pop     hl
-                ex      af, af'         ;'
-                exx
-                pop     af
-                pop     bc
-;                 pop     de
-;                 pop     hl
-                
-                ld      sp, iy
-;                 push    hl              ; write 16 bytes
-;                 push    de
-                push    bc
-                push    af
-                ex      af, af'         ;'
-                exx
-                push    hl
-                push    de
-                push    bc
-                push    af
-                db      0xc3            ; jp endcall
-EndCall         dw      EndCall
-
-;****************************************************************************************************************
 ; Covert the pixel coordinates into char coordinates
 ; D = Pixel X, E = Pixel Y returning B = Char X, C = Char Y
 ;****************************************************************************************************************
@@ -822,7 +731,7 @@ GetCharLocation
 ; and any tile objects
 ;****************************************************************************************************************
 MoveBall 
-                ld      hl, objctBall              ; Use HL to hold the ball object as using IX is expensive                
+                ld      hl, objctBall               ; Use HL to hold the ball object as using IX is expensive                
 _MoveX
                 ld      a, (hl)                     ; First position in the structure is the X Position
                 inc     hl                          ; Move to the X Speed
@@ -899,7 +808,7 @@ _BounceRight
                 neg                                 ; ...so it can be reversed...
                 ld      (hl), a                     ; ...and saved back into the data table
                 dec     hl                          ; Move HL to point to the X Position 
-                ld      a, SCRNLFT                ; Make sure the ball sits right up against the left edge of the screen
+                ld      a, SCRNLFT                  ; Make sure the ball sits right up against the left edge of the screen
                 ld      (hl), a                     ; Save the balls new X position
                 jp      _MoveY                      ; Check for a bounce in the y-axis
 
@@ -929,20 +838,20 @@ BallCharPos     ; Update the balls character position used in block collision de
 
                 dec     hl
                 dec     hl
-                ld      a, (hl)        ; Middle Bottom
+                ld      a, (hl)                     ; Middle Bottom
                 add     a, BLLPXLWIDTH / 2
                 ld      d, a
                 inc     hl
                 inc     hl
                 ld      a, (hl)
-                add     a, BLLPXLHGHT - 1    ; Move 1 pixel up into the ball
+                add     a, BLLPXLHGHT - 1           ; Move 1 pixel up into the ball
                 ld      e, a
                 call    GetCharLocation
                 ld      (ballMB), bc
 
                 dec     hl
                 dec     hl
-                ld      d, (hl)        ; Middle Left
+                ld      d, (hl)                     ; Middle Left
                 inc     hl
                 inc     hl
                 ld      a, (hl)
@@ -951,7 +860,7 @@ BallCharPos     ; Update the balls character position used in block collision de
                 call    GetCharLocation
                 ld      (ballML), bc
 
-                call    chckBlckCllsn         ; Now go see if the ball has hit something :)
+                call    chckBlckCllsn               ; Now go see if the ball has hit something :)
 
                 ret
 
