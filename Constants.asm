@@ -41,7 +41,7 @@ GMESTTE_WTNG        equ         2
 GMESTTE_DEAD        equ         4
 GMESTTE_DSPLYLVL    equ         8
 GMESTTE_NXTLVL      equ         16
-GMESTTE_LSTLFE    equ         32
+GMESTTE_LSTLFE      equ         32
 
 ;*******************************************************************************************
 ; Block sprite

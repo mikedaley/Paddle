@@ -23,10 +23,10 @@ init
 ;****************************************************************************************************************
 ; init
 ;**************************************************************************************************************** 
-                ; Create the y-axis screen memory lookup table
-.directDraw     equ     1
+    .directDraw     equ     1
 
     IF !.directDraw
+                ; Create the y-axis screen memory lookup table
                 ld      hl, scrnLnLkup              ; Point HL at the address of the y axis loopup table
                 ld      de, SCRNBFFR                ; Point DE at the address of the screen buffer
                 ld      b, 192                      ; We need an address for all 192 lines on screen
@@ -108,14 +108,14 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
 
 _chckGmeStteWtng                                    ; *** Game state WAITING
                 cp      GMESTTE_WTNG                ; Is the game state WAITING    
-                jp      nz, _chckGmeSttePlyrDead    ; If not then check if the state is PLAYER DEAD
+                jp      nz, _chckGmeStteLstLfe      ; If not then check if the state is PLAYER DEAD
                 call    rdCntrlKys                  ; Read the keyboard
 
-                ld      a, (objctBat + BTYPS)      ; Get the bats Y position
+                ld      a, (objctBat + BTYPS)       ; Get the bats Y position
                 ld      b, BLLPXLHGHT               ; Get the pixel height of the ball
                 sub     b                           ; Calulcate the bats Y pos minus the balls height putting the ball ontop of the bat
                 ld      (objctBall + BLLYPS), a     ; Update the balls Y Position with the bats Y position 
-                ld      a, (objctBat + BTXPS)      ; Load the bats X pos
+                ld      a, (objctBat + BTXPS)       ; Load the bats X pos
                 ld      b, (BTPXLWDTH / 2) - (BLLPXLWIDTH / 2)  ; Calc the X pos middle of the bat
                 add     a, b                        ; Calc the new X pos for the ball so its in the middle of the bat
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
@@ -139,7 +139,7 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 jp      mnLp                        ; Loop
 
 _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
-                cp      GMESTTE_DEAD                ; Is the game state PLAYER DEAD
+                cp      GMESTTE_LSTLFE              ; Is the game state PLAYER DEAD
                 jr      nz, _gmeStteNxtLvl          ; If not then check if the state is NEXT LEVEL
                 ld      a, (lives)                  ; Load A with the lives left
                 dec     a                           ; -1 from lives
@@ -147,7 +147,7 @@ _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
                 push    af                          ; Save AF
                 ld      (lives), a                  ; Save the new number of lives
                 add     a, 48                       ; Add 48 to the number of lives to get the character code for the lives number
-                ld      (lvsTxt + 5), a             ; Update the lives text with the new lives character
+                ld      (lvsTxt + 5), a             ; Update the lives text with the new lives character at position 5 in the string
 
                 ld      de, lvsTxt                  ; Load DE with the levels text
                 ld      bc, 6                       ; Set attribute to yellow ink on black background
@@ -156,7 +156,7 @@ _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
                 cp      0                           ; Check if the players lives have reached 0 
                 jr      z, _setGmeStteLstLfe        ; Jump to set the game state to LOST LIFE
 
-                call    ResetBat                    ; Reset the bats location
+                call    rstBt                    ; Reset the bats location
                 call    plyDthSnd                   ; Play a death sound 
 
                 ld      a, GMESTTE_WTNG             ; Set the game state to WAITING
@@ -188,11 +188,11 @@ _chckGmeStteDsplyLvl                                ; *** Game state DISPLAY LEV
                 ld      hl, (crrntLvlAddr)          ; Load HL with the current level address
                 ld      de, lvlTtl                  ; Load DE with the offset in the level data to the level title
                 add     hl, de                      ; Move HL to the level title
-                xor     b                           ; Set b to 0                            
-                ld      c, (hl)                     ; Load C with contents of the title at HL
-                ld      d, h                        ; Load HL
-                ld      e, l                        ; into DE
-                inc     de                          ; +1 DE
+                ld      b, 0                        ; Set b to 0                            
+                ld      c, (hl)                     ; Load C with the length of the string to print
+                ld      d, h                        ; Load HL the address of the text...
+                ld      e, l                        ; ...into DE
+                inc     de                          ; + 1 DE which is the start of the actual string
                 call    8252                        ; ROM print the title
                 ld      de, 100                     ; Load DE with 100 for a delay loop
 _lvlDsplyWtng   halt                                ; Wait for the scan line to reach the top of the screen (50hz)
@@ -213,13 +213,12 @@ _lvlDsplyWtng   halt                                ; Wait for the scan line to 
                 ld      e, l
                 inc     de
                 call    8252
-
                 ld      a, GMESTTE_WTNG             ; Set the  
                 ld      (gmeStte), a
                 jp      mnLp
 
 _chckGmeSttePlyrDead
-                cp      GMESTTE_LSTLFE
+                cp      GMESTTE_DEAD
                 jp      nz, mnLp
                 ld      de, gmeOvrTxt
                 ld      bc, 17
@@ -239,7 +238,7 @@ _chckGmeSttePlyrDead
                 call    ldLvl
                 ld      a, GMESTTE_DSPLYLVL
                 ld      (gmeStte), a
-                call    ResetBat
+                call    rstBt
                 jp      mnLp
 
 ;****************************************************************************************************************
@@ -952,7 +951,7 @@ BallCharPos     ; Update the balls character position used in block collision de
                 call    GetCharLocation
                 ld      (ballML), bc
 
-                call    CheckBlockCollision         ; Now go see if the ball has hit something :)
+                call    chckBlckCllsn         ; Now go see if the ball has hit something :)
 
                 ret
 
@@ -1100,13 +1099,13 @@ CheckBatCollison
 ;****************************************************************************************************************
 ; Check the edge point on the ball to see if they have collided with a block based on the blocks attribute colour
 ;****************************************************************************************************************
-CheckBlockCollision 
+chckBlckCllsn 
                 ld      a, (ballMT)
                 ld      d, a
                 ld      a, (ballMT + 1)
                 ld      e, a
                 push    de
-                call    GetCharAttr
+                call    getChrctrAttr
                 pop     de
                 cp      5               
                 jr      z, MiddleRight  
@@ -1115,7 +1114,7 @@ CheckBlockCollision
                 jp      p, MT0
                 neg
                 ld      (objctBall + BLLYSPD), a
-MT0             call    RemoveBlock
+MT0             call    rmvBlck
                 ret
 MiddleRight 
                 ld      a, (ballMR)
@@ -1123,14 +1122,14 @@ MiddleRight
                 ld      a, (ballMR + 1)
                 ld      e, a
                 push    de
-                call    GetCharAttr
+                call    getChrctrAttr
                 pop     de
                 cp      5
                 jr      z, MiddleBottom
                 ld      a, (objctBall + BLLXSPD)
                 neg
                 ld      (objctBall + BLLXSPD), a
-                call    RemoveBlock
+                call    rmvBlck
                 ret
 MiddleBottom
                 ld      a, (ballMB)
@@ -1138,14 +1137,14 @@ MiddleBottom
                 ld      a, (ballMB + 1)
                 ld      e, a
                 push    de
-                call    GetCharAttr
+                call    getChrctrAttr
                 pop     de
                 cp      5
                 jr      z, MiddleLeft
                 ld      a, (objctBall + BLLYSPD)
                 neg
                 ld      (objctBall + BLLYSPD), a   
-                call    RemoveBlock
+                call    rmvBlck
                 ret
 MiddleLeft 
                 ld      a, (ballML)
@@ -1153,20 +1152,20 @@ MiddleLeft
                 ld      a, (ballML + 1)
                 ld      e, a
                 push    de
-                call    GetCharAttr
+                call    getChrctrAttr
                 pop     de
                 cp      5
                 ret     z
                 ld      a, (objctBall + BLLXSPD)
                 neg
                 ld      (objctBall + BLLXSPD), a   
-                call    RemoveBlock
+                call    rmvBlck
                 ret
 
 ;****************************************************************************************************************
 ; Remove the block that contains the x,y provided in DE
 ;****************************************************************************************************************
-RemoveBlock
+rmvBlck
                 ld      b, 100
                 call    plyClck
 
@@ -1191,20 +1190,20 @@ RemoveBlock
 
                 ; Remove the block
                 ld      a, d
-                and     1                           ; Check to see if the number is odd
+                and     1                           ; Check to see if the number is _odd
                 cp      0
-                jr      z, Even
+                jr      z, _even
 
-Odd             ld      a, 5
+_odd             ld      a, 5
                 push    de
-                call    SetCharAttr
+                call    setChrctrAttr
                 pop     de
                 ld      a, d
                 sub     1
                 ld      d, a
                 ld      a, 5
                 push    de
-                call    SetCharAttr
+                call    setChrctrAttr
                 pop     de
 
                 ld      a, d
@@ -1222,14 +1221,14 @@ Odd             ld      a, 5
                 call    Draw_24x8_Sprite
                 ret
 
-Even            ld      a, 5
+_even            ld      a, 5
                 push    de
-                call    SetCharAttr
+                call    setChrctrAttr
                 pop     de
                 inc     d
                 ld      a, 5
                 push    de
-                call    SetCharAttr
+                call    setChrctrAttr
                 pop     de
                 dec     d
                 ld      a, d
@@ -1251,7 +1250,7 @@ Even            ld      a, 5
 ; Set the attribute at the given X, Y
 ; D = X, E = Y, A = value to set
 ;****************************************************************************************************************
-SetCharAttr 
+setChrctrAttr 
                 ld      h, 0                        ; Get the Y pos from the corner
                 ld      l, e
 
@@ -1265,7 +1264,7 @@ SetCharAttr
                 ld      c, d
                 add     hl, bc                      ; Add it to the Y position 
 
-                ld      de, ATTRSCRNADDR          ; Add on the base ATTR screen address
+                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
                 add     hl, de
 
                 ld      (hl), a                     ; Load the attribute at HL
@@ -1275,7 +1274,7 @@ SetCharAttr
 ; Get the attribute at the given X, Y
 ; D = X, E = Y, returns A = given attribute
 ;****************************************************************************************************************
-GetCharAttr 
+getChrctrAttr 
 
                 ld      h, 0                        ; Get the Y pos from the corner
                 ld      l, e
@@ -1290,7 +1289,7 @@ GetCharAttr
                 ld      c, d
                 add     hl, bc                      ; Add it to the Y position 
 
-                ld      de, ATTRSCRNADDR          ; Add on the base ATTR screen address
+                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
                 add     hl, de
 
                 ld      a, (hl)                     ; Load the attribute at HL
@@ -1299,7 +1298,7 @@ GetCharAttr
 ;****************************************************************************************************************
 ; Reset the bats X pos to the center of play area
 ;****************************************************************************************************************
-ResetBat    
+rstBt    
                 ld      a, 76                       
                 ld      (objctBat + BTXPS), a
                 ld      a, -2
@@ -1311,8 +1310,8 @@ ResetBat
 ; A = Level to load 
 ;****************************************************************************************************************
 ldLvl 
-                ld      de, LevelLookup             ; Load DE with the address of the Level Loopup Table
-                ld      a, (crrntLvl)                 ; Load A with the level number to load
+                ld      de, lvlLkup                 ; Load DE with the address of the Level Loopup Table
+                ld      a, (crrntLvl)               ; Load A with the level number to load
                 ld      l, a
                 ld      h, 0                        ; Reset the HL high byte
                 add     hl, hl                      ; Double HL as the level lookup table entries are words
@@ -1320,8 +1319,8 @@ ldLvl
                 ld      e, (hl)                     ; Pop the address at HL into DE
                 inc     hl
                 ld      d, (hl)
-                ld      (crrntLvlAddr), de            ; Store away 
-                ld      hl, (crrntLvlAddr)            ; and load HL with that address
+                ld      (crrntLvlAddr), de          ; Store away 
+                ld      hl, (crrntLvlAddr)          ; and load HL with that address
 
                 ; Load the block colours from the level data
                 ld      de, ATTRSCRNADDR + (32 * 4)
@@ -1370,19 +1369,19 @@ ldLvl
                 ld      bc, ROW_CLR_BYTES
                 ldir
 
-                ; Draw the blocks based on the levels block loopup table
-NextBlockRow    ld      a, 0
+                ; Draw the blocks based on the levels block lookup table
+_nxtBlckRw      ld      a, 0
                 ld      (currntBlckCl), a
                 ld      (currntBlckRw), a
                 ld      (currntBlckX), a
                 ld      a, 32
                 ld      (currntBlckY), a
 
-DrawNextBlock   ld      bc, (currntBlckY)
+_drwNxtBlck     ld      bc, (currntBlckY)
                 ld      a, (hl)
                 inc     hl
                 cp      1
-                jr      nz, SkipBlock
+                jr      nz, _skpBlck
 
                 ld      a, (lvlBlckCnt)
                 inc     a
@@ -1393,14 +1392,14 @@ DrawNextBlock   ld      bc, (currntBlckY)
                 call    Draw_24x8_Sprite
                 pop     hl
 
-SkipBlock       ld      a, (currntBlckX)
+_skpBlck        ld      a, (currntBlckX)
                 add     a, 16
                 ld      (currntBlckX), a
                 ld      a, (currntBlckCl)
                 inc     a
                 ld      (currntBlckCl), a
                 cp      15
-                jr      nz, DrawNextBlock
+                jr      nz, _drwNxtBlck
 
                 ld      a, 0
                 ld      (currntBlckX), a
@@ -1414,7 +1413,7 @@ SkipBlock       ld      a, (currntBlckX)
                 inc     a
                 ld      (currntBlckRw), a
                 cp      7
-                jr      nz, DrawNextBlock
+                jr      nz, _drwNxtBlck
 
                 ret
 
@@ -1496,9 +1495,7 @@ _dthSndLp       push    bc
 ;****************************************************************************************************************
 gmeStte         db      0                           ; 1 = GMESTTE_PLYNG, 2 = GMESTTE_WTNG to Start, 4 = GMESTTE_DEAD
 lvlBlckCnt      db      0                           ; Number of blocks in this level
-
 crrntLvl        db      0                           ; Stores the current level
-
 currntBlckRw    db      0                           ; Variables used to store detalis of the blocks when rendering...
 currntBlckCl    db      0                           ; ...a level
 currntBlckY     db      0
