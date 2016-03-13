@@ -5,13 +5,19 @@
 ; Paddle is a Break Out clone used to learn Z80 Assembly on the ZX Spectrum
 ;
 ; Notes
-; * Using IM1 so IY can't be used as the IM1 interrupt doesn't prtext it. Using IM2 would allow for IY to be used.                  
+; * Using IM1 so IY can't be used as the IM1 interrupt doesn't prtect it. 
+; 
+; TODO
+; * Implement IM2 to see what can be done with that
+; * Implement reading IO Port 0x40FF for the colour attribute currently being read by the ULA. This can cause
+;   compatibility issues, but I want to see what can be done by using that rather than HALT to get more times
+;   to draw to the screen directly
 ;****************************************************************************************************************
 
-                org     32768
+                org     32768                       ; Put all the code in unconetended memory
 
 ;****************************************************************************************************************
-; init
+; Init
 ;****************************************************************************************************************           
 init 
                 ld      a, 0                        ; Set the border colour
@@ -20,9 +26,7 @@ init
                 ld      a, 5                        ; Set the ink colour
                 ld      (23693), a  
                 
-;****************************************************************************************************************
-; init
-;**************************************************************************************************************** 
+.directDraw     equ     1
     IF !.directDraw
                 ; Create the y-axis screen memory lookup table
                 ld      hl, scrnLnLkup              ; Point HL at the address of the y axis loopup table
@@ -84,7 +88,7 @@ mnLp
 _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 cp      GMESTTE_PLYNG               ; Is the game state PLAYING
                 jr      nz, _chckGmeStteWtng        ; If not then check if the state is WAITING
-                call    MoveBall                    ; Move the ball
+                call    mvBll                    ; Move the ball
                 call    rdCntrlKys                  ; Read the keyboard
                 call    drwBll                      ; Draw the ball
                 call    drwBt                       ; Draw the bat
@@ -232,7 +236,15 @@ _chckGmeSttePlyrDead
                 jp      mnLp
 
 ;****************************************************************************************************************
-; Load the title screen for the game
+; Draw Title screen
+; Loads the title screen bitmap and attribute data into the screen file
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   B, C, D, E, H, L
+; Returned Registers:
+;   NONE
 ;****************************************************************************************************************
 drwTtlScrn
                 ld      de, BTMPSCRNSDDR
@@ -242,7 +254,15 @@ drwTtlScrn
                 ret
 
 ;****************************************************************************************************************
-; Load the title screen for the game
+; Draw borders
+; Draws the left, top and right borders of the playing area
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
 ;****************************************************************************************************************
 drwBrdrs
                 ; Draw top wall
@@ -305,38 +325,59 @@ _vrtclLp2
                 ret
 
 ;****************************************************************************************************************
-; Draw Ball
-; Draws the ball sprite at the location held in the objctBall structure
+; Draw Ball Sprite
+; Draws the ball sprite at its current location
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C, D, E
+; Returned Registers:
+;   NONE
 ;****************************************************************************************************************
 drwBll 
-                ld      de, SmallBallData          ; Point DE to the ball sprite data
-                ld      a, (objctBall + BLLXPS); Load BC with the ball sprite objects location
-                ld      b, a
-                ld      a, (objctBall + BLLYPS)
-                ld      c, a
-                call    Draw_16x4_Sprite
+                ld      de, SmallBallData           ; Point DE to the ball sprite data
+                ld      a, (objctBall + BLLXPS)     ; Load A with the balls X position
+                ld      b, a                        ; Put A into B
+                ld      a, (objctBall + BLLYPS)     ; Load A with the balls Y position
+                ld      c, a                        ; Load C with A so B = X, C = Y
+                call    Draw_16x4_Sprite            ; Call the 16x4 pixel sprite routine
                 ret
 
 ;****************************************************************************************************************
 ; Draw Bat
-; Draws the bat sprite at the location held in the objctBat structure
+; Draws the bat at its current location
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C, D, E
+; Returned Registers:
+;   NONE
 ;****************************************************************************************************************
 drwBt 
                 ld      de, SpriteBatData           ; Point DE to the ball sprite data
-                ld      a, (objctBat + BTXPS)  ; Load BC with the ball sprite objects location
-                ld      b, a
-                ld      a, (objctBat + BTYPS)
-                ld      c, a
-                call    Draw_32x8_Sprite
+                ld      a, (objctBat + BTXPS)       ; Load A with the bats X position
+                ld      b, a                        ; Put A into B
+                ld      a, (objctBat + BTYPS)       ; Load A with the bats Y position
+                ld      c, a                        ; Load A with A so B = X, C = Y
+                call    Draw_32x8_Sprite            ; Call the 32x8 pixel sprite routine
                 ret
 
 ;****************************************************************************************************************
-; Draw Bat
-; Draws the batn sprite at the location held in the objctBat structure
+; Draw Moving Block
+; Draws a moving block at its current location
+;
+; Entry Registers:
+;   IX = Points to moving block object data
+; Registers Used:
+;   A, B, C
+; Returned Registers:
+;   NONE
 ;******************************************************1**********************************************************
 drwMvngBlck 
-                ld      de, SpriteBlockData  ; Point DE to the ball sprite data
-                ld      a, (ix + BLLXPS)  ; Load BC with the ball sprite objects location
+                ld      de, SpriteBlockData         ; Point DE to the ball sprite data
+                ld      a, (ix + BLLXPS)            ; Load BC with the ball sprite objects location
                 ld      b, a
                 ld      a, (ix + BLLYPS)
                 ld      c, a
@@ -344,7 +385,15 @@ drwMvngBlck
                 ret
 
 ;************************************************************************************************************************
-; Wait for space to be pressed
+; Wait For Space
+; Loops until the space key is pressed
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   A, B, C
+; Returned Registers:
+;   NONE
 ;************************************************************************************************************************
 watFrSpc
                 ld      bc, 32766
@@ -355,73 +404,88 @@ watFrSpc
 
 ;************************************************************************************************************************
 ; Read Control Keys
+; Checks the control keys used in the game i.e. 1 = left, 2 = right and if either of these keys are pressed then the bats
+; current location is updated based on the key being pressed
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, F, B, C, H, L
+; Returned Registers:
+;   NONE
 ;************************************************************************************************************************
 rdCntrlKys 
                 ; Check if keys one 1 or 2 have been pressed which move the bat
+                ld      hl, objctBat                ; HL = X Position
                 ld      bc, 63486                   ; Load BC with the port to read 5, 4, 3, 2, 1
                 in      a, (c)                      ; Load A with the keys that have been pressed
                 rra                                 ; Outermost bit = key 1
-                push    af                          ; Remember that value
-                call    nc, MoveBatLeft             ; Move the bat left
-                pop     af                          ; Restore A
+                jp      nc, _mvBtLft                ; Move the bat left
                 rra                                 ; Next bit is key 2
-                push    af
-                call    nc, MoveBatRight            ; Move the bat right
-                pop     af
-                ret 
-
-;************************************************************************************************************************
-; Move the bat to the left
-;************************************************************************************************************************
-MoveBatLeft     
-                ld      ix, objctBat   
-                ld      a, (ix + BTXPS)         ; IX + 0 = X Position
-                sub     (ix + BTSPD)            ; IX + 2 = Speed
-                cp      8                           ; Check if we are past the 0
-                jp      c, HitLeftEdge              ; and jump if we are
-                ld      (ix + BTXPS), a         ; Update the X position with A
+                jp      nc, _mvBtRght               ; Move the bat right
+                ret
+_mvBtLft     
+                ld      a, (hl)                     ; Put X pos into A
+                inc     hl                          ; Move to the X Speed position 
+                sub     (hl)                        ; Subtract the X speed from the X pos
+                dec     hl                          ; Move HL to the X pos
+                cp      BTMXLFT                     ; Check if we are past the left hand edge of the screen
+                jp      c, _btHtLftEdg              ; and jump if we are jump to hitLeftEdge
+                ld      (hl), a                     ; Update the X position with A
                 ret     
-HitLeftEdge         
-                ld      (ix + BTXPS), 8         ; Hit the edge so set the X pos to 0
+_btHtLftEdg         
+                ld      (hl), BTMXLFT               ; Hit the edge so set the X pos to the BTMXLFT value
                 ret 
-
-;************************************************************************************************************************
-; Move bat to the right
-;************************************************************************************************************************   
-MoveBatRight    
-                ld      ix, objctBat   
-                ld      a, (ix + BTXPS)         ; IX + 0 = X Position
-                add     a, (ix + BTSPD)         ; IX + 2 = Speed
-                cp      BTMXRGHT            ; Check if the bat is past right edge
-                jp      nc, BatHitRightEdge         ; and jump if it is
-                ld      (ix + BTXPS), a         ; Update the X Position with A
+_mvBtRght    
+                ld      a, (hl)                     ; Put X pos into A
+                inc     hl                          ; Move HL to the X Speed
+                add     a, (hl)                     ; Add the X speed to the X pos
+                dec     hl                          ; Move HL to the X Pos
+                cp      BTMXRGHT                    ; Check if the bat is past left edge
+                jp      nc, _btHtRghtEdg            ; and jump if it is
+                ld      (hl), a                     ; Update the X Position with A
                 ret     
-BatHitRightEdge         
-                ld      (ix + BTXPS), BTMXRGHT
+_btHtRghtEdg         
+                ld      (hl), BTMXRGHT              ; Hit the edge so set the X pos to the BTMXRGHT value
                 ret
 
 ;************************************************************************************************************************
-; Updates the position of the moving block
+; Update Moving Block
+; Updates the position of the moving block based on the blocks current +/- speed
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C, D, E
+; Returned Registers:
+;   NONE
 ;************************************************************************************************************************   
 updtMvngBlck
                 ld      a, (ix + BLLXPS)
                 add     a, (ix + BLLXSPD)
                 ld      (ix + BLLXPS), a
-                cp      SCRNRGHT - 16
-                jp      nc, BlockHitEdge
-                cp      8
-                jp      c, BlockHitEdge
+                cp      SCRNRGHT - BLCKWDTH
+                jp      nc, _blckHtEdg
+                cp      SCRNLFT
+                jp      c, _blckHtEdg
                 ret
 
-BlockHitEdge
+_blckHtEdg
                 ld      a, (ix + BLLXSPD)
                 neg
                 ld      (ix + BLLXSPD), a
                 ret
 
 ;****************************************************************************************************************
-; Draw Sprite 
-; Call with DE = Sprite data, B = X, C = Y
+; Draw 8x8 pixel sprite
+; Draws a sprite that is 8x8 pixels
+;
+; Entry Registers:
+;   DE = Pointer to the sprite data to be drawn
+; Used Registers:
+;   A, B, C, D, E, H, L, IX
+; Returned Registers:
+;   NONE
 ;****************************************************************************************************************
 Draw_8x8_Sprite      
                 ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
@@ -468,8 +532,141 @@ Draw_8x8_Sprite
                 ret                          
 
 ;****************************************************************************************************************
-; Draw Sprite 
-; Call with DE = Sprite data, B = X, C = Y
+; Draw 16x4 pixel sprite
+; Draws a sprite that is 16x4 pixels
+;
+; Entry Registers:
+;   DE = Pointer to the sprite data to be drawn
+; Used Registers:
+;   A, B, C, D, E, H, L, IX
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+Draw_16x4_Sprite
+                ld      a, b                        ; Load A with the X pixel position
+                and     7                           ; Get the Bit rotate count (lower 3 bits of X position)
+        
+                ; Load DE with the address of the sprite we need to use based on the x location offset in memory as
+                ; we are using pre-shifted sprites
+                ld      l, a                        ; Load A with the number of shifts needed
+                ld      h, 0                        ; Reset the HL high byte
+                add     hl, hl                      ; Double HL as the lookup table entries are words
+                add     hl, de                      ; Add base address of sprite table which is held in DE
+                ld      e, (hl)                     ; Load E with the contents of (HL)
+                inc     hl                          ; Move HL to the next byte of address in the table
+                ld      d, (hl)                     ; Load D with the high byte
+        
+                ; Work out the X offset of the screen memory address based on the X pixel position
+                ld      a, b                        ; Work out the X Offset using the shift value
+                rra
+                rra
+                rra
+                and     %00011111                   ; 31
+                ld      b, a                        ; Store the X pixel byte offset into the screen buffer
+                push    bc                          ; Save B as we will be using it to merge the X offset into the 
+                                                    ; buffer address
+
+                ; Load IX with the first address of the y-axis lookup table
+                ld      b, 0                        ; Clear B
+                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
+                add     ix, bc                      ; Increment IX by the Y pixel position
+                add     ix, bc                      ; twice as the table contains word values
+                pop     bc                          ; Restore B which holds the X byte offset
+
+    REPT 4                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
+                ld      a, (ix + 0)                 ; Get the current line
+                or      b                           ; Merge in our X Offset
+                ld      l, a                        ; Load the merged low byte in L
+                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
+                inc     ix  
+                inc     ix                          ; Move to the next line which is a word away
+    
+                ld      a, (de)                     ; Grab the first byte of sprite data into A             
+                inc     de                          ; Move to the next byte of sprite data
+                xor     (hl)                        ; Merge the screen contents with the sprite data
+                ld      (hl), a                     ; Load the merged data back into the screen
+                inc     l                           ; Move to the next byte of screen memory
+
+                ld      a, (de)                     ; Grab the second byte of sprite data into A             
+                inc     de                          ; Move to the next row of sprite data
+                xor     (hl)                        ; Merge the screen contents with the sprite data
+                ld      (hl), a                     ; Load the merged data back into the screen
+    ENDM                
+                ret                                 ; All done!  
+
+;****************************************************************************************************************
+; Draw 16x8 pixel sprite
+; Draws a sprite that is 16x8 pixels
+;
+; Entry Registers:
+;   DE = Pointer to the sprite data to be drawn
+; Used Registers:
+;   A, B, C, D, E, H, L, IX
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+Draw_16x8_Sprite
+                ld      a, b                        ; Load A with the X pixel position
+                and     7                           ; Get the Bit rotate count (lower 3 bits of X position)
+        
+                ; Load DE with the address of the sprite we need to use based on the x location offset in memory as
+                ; we are using pre-shifted sprites
+                ld      l, a                        ; Load A with the number of shifts needed
+                ld      h, 0                        ; Reset the HL high byte
+                add     hl, hl                      ; Double HL as the lookup table entries are words
+                add     hl, de                      ; Add base address of sprite table which is held in DE
+                ld      e, (hl)                     ; Load E with the contents of (HL)
+                inc     hl                          ; Move HL to the next byte of address in the table
+                ld      d, (hl)                     ; Load D with the high byte
+        
+                ; Work out the X offset of the screen memory address based on the X pixel position
+                ld      a, b                        ; Work out the X Offset using the shift value
+                rra
+                rra
+                rra
+                and     %00011111                   ; 31
+                ld      b, a                        ; Store the X pixel byte offset into the screen buffer
+                push    bc                          ; Save B as we will be using it to merge the X offset into the 
+                                                    ; buffer address
+
+                ; Load IX with the first address of the y-axis lookup table
+                ld      b, 0                        ; Clear B
+                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
+                add     ix, bc                      ; Increment IX by the Y pixel position
+                add     ix, bc                      ; twice as the table contains word values
+                pop     bc                          ; Restore B which holds the X byte offset
+
+    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
+                ld      a, (ix + 0)                 ; Get the current line
+                or      b                           ; Merge in our X Offset
+                ld      l, a                        ; Load the merged low byte in L
+                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
+                inc     ix  
+                inc     ix                          ; Move to the next line which is a word away
+    
+                ld      a, (de)                     ; Grab the first byte of sprite data into A             
+                inc     de                          ; Move to the next byte of sprite data
+                xor     (hl)                        ; Merge the screen contents with the sprite data
+                ld      (hl), a                     ; Load the merged data back into the screen
+                inc     l                           ; Move to the next byte of screen memory
+
+                ld      a, (de)                     ; Grab the second byte of sprite data into A             
+                inc     de                          ; Move to the next row of sprite data
+                xor     (hl)                        ; Merge the screen contents with the sprite data
+                ld      (hl), a                     ; Load the merged data back into the screen
+    ENDM                
+                ret                                 ; All done!  
+
+;****************************************************************************************************************
+; Draw 24x8 pixel sprite
+; Draws a sprite that is 24x8 pixels
+;
+; Entry Registers:
+;   DE = Pointer to the sprite data to be drawn
+; Used Registers:
+;   A, B, C, D, E, H, L, IX
+; Returned Registers:
+;   NONE
 ;****************************************************************************************************************
 Draw_24x8_Sprite      
                 ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
@@ -528,8 +725,15 @@ Draw_24x8_Sprite
                 ret                                 ; All done! 
 
 ;****************************************************************************************************************
-; Draw Sprite 
-; Call with DE = Sprite data, B = X, C = Y
+; Draw 32x8 pixel sprite
+; Draws a sprite that is 32x8 pixels
+;
+; Entry Registers:
+;   DE = Pointer to the sprite data to be drawn
+; Used Registers:
+;   A, B, C, D, E, H, L, IX
+; Returned Registers:
+;   NONE
 ;****************************************************************************************************************
 Draw_32x8_Sprite      
                 ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
@@ -594,124 +798,18 @@ Draw_32x8_Sprite
                 ret                                 ; All done!  
 
 ;****************************************************************************************************************
-; Draw 8x8 Sprite
-; B = X, C = Y
-; Uses: DE, HL, BC
+; Get Character Location 
+; Convert a pixel location into a char x, y location
+;
+; Entry Registers:
+;   DE = D = pixel X, E = pixel Y
+; Used Registers:
+;   A, B, C
+; Returned Registers:
+;   B = X char position
+;   C = Y char position 
 ;****************************************************************************************************************
-Draw_16x8_Sprite
-                ld      a, b                        ; Load A with the X pixel position
-                and     7                           ; Get the Bit rotate count (lower 3 bits of X position)
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory as
-                ; we are using pre-shifted sprites
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset of the screen memory address based on the X pixel position
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     %00011111                   ; 31
-                ld      b, a                        ; Store the X pixel byte offset into the screen buffer
-                push    bc                          ; Save B as we will be using it to merge the X offset into the 
-                                                    ; buffer address
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                                 ; All done!  
-
-;****************************************************************************************************************
-; Draw 8x8 Sprite
-; B = X, C = Y
-; Uses: DE, HL, BC
-;****************************************************************************************************************
-Draw_16x4_Sprite
-                ld      a, b                        ; Load A with the X pixel position
-                and     7                           ; Get the Bit rotate count (lower 3 bits of X position)
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory as
-                ; we are using pre-shifted sprites
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset of the screen memory address based on the X pixel position
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     %00011111                   ; 31
-                ld      b, a                        ; Store the X pixel byte offset into the screen buffer
-                push    bc                          ; Save B as we will be using it to merge the X offset into the 
-                                                    ; buffer address
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 4                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                                 ; All done!  
-
-;****************************************************************************************************************
-; Covert the pixel coordinates into char coordinates
-; D = Pixel X, E = Pixel Y returning B = Char X, C = Char Y
-;****************************************************************************************************************
-GetCharLocation 
+getChrLctn 
                 ld      a, d
                 srl     a                           ; Divide by 8 to get the char X position
                 srl     a
@@ -726,73 +824,84 @@ GetCharLocation
                 ret
 
 ;****************************************************************************************************************
-; MOVEBALL
+; Move Ball
 ; Responsible for bouncing the ball sprite around the screen, detecting when it hits the edges of the screen
 ; and any tile objects
+;
+; Entry Registers:
+;   DE = D = pixel X, E = pixel Y
+; Used Registers:
+;   A, B, C
+; Returned Registers:
+;   B = X char position
+;   C = Y char position ;
 ;****************************************************************************************************************
-MoveBall 
+mvBll 
                 ld      hl, objctBall               ; Use HL to hold the ball object as using IX is expensive                
-_MoveX
+_mvX
                 ld      a, (hl)                     ; First position in the structure is the X Position
                 inc     hl                          ; Move to the X Speed
                 add     a, (hl)                     ; Update the balls position using its speed 
-                dec     hl
-                ld      (hl), a 
+                dec     hl                          ; Move HL back to the balls position 
+                ld      (hl), a                     ; and save the new position 
 
-                cp      SCRNRGHT - BLLPXLWIDTH
-                jr      nc, _BounceLeft             ; Ball has reached or moved past the right hand edge of the screen
+                cp      SCRNRGHT - BLLPXLWIDTH      ; Has the ball hit the right edge of the screen?
+                jr      nc, _bncLft                 ; Yes
 
-                cp      SCRNLFT                   
-                jr      c, _BounceRight             ; The ball has reached or moved past the left of the screen
+                cp      SCRNLFT                     ; Has the ball hit the left edge of the screen?
+                jr      c, _bncRght                 ; Yes
 
-_MoveY           
-                inc     hl
-                inc     hl                          ; Move HL to point to the Y positon 
+_mvY           
+                inc     hl                          ; Point HL at the...
+                inc     hl                          ; ...Y positon 
                 ld      a, (hl)                     ; Load the balls Y Position into A...
                 inc     hl                          ; ...then point HL at the Y Speed...
                 add     a, (hl)                     ; ...and add it to the Y Position
-                dec     hl                          ; Move HL to the balls Y Postion 
+                dec     hl                          ; Point HL to the balls Y Postion 
                 ld      (hl), a                     ; Save the balls new position 
 
                 cp      SCRNBTTM
-;                 jr      nc, _HitBottom              ; Ball has reached or moved past the top of the screen
+                jr      nc, _htBttm                 ; Ball has reached or moved past the top of the screen
 
                 inc     hl                          ; Move HL to the Y Speed
                 ld      a, (hl)                     ; Load the Y Speed into A to check if its moving up or down the screen
-                cp      0                           
-                jp      c, _CheckTop                ; Ball is not moving down the screen so check for collision at top of screen
-                call    CheckBatCollison            ; Only check collision with the bat of the ball is moving down the screen
-                call    BallCharPos
+                cp      0                           ; Is the ball moving down the screen?
+                jp      nc, _chkTp                  ; If not then check the balls position with the top of the screen
+                call    chkBtCllsn            ; Otherwise ball is moving down the screen so check if its hit the bat
+                call    _updtBllChrPs               ; Finally update the balls character x, y position 
                 ret
 
-_CheckTop
-                dec     hl                          ; Move HL to the Y Position
-                ld      a, (hl)
-                cp      SCRNTP
-                jr      nc, _BounceDown             ; Ball has reached or moved past the top of the screen
-                call    BallCharPos
-                ret
+_chkTp
+                dec     hl                          ; Point HL to the Y Position
+                ld      a, (hl)                     ; Put the Y pos into A
+                cp      SCRNTP                      ; Has the ball reached the top of the screen?
+                jr      c, _bncDwn                  ; Yes, then bounce down the screen
+                call    _updtBllChrPs               ; Finally update the balls character x, y position 
+                ret 
 
-_BounceDown
+_bncDwn
                 ld      a, SCRNTP
                 ld      (hl), a                     ; Update the Y Position so the ball is up against the top of the screen
-                inc     hl                          ; Move HL to the Y Speed
+                inc     hl                          ; Point HL at the balls Y Speed
                 ld      a, (hl)                     ; Load the Y Speed into A...
                 neg                                 ; ...so it can be reversed...
                 ld      (hl), a                     ; ...and saved back into the data table
-                dec     hl                          ; Moved HL to the Y Position
-                ld      a, SCRNBTTM - BLLPXLHGHT    ; Make sure the ball sits right up against the edge of the screen
-                ld      (hl), a                     ; Save the balls new Y position                
-                call    BallCharPos
+                call    _updtBllChrPs
                 ret
 
-_HitBottom
-                ld      a, GMESTTE_DEAD
-                ld      (gmeStte), a
-                jp      BallCharPos
+_htBttm
+;                 ld      a, GMESTTE_DEAD
+;                 ld      (gmeStte), a
+                ld      a, SCRNBTTM
+                ld      (hl), a
+                inc     hl
+                ld      a, (hl)
+                neg
+                ld      (hl), a
+                jp      _updtBllChrPs
                 ret
 
-_BounceLeft
+_bncLft
                 inc     hl
                 ld      a, (hl)                     ; Load the X Speed into A...
                 neg                                 ; ...so it can be reversed...
@@ -800,9 +909,9 @@ _BounceLeft
                 dec     hl                          ; Move HL to the X Position
                 ld      a, SCRNRGHT - BLLPXLWIDTH    ; Make sure the ball sits right up against the right edge of the screen
                 ld      (hl), a                     ; Save the balls new X position
-                jp      _MoveY                      ; Check for a bounce on the y-axis
+                jp      _mvY                        ; Check for a bounce on the y-axis
 
-_BounceRight
+_bncRght
                 inc     hl
                 ld      a, (hl)                     ; Load the X Speed into A...
                 neg                                 ; ...so it can be reversed...
@@ -810,9 +919,22 @@ _BounceRight
                 dec     hl                          ; Move HL to point to the X Position 
                 ld      a, SCRNLFT                  ; Make sure the ball sits right up against the left edge of the screen
                 ld      (hl), a                     ; Save the balls new X position
-                jp      _MoveY                      ; Check for a bounce in the y-axis
+                jp      _mvY                        ; Check for a bounce in the y-axis
 
-BallCharPos     ; Update the balls character position used in block collision detection
+;****************************************************************************************************************
+; Update Balls Character Position
+; The balls character position is stored for use in collision detection with a block. The character position of 
+; the ball is checked against the postion of blocks. If a block exists in the same character position as the ball
+; then a collision has taken place
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+_updtBllChrPs                                       ; Update the balls character position used in block collision detection
                 ld      hl, objctBall
                 ld      a, (hl)                     ; Middle Top
                 add     a, BLLPXLWIDTH / 2
@@ -820,7 +942,7 @@ BallCharPos     ; Update the balls character position used in block collision de
                 inc     hl
                 inc     hl
                 ld      e, (hl)
-                call    GetCharLocation
+                call    getChrLctn
                 ld      (ballMT), bc
 
                 dec     hl
@@ -833,7 +955,7 @@ BallCharPos     ; Update the balls character position used in block collision de
                 ld      a, (hl)
                 add     a, BLLPXLHGHT / 2
                 ld      e, a
-                call    GetCharLocation
+                call    getChrLctn
                 ld      (ballMR), bc
 
                 dec     hl
@@ -846,7 +968,7 @@ BallCharPos     ; Update the balls character position used in block collision de
                 ld      a, (hl)
                 add     a, BLLPXLHGHT - 1           ; Move 1 pixel up into the ball
                 ld      e, a
-                call    GetCharLocation
+                call    getChrLctn
                 ld      (ballMB), bc
 
                 dec     hl
@@ -857,7 +979,7 @@ BallCharPos     ; Update the balls character position used in block collision de
                 ld      a, (hl)
                 add     a, BLLPXLHGHT / 2
                 ld      e, a
-                call    GetCharLocation
+                call    getChrLctn
                 ld      (ballML), bc
 
                 call    chckBlckCllsn               ; Now go see if the ball has hit something :)
@@ -865,144 +987,152 @@ BallCharPos     ; Update the balls character position used in block collision de
                 ret
 
 ;****************************************************************************************************************
-; Check to see if the ball has collided with the bat and if so update the properties of the ball as necessart
+; Check Bat Collision
+; Responsible for checking if the ball has hit the bat. If the ball has hit then bat then depending on the
+; y position of the ball on the bat the balls x speed is updated along with its y speed being reversed
+;
+; Entry Registers:
+;   DE = D = pixel X, E = pixel Y
+; Used Registers:
+;   A, B, C
+; Returned Registers:
+;   B = X char position
+;   C = Y char position ;
 ;****************************************************************************************************************
-CheckBatCollison 
+chkBtCllsn 
+                ld      hl, objctBall              ; Point HL at the ball object
 
-;                 ld      hl, objctBall              ; Point HL at the ball object
+                ; First check if the ball has already passed the top of the bat
+                ld      a, (objctBat + BTYPS)
+                inc     hl                          ; Point HL at the... 
+                inc     hl                          ; ...balls Y position 
+                ld      b, (hl)                     ; Load B with the Y Position 
+                cp      b                           ; Compare it against the bats Y Position
+                jr      c, _Check1                  ; If C then looks like A > B
+                jp      _Check2                     ; A < B so carry on checking
+_Check1   
+                ret     nz                          ; A > B for sure so we are done
 
-;                 ; First check if the ball has already passed the top of the bat
-;                 ld      a, (objctBat + BTYPS)
-;                 inc     hl
-;                 inc     hl                          ; Move HL to Y Position 
-;                 ld      b, (hl)                     ; Load B with the Y Position 
-;                 cp      b                           ; Compare it against the bats Y Position
-;                 jr      c, _Check1
-;                 jp      _Check2                     ; A < B
-; _Check1   
-;                 ret     nz                          ; A > B so we are done
-
-; _Check2
-;                 ; Now check of the ball has hit the top of the bat
-;                 ld      a, (objctBat + BTYPS)  ; Load the Y position of the bat
-;                 sub     BLLPXLHGHT           ; Sub the height of the ball in pixels
-;                 inc     hl
-;                 inc     hl                          ; Move HL to the balls Y Position 
-;                 ld      b, (hl)
-;                 cp      b                           ; Compare that with the balls y position
-;                 jr      c, _SecondCheck             ; Start of A > B check
-;                 jp      _PassedBatTop               ; Failed first check so A < B
-; _SecondCheck                    
-;                 ret     nz                          ; A > B so we are done
+_Check2                                             ; Now check of the ball has hit the top of the bat
+                ld      a, (objctBat + BTYPS)  ; Load the Y position of the bat
+                sub     BLLPXLHGHT           ; Sub the height of the ball in pixels
+                inc     hl
+                inc     hl                          ; Move HL to the balls Y Position 
+                ld      b, (hl)
+                cp      b                           ; Compare that with the balls y position
+                jr      c, _SecondCheck             ; Start of A > B check
+                jp      _PassedBatTop               ; Failed first check so A < B
+_SecondCheck                    
+                ret     nz                          ; A > B so we are done
                 
-; _PassedBatTop
-;                 ; If the ball has already passed the top of the bat then we are done
-;                 ld      a, (objctBat + BTYPS)
-;                 cp      b                           ; B still has the balls Y Position in it
-;                 ret     c                           ; A < B
+_PassedBatTop
+                ; If the ball has already passed the top of the bat then we are done
+                ld      a, (objctBat + BTYPS)
+                cp      b                           ; B still has the balls Y Position in it
+                ret     c                           ; A < B
 
-;                 ; To check where on the bat the ball has collided we put the ball into bat space coordinates
-;                 ; by subtracting the x position of the bat from the x position of the ball
-;                 ld      a, (objctBat + BTXPS)
-;                 ld      b, a
-;                 ld      a, (ix + BLLXPS)
-;                 add     a, BLLPXLWIDTH / 2
-;                 sub     b                           ; Subtract the bat.x from ball.x
-;                 ret     c                           ; A < 0 so the ball is left of the bat
-;                 cp      BTPXLWDTH             ; Check if ball.x > bat.pixel_width
-;                 ret     nc                          ; If it is then ball to the right of the bat
+                ; To check where on the bat the ball has collided we put the ball into bat space coordinates
+                ; by subtracting the x position of the bat from the x position of the ball
+                ld      a, (objctBat + BTXPS)
+                ld      b, a
+                ld      a, (ix + BLLXPS)
+                add     a, BLLPXLWIDTH / 2
+                sub     b                           ; Subtract the bat.x from ball.x
+                ret     c                           ; A < 0 so the ball is left of the bat
+                cp      BTPXLWDTH             ; Check if ball.x > bat.pixel_width
+                ret     nc                          ; If it is then ball to the right of the bat
 
-;                 push    af
+                push    af
 
-;                 ld      b, 20
-;                 call    plyClck
+                ld      b, 20
+                call    plyClck
 
-;                 ; Check the balls x direction and based on that perform the bats collision checks
-;                 ld      a, (ix + BLLXSPD)
-;                 cp      0 
-;                 jp      m, LeftDirection
+                ; Check the balls x direction and based on that perform the bats collision checks
+                ld      a, (ix + BLLXSPD)
+                cp      0 
+                jp      m, LeftDirection
 
-; RightDirection  
-;                 pop     af
-;                 cp      6
-;                 jr      nc, RArea2
-;                 ld      hl, (crrntLvlAddr)
-;                 ld      de, LEVEL_BTSPDS + 0
-;                 add     hl, de
-;                 ld      a, (hl)
-;                 ld      (ix + BLLXSPD), a
-;                 jp      AdjustYDir
-; RArea2          cp      12
-;                 jr      nc, RArea3
-;                 ld      hl, (crrntLvlAddr)
-;                 ld      de, LEVEL_BTSPDS + 1
-;                 add     hl, de
-;                 ld      a, (hl)
-;                 ld      (ix + BLLXSPD), a
-;                 jp      AdjustYDir
-; RArea3          cp      18
-;                 jr      nc, RArea4
-;                 ld      hl, (crrntLvlAddr)
-;                 ld      de, LEVEL_BTSPDS + 2
-;                 add     hl, de
-;                 ld      a, (hl)
-;                 ld      (ix + BLLXSPD), a
-;                 jp      AdjustYDir
-; RArea4          cp      24
-;                 jr      nc, AdjustYDir
-;                 ld      hl, (crrntLvlAddr)
-;                 ld      de, LEVEL_BTSPDS + 3
-;                 add     hl, de
-;                 ld      a, (hl)
-;                 ld      (ix + BLLXSPD), a
-;                 jp      AdjustYDir
+RightDirection  
+                pop     af
+                cp      6
+                jr      nc, RArea2
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BTSPDS + 0
+                add     hl, de
+                ld      a, (hl)
+                ld      (ix + BLLXSPD), a
+                jp      AdjustYDir
+RArea2          cp      12
+                jr      nc, RArea3
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BTSPDS + 1
+                add     hl, de
+                ld      a, (hl)
+                ld      (ix + BLLXSPD), a
+                jp      AdjustYDir
+RArea3          cp      18
+                jr      nc, RArea4
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BTSPDS + 2
+                add     hl, de
+                ld      a, (hl)
+                ld      (ix + BLLXSPD), a
+                jp      AdjustYDir
+RArea4          cp      24
+                jr      nc, AdjustYDir
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BTSPDS + 3
+                add     hl, de
+                ld      a, (hl)
+                ld      (ix + BLLXSPD), a
+                jp      AdjustYDir
 
-; LeftDirection  
-;                 pop     af
-;                 cp      6
-;                 jr      nc, LArea2
-;                 ld      hl, (crrntLvlAddr)
-;                 ld      de, LEVEL_BTSPDS + 3
-;                 add     hl, de
-;                 ld      a, (hl)
-;                 neg
-;                 ld      (ix + BLLXSPD), a
-;                 jp      AdjustYDir
-; LArea2          cp      12
-;                 jr      nc, LArea3
-;                 ld      hl, (crrntLvlAddr)
-;                 ld      de, LEVEL_BTSPDS + 2
-;                 add     hl, de
-;                 ld      a, (hl)
-;                 neg
-;                 ld      (ix + BLLXSPD), a
-;                 jp      AdjustYDir
-; LArea3          cp      18
-;                 jr      nc, LArea4
-;                 ld      hl, (crrntLvlAddr)
-;                 ld      de, LEVEL_BTSPDS + 1
-;                 add     hl, de
-;                 ld      a, (hl)
-;                 neg
-;                 ld      (ix + BLLXSPD), a
-;                 jp      AdjustYDir
-; LArea4          cp      24
-;                 jr      nc, AdjustYDir
-;                 ld      hl, (crrntLvlAddr)
-;                 ld      de, LEVEL_BTSPDS + 0
-;                 add     hl, de
-;                 ld      a, (hl)
-;                 neg
-;                 ld      (ix + BLLXSPD), a
+LeftDirection  
+                pop     af
+                cp      6
+                jr      nc, LArea2
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BTSPDS + 3
+                add     hl, de
+                ld      a, (hl)
+                neg
+                ld      (ix + BLLXSPD), a
+                jp      AdjustYDir
+LArea2          cp      12
+                jr      nc, LArea3
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BTSPDS + 2
+                add     hl, de
+                ld      a, (hl)
+                neg
+                ld      (ix + BLLXSPD), a
+                jp      AdjustYDir
+LArea3          cp      18
+                jr      nc, LArea4
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BTSPDS + 1
+                add     hl, de
+                ld      a, (hl)
+                neg
+                ld      (ix + BLLXSPD), a
+                jp      AdjustYDir
+LArea4          cp      24
+                jr      nc, AdjustYDir
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BTSPDS + 0
+                add     hl, de
+                ld      a, (hl)
+                neg
+                ld      (ix + BLLXSPD), a
 
-; AdjustYDir 
-;                 ld      a, (objctBat + BTYPS)  ; Update the Y pos of the ball so that it rests ontop of the bat
-;                 sub     4   
-;                 ld      (ix + BLLYPS), a
-;                 ld      a, (ix + BLLYSPD)
-;                 neg                                 ; Change the balls Y direction
-;                 ld      (ix + BLLYSPD), a   
-;                 pop     hl
+AdjustYDir 
+                ld      a, (objctBat + BTYPS)  ; Update the Y pos of the ball so that it rests ontop of the bat
+                sub     4   
+                ld      (ix + BLLYPS), a
+                ld      a, (ix + BLLYSPD)
+                neg                                 ; Change the balls Y direction
+                ld      (ix + BLLYSPD), a   
+                pop     hl
                 ret 
 
 ;****************************************************************************************************************
@@ -1434,9 +1564,9 @@ gmeOvrTxt       db      16, 2, 17, 2, 22, 15, 11, 'GAME  OVER'
 ; Object data
 ;****************************************************************************************************************
                         ; Xpos, XSpeed, Ypos, YSpeed
-objctBall       db      0, 1, 0, -2 
+objctBall       db      0, 1, 0, -4 
                         ; Xpos, Ypos, XSpeed
-objctBat        db      121, 175, 4                      
+objctBat        db      121, 6, 175                      
 
 objctMvngBlck1          ; XPos, XSpeed, YPos, YSpeed
                 db      76, 2, 115, 0  

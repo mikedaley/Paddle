@@ -1,47 +1,51 @@
 ;*******************************************************************************************
 ; Value Constants
 ;*******************************************************************************************
-SCRNBFFR            equ         57856
-BTMPSCRNSDDR        equ         16384                            ; Location in memory of the bitmap screen data
-BTMPSCRSZ           equ         6144                             ; Size of the bitmap screen data
-ATTRSCRNADDR        equ         22528                            ; Location in memory of the screen attribute data
-ATTRSCRNSZ          equ         768                              ; Size of the screen attribute data
-SCRNSZ              equ         6911                             ; Full size of both bitmap and attribute screen data
-BTMXRGHT            equ         224                              ; Furthest pixel to the right the paddle can be drawn
-SCRNLFT             equ         8
-SCRNRGHT            equ         248
-SCRNTP              equ         10
-SCRNBTTM            equ         175
-SCRNEDGSZ           equ         4
+SCRNBFFR            equ            57856
+BTMPSCRNSDDR        equ            16384                            ; Location in memory of the bitmap screen data
+BTMPSCRSZ           equ            6144                             ; Size of the bitmap screen data
+ATTRSCRNADDR        equ            22528                            ; Location in memory of the screen attribute data
+ATTRSCRNSZ          equ            768                              ; Size of the screen attribute data
+SCRNSZ              equ            6911                             ; Full size of both bitmap and attribute screen data
+BTMXRGHT            equ            224                              ; Furthest pixel to the right the paddle can be drawn
+BTMXLFT             equ            8                                ; Furthes pixel to the left the bat can be drawn
+SCRNLFT             equ            8
+SCRNRGHT            equ            248
+SCRNTP              equ            10
+SCRNBTTM            equ            175
+SCRNEDGSZ           equ            4
 
-NUM_BLOCKS          equ         3
+NUM_BLOCKS          equ            3
 
 ; Offsets into the BALL structure
-BLLXPS              equ         0
-BLLXSPD             equ         1
-BLLYPS              equ         2
-BLLYSPD             equ         3
+BLLXPS              equ            0
+BLLXSPD             equ            1
+BLLYPS              equ            2
+BLLYSPD             equ            3
 
 ; BALL constants
-BLLPXLHGHT          equ         4
-BLLPXLWIDTH         equ         4
+BLLPXLHGHT          equ            4
+BLLPXLWIDTH         equ            4
 
 ; Offsets into the BAT structure
-BTXPS               equ         0
-BTYPS               equ         1
-BTSPD               equ         2
+BTXPS               equ            0
+BTSPD               equ            1
+BTYPS               equ            2
 
 ; BAT constants
-BTPXLHGHT           equ         8
-BTPXLWDTH           equ         24
+BTPXLHGHT           equ            8
+BTPXLWDTH           equ            24
+
+; Block constants
+BLCKWDTH            equ            16
 
 ; Game States
-GMESTTE_PLYNG       equ         1
-GMESTTE_WTNG        equ         2
-GMESTTE_DEAD        equ         4
-GMESTTE_DSPLYLVL    equ         8
-GMESTTE_NXTLVL      equ         16
-GMESTTE_LSTLFE      equ         32
+GMESTTE_PLYNG       equ            1
+GMESTTE_WTNG        equ            2
+GMESTTE_DEAD        equ            4
+GMESTTE_DSPLYLVL    equ            8
+GMESTTE_NXTLVL      equ            16
+GMESTTE_LSTLFE      equ            32
 
 ;*******************************************************************************************
 ; Block sprite
