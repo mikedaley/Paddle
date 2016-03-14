@@ -1007,32 +1007,17 @@ chkBtCllsn
                 inc     hl                          ; ...balls Y position 
                 ld      b, (hl)                     ; Load B with the Y Position 
                 cp      b                           ; Compare it against the bats Y Position
-                jr      nc, _chkHtBtTp              ; If NC then the ball has not passed the top of the bat...
+                jr      nc, _chkHrzntlPstn          ; If NC then the ball has not passed the top of the bat...
                 ret     nz                          ; ...otherwise A > B for sure so we are done
 
-_chkHtBtTp                                          ; Now check of the ball has hit the top of the bat
-                ld      a, (objctBat + BTYPS)       ; Load the Y position of the bat
-                sub     BLLPXLHGHT                  ; Sub the height of the ball in pixels
-                inc     hl                          ; Point HL at... 
-                inc     hl                          ; ...the balls Y Position 
-                ld      b, (hl)
-                cp      b                           ; Compare that with the balls y position
-                jr      c, _SecondCheck             ; Start of A > B check
-                jp      _PassedBatTop               ; Failed first check so A < B
-_SecondCheck                    
-                ret     nz                          ; A > B so we are done
-                
-_PassedBatTop
-                ; If the ball has already passed the top of the bat then we are done
-                ld      a, (objctBat + BTYPS)
-                cp      b                           ; B still has the balls Y Position in it
-                ret     c                           ; A < B
-
+_chkHrzntlPstn                                      
                 ; To check where on the bat the ball has collided we put the ball into bat space coordinates
                 ; by subtracting the x position of the bat from the x position of the ball
-                ld      a, (objctBat + BTXPS)
-                ld      b, a
-                ld      a, (ix + BLLXPS)
+                dec     hl                          ; Point HL at the...
+                dec     hl                          ; ...balls X position 
+                ld      a, (objctBat + BTXPS)       ; Load A with the bats X pos 
+                ld      b, a                        ; Store A in B ready
+                ld      a, (ix + BLLXPS)            ;
                 add     a, BLLPXLWIDTH / 2
                 sub     b                           ; Subtract the bat.x from ball.x
                 ret     c                           ; A < 0 so the ball is left of the bat
