@@ -994,10 +994,9 @@ _updtBllChrPs                                       ; Update the balls character
 ; Entry Registers:
 ;   DE = D = pixel X, E = pixel Y
 ; Used Registers:
-;   A, B, C
+;   A, B, C, D, E, H, L
 ; Returned Registers:
-;   B = X char position
-;   C = Y char position ;
+;   NONE
 ;****************************************************************************************************************
 chkBtCllsn 
                 ld      hl, objctBall              ; Point HL at the ball object
@@ -1008,16 +1007,14 @@ chkBtCllsn
                 inc     hl                          ; ...balls Y position 
                 ld      b, (hl)                     ; Load B with the Y Position 
                 cp      b                           ; Compare it against the bats Y Position
-                jr      c, _Check1                  ; If C then looks like A > B
-                jp      _Check2                     ; A < B so carry on checking
-_Check1   
-                ret     nz                          ; A > B for sure so we are done
+                jr      nc, _chkHtBtTp              ; If NC then the ball has not passed the top of the bat...
+                ret     nz                          ; ...otherwise A > B for sure so we are done
 
-_Check2                                             ; Now check of the ball has hit the top of the bat
-                ld      a, (objctBat + BTYPS)  ; Load the Y position of the bat
-                sub     BLLPXLHGHT           ; Sub the height of the ball in pixels
-                inc     hl
-                inc     hl                          ; Move HL to the balls Y Position 
+_chkHtBtTp                                          ; Now check of the ball has hit the top of the bat
+                ld      a, (objctBat + BTYPS)       ; Load the Y position of the bat
+                sub     BLLPXLHGHT                  ; Sub the height of the ball in pixels
+                inc     hl                          ; Point HL at... 
+                inc     hl                          ; ...the balls Y Position 
                 ld      b, (hl)
                 cp      b                           ; Compare that with the balls y position
                 jr      c, _SecondCheck             ; Start of A > B check
@@ -1039,7 +1036,7 @@ _PassedBatTop
                 add     a, BLLPXLWIDTH / 2
                 sub     b                           ; Subtract the bat.x from ball.x
                 ret     c                           ; A < 0 so the ball is left of the bat
-                cp      BTPXLWDTH             ; Check if ball.x > bat.pixel_width
+                cp      BTPXLWDTH                   ; Check if ball.x > bat.pixel_width
                 ret     nc                          ; If it is then ball to the right of the bat
 
                 push    af
