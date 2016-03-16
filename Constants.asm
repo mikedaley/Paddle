@@ -12,7 +12,7 @@ BTMXLFT             equ            8                                ; Furthes pi
 SCRNLFT             equ            8
 SCRNRGHT            equ            248
 SCRNTP              equ            10
-SCRNBTTM            equ            175
+SCRNBTTM            equ            180
 SCRNEDGSZ           equ            4
 
 NUM_BLOCKS          equ            3
