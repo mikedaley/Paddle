@@ -861,13 +861,13 @@ _mvY
                 ld      (hl), a                     ; Save the balls new position 
 
                 cp      SCRNBTTM
-                jr      nc, _htBttm                 ; Ball has reached or moved past the top of the screen
+                jr      nc, _htBttm                 ; Ball has reached the bottom of the screen
 
                 inc     hl                          ; Move HL to the Y Speed
                 ld      a, (hl)                     ; Load the Y Speed into A to check if its moving up or down the screen
                 cp      0                           ; Is the ball moving down the screen?
-                jp      nc, _chkTp                  ; If not then check the balls position with the top of the screen
-                call    chkBtCllsn            ; Otherwise ball is moving down the screen so check if its hit the bat
+                jp      c, _chkTp                   ; If not then check the balls position with the top of the screen
+                call    chkBtCllsn                  ; Otherwise ball is moving down the screen so check if its hit the bat
                 call    _updtBllChrPs               ; Finally update the balls character x, y position 
                 ret
 
@@ -890,14 +890,8 @@ _bncDwn
                 ret
 
 _htBttm
-;                 ld      a, GMESTTE_DEAD
-;                 ld      (gmeStte), a
-                ld      a, SCRNBTTM
-                ld      (hl), a
-                inc     hl
-                ld      a, (hl)
-                neg
-                ld      (hl), a
+                ld      a, GMESTTE_LSTLFE
+                ld      (gmeStte), a
                 jp      _updtBllChrPs
                 ret
 
@@ -1002,13 +996,17 @@ chkBtCllsn
                 ld      hl, objctBall              ; Point HL at the ball object
 
                 ; First check if the ball has already passed the top of the bat
-                ld      a, (objctBat + BTYPS)
+                ld      b, (objctBat + BTYPS)       ; Load A with the bat.y
                 inc     hl                          ; Point HL at the... 
-                inc     hl                          ; ...balls Y position 
-                ld      b, (hl)                     ; Load B with the Y Position 
-                cp      b                           ; Compare it against the bats Y Position
-                jr      nc, _chkHrzntlPstn          ; If NC then the ball has not passed the top of the bat...
-                ret     nz                          ; ...otherwise A > B for sure so we are done
+                inc     hl                          ; ...ball.y 
+                ld      a, (hl)                     ; Load A with the ball.y
+                cp      b                           ; Compare it against the bat.y
+                ret     c                           ; Ball is already passed the top of the bat
+
+                ; Has the ball reached the top of the bat? If not then no point in doing further checks
+                add     a, BLLPXLHGHT               ; We need to check if the button of the ball has hit/passed bat.y
+                cp      b
+                ret     nc                          ; If not then we are done    
 
 _chkHrzntlPstn                                      
                 ; To check where on the bat the ball has collided we put the ball into bat space coordinates
@@ -1017,104 +1015,110 @@ _chkHrzntlPstn
                 dec     hl                          ; ...balls X position 
                 ld      a, (objctBat + BTXPS)       ; Load A with the bats X pos 
                 ld      b, a                        ; Store A in B ready
-                ld      a, (ix + BLLXPS)            ;
-                add     a, BLLPXLWIDTH / 2
+                ld      a, (hl)                     ; Load A with the balls X position 
+                add     a, BLLPXLWIDTH / 2          ; Move to the horizontal center of the ball
                 sub     b                           ; Subtract the bat.x from ball.x
                 ret     c                           ; A < 0 so the ball is left of the bat
                 cp      BTPXLWDTH                   ; Check if ball.x > bat.pixel_width
                 ret     nc                          ; If it is then ball to the right of the bat
 
-                push    af
+                push    af                          ; Save A as we are going to play a click which uses it
+                ld      b, 20                       ; Load B with the length of the click 
+                call    plyClck                     ; Play the click
 
-                ld      b, 20
-                call    plyClck
+                jp      _bncUp
 
                 ; Check the balls x direction and based on that perform the bats collision checks
-                ld      a, (ix + BLLXSPD)
-                cp      0 
-                jp      m, LeftDirection
+                inc     hl                          ; Point HL at the X speed of the ball
+                ld      a, (hl)                     ; Load the X speed into A
+                cp      0                           ; See which direction its moving    
+                jp      m, _bllMvngLft              ; A < 0 means left otherwise right
 
-RightDirection  
+
+_bllMvngRght  
+                pop     af                          ; Restore A which holds ball.x in bat space
+                cp      6                           ;
+                jr      nc, _rArea2
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BAT_SPEEDS + 0
+                add     hl, de
+                ld      a, (hl)
+                ld      (ix + BLLXSPD), a
+                jp      _bncUp
+_rArea2         cp      12
+                jr      nc, _rArea3
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BAT_SPEEDS + 1
+                add     hl, de
+                ld      a, (hl)
+                ld      (ix + BLLXSPD), a
+                jp      _bncUp
+_rArea3         cp      18
+                jr      nc, _rArea4
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BAT_SPEEDS + 2
+                add     hl, de
+                ld      a, (hl)
+                ld      (ix + BLLXSPD), a
+                jp      _bncUp
+_rArea4         cp      24
+                jr      nc, _bncUp
+                ld      hl, (crrntLvlAddr)
+                ld      de, LEVEL_BAT_SPEEDS + 3
+                add     hl, de
+                ld      a, (hl)
+                ld      (ix + BLLXSPD), a
+                jp      _bncUp
+
+_bllMvngLft  
                 pop     af
                 cp      6
-                jr      nc, RArea2
+                jr      nc, _lArea2
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BTSPDS + 0
-                add     hl, de
-                ld      a, (hl)
-                ld      (ix + BLLXSPD), a
-                jp      AdjustYDir
-RArea2          cp      12
-                jr      nc, RArea3
-                ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BTSPDS + 1
-                add     hl, de
-                ld      a, (hl)
-                ld      (ix + BLLXSPD), a
-                jp      AdjustYDir
-RArea3          cp      18
-                jr      nc, RArea4
-                ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BTSPDS + 2
-                add     hl, de
-                ld      a, (hl)
-                ld      (ix + BLLXSPD), a
-                jp      AdjustYDir
-RArea4          cp      24
-                jr      nc, AdjustYDir
-                ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BTSPDS + 3
-                add     hl, de
-                ld      a, (hl)
-                ld      (ix + BLLXSPD), a
-                jp      AdjustYDir
-
-LeftDirection  
-                pop     af
-                cp      6
-                jr      nc, LArea2
-                ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BTSPDS + 3
+                ld      de, LEVEL_BAT_SPEEDS + 3
                 add     hl, de
                 ld      a, (hl)
                 neg
                 ld      (ix + BLLXSPD), a
-                jp      AdjustYDir
-LArea2          cp      12
-                jr      nc, LArea3
+                jp      _bncUp
+_lArea2         cp      12
+                jr      nc, _lArea3
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BTSPDS + 2
+                ld      de, LEVEL_BAT_SPEEDS + 2
                 add     hl, de
                 ld      a, (hl)
                 neg
                 ld      (ix + BLLXSPD), a
-                jp      AdjustYDir
-LArea3          cp      18
-                jr      nc, LArea4
+                jp      _bncUp
+_lArea3         cp      18
+                jr      nc, _lArea4
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BTSPDS + 1
+                ld      de, LEVEL_BAT_SPEEDS + 1
                 add     hl, de
                 ld      a, (hl)
                 neg
                 ld      (ix + BLLXSPD), a
-                jp      AdjustYDir
-LArea4          cp      24
-                jr      nc, AdjustYDir
+                jp      _bncUp
+_lArea4         cp      24
+                jr      nc, _bncUp
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BTSPDS + 0
+                ld      de, LEVEL_BAT_SPEEDS + 0
                 add     hl, de
                 ld      a, (hl)
                 neg
                 ld      (ix + BLLXSPD), a
 
-AdjustYDir 
+_bncUp 
                 ld      a, (objctBat + BTYPS)  ; Update the Y pos of the ball so that it rests ontop of the bat
-                sub     4   
-                ld      (ix + BLLYPS), a
-                ld      a, (ix + BLLYSPD)
+                sub     BLLPXLHGHT   
+                inc     hl
+                inc     hl
+                ld      (hl), a
+                inc     hl
+                ld      a, (hl)
                 neg                                 ; Change the balls Y direction
-                ld      (ix + BLLYSPD), a   
-                pop     hl
+                ld      (hl), a   
+;                 pop     hl
                 ret 
 
 ;****************************************************************************************************************
@@ -1546,8 +1550,8 @@ gmeOvrTxt       db      16, 2, 17, 2, 22, 15, 11, 'GAME  OVER'
 ; Object data
 ;****************************************************************************************************************
                         ; Xpos, XSpeed, Ypos, YSpeed
-objctBall       db      0, 1, 0, -4 
-                        ; Xpos, Ypos, XSpeed
+objctBall       db      0, 1, 0, -2 
+                        ; Xpos, XSpeed, Ypos
 objctBat        db      121, 6, 175                      
 
 objctMvngBlck1          ; XPos, XSpeed, YPos, YSpeed
