@@ -44,6 +44,7 @@ _yLkupLp        ld      (hl), e                     ; Save E...
                 djnz    _yLkupLp                    ; Loop until all lines are done
     ENDIF
 
+                call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    drwTtlScrn                  ; Draw the title screen
                 call    watFrSpc                    ; Wait for the space key to be pressed
                 call    clrScrn                     ; Once pressed clear the screen
@@ -76,6 +77,78 @@ clrScrn
                 ld      de, lvsLblTxt               ; Point DE to lives label text
                 ld      bc, 10                      ; Set the length of the string
                 call    8252                        ; ROM print
+
+                ret
+
+shftSprts
+                ld      hl, SpriteBlock0
+                ld      de, SpriteBlock1
+                ld      b, 3
+                ld      c, 8
+                call    prShft
+
+                ld      hl, SpriteBall0
+                ld      de, SpriteBall1
+                ld      b, 2
+                ld      c, 8
+                call    prShft
+
+                ld      hl, SmallBallData0
+                ld      de, SmallBallData1
+                ld      b, 2
+                ld      c, 4
+                call    prShft
+
+                ld      hl, SpriteBatData0
+                ld      de, SpriteBatData1
+                ld      b, 4
+                ld      c, 8
+                call    prShft
+
+                ret
+
+;****************************************************************************************************************
+; Preshift sprite data
+; Uses source sprite data to create 7 pre-shifted versions
+;
+; Entry Registers:
+;   HL = Sprite source Addr
+;   DE = First shift sprite Addr
+;   B = Pixels wide
+;   C = Pixel high
+; Registers Used:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+prShft
+                ld      a, b
+                ld      (prShftWdth), a             ; Save width
+                ld      a, c
+                ld      (prShftHght), a             ; Save height
+                ld      c, 7                        ; Load B with the number of shifts to perform
+
+_prNxtShft
+                ld      a, (prShftHght)
+                ld      b, a
+_prShftY                
+                push    bc
+                ld      a, (prShftWdth)
+                ld      b, a
+                xor     a                           ; Clear A and flags
+_prShftX
+                ld      a, (hl)
+                rra 
+                ld      (de), a
+                inc     hl
+                inc     de
+                djnz    _prShftX
+
+                pop     bc
+                djnz    _prShftY
+
+                dec     c
+                jr      nz, _prNxtShft
 
                 ret
 
