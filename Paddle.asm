@@ -161,8 +161,8 @@ mnLp
 _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 cp      GMESTTE_PLYNG               ; Is the game state PLAYING
                 jr      nz, _chckGmeStteWtng        ; If not then check if the state is WAITING
-                call    mvBll                    ; Move the ball
                 call    rdCntrlKys                  ; Read the keyboard
+                call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
                 call    drwBt                       ; Draw the bat
 
@@ -187,7 +187,7 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 sub     b                           ; Calulcate the bats Y pos minus the balls height putting the ball ontop of the bat
                 ld      (objctBall + BLLYPS), a     ; Update the balls Y Position with the bats Y position 
                 ld      a, (objctBat + BTXPS)       ; Load the bats X pos
-                ld      b, (BTPXLWDTH / 2) - (BLLPXLWIDTH / 2)  ; Calc the X pos middle of the bat
+                ld      b, BTPXLWDTH / 2 - BLLPXLWIDTH / 2  ; Calc the X pos middle of the bat
                 add     a, b                        ; Calc the new X pos for the ball so its in the middle of the bat
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
                 call    drwBll                      ; Draw the ball
@@ -934,12 +934,12 @@ _mvY
                 ld      (hl), a                     ; Save the balls new position 
 
                 cp      SCRNBTTM
-                jr      nc, _htBttm                 ; Ball has reached the bottom of the screen
+                jr      nc, _htBttm                 ; A > SCRNBTTM means the ball has reached the bottom of the screen
 
                 inc     hl                          ; Move HL to the Y Speed
                 ld      a, (hl)                     ; Load the Y Speed into A to check if its moving up or down the screen
                 cp      0                           ; Is the ball moving down the screen?
-                jp      c, _chkTp                   ; If not then check the balls position with the top of the screen
+                jp      m, _chkTp                   ; If not then check the balls position with the top of the screen
                 call    chkBtCllsn                  ; Otherwise ball is moving down the screen so check if its hit the bat
                 call    _updtBllChrPs               ; Finally update the balls character x, y position 
                 ret
@@ -1069,7 +1069,8 @@ chkBtCllsn
                 ld      hl, objctBall              ; Point HL at the ball object
 
                 ; First check if the ball has already passed the top of the bat
-                ld      b, (objctBat + BTYPS)       ; Load A with the bat.y
+                ld      a, (objctBat + BTYPS)       ; Load A with the bat.y
+                ld      b, a                        ; Switch B and A
                 inc     hl                          ; Point HL at the... 
                 inc     hl                          ; ...ball.y 
                 ld      a, (hl)                     ; Load A with the ball.y
@@ -1077,7 +1078,7 @@ chkBtCllsn
                 ret     c                           ; Ball is already passed the top of the bat
 
                 ; Has the ball reached the top of the bat? If not then no point in doing further checks
-                add     a, BLLPXLHGHT               ; We need to check if the button of the ball has hit/passed bat.y
+                sub     BLLPXLHGHT               ; We need to check if the button of the ball has hit/passed bat.y
                 cp      b
                 ret     nc                          ; If not then we are done    
 
@@ -1099,52 +1100,58 @@ _chkHrzntlPstn
                 ld      b, 20                       ; Load B with the length of the click 
                 call    plyClck                     ; Play the click
 
-                jp      _bncUp
-
                 ; Check the balls x direction and based on that perform the bats collision checks
                 inc     hl                          ; Point HL at the X speed of the ball
                 ld      a, (hl)                     ; Load the X speed into A
                 cp      0                           ; See which direction its moving    
                 jp      m, _bllMvngLft              ; A < 0 means left otherwise right
 
-
 _bllMvngRght  
                 pop     af                          ; Restore A which holds ball.x in bat space
+                push    hl
                 cp      6                           ;
                 jr      nc, _rArea2
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BAT_SPEEDS + 0
                 add     hl, de
                 ld      a, (hl)
-                ld      (ix + BLLXSPD), a
+                pop     hl
+                ld      (hl), a
                 jp      _bncUp
+
 _rArea2         cp      12
                 jr      nc, _rArea3
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BAT_SPEEDS + 1
                 add     hl, de
                 ld      a, (hl)
-                ld      (ix + BLLXSPD), a
+                pop     hl
+                ld      (hl), a
                 jp      _bncUp
+
 _rArea3         cp      18
                 jr      nc, _rArea4
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BAT_SPEEDS + 2
                 add     hl, de
                 ld      a, (hl)
-                ld      (ix + BLLXSPD), a
+                pop     hl
+                ld      (hl), a
                 jp      _bncUp
+
 _rArea4         cp      24
                 jr      nc, _bncUp
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BAT_SPEEDS + 3
                 add     hl, de
                 ld      a, (hl)
-                ld      (ix + BLLXSPD), a
+                pop     hl
+                ld      (hl), a
                 jp      _bncUp
 
 _bllMvngLft  
                 pop     af
+                push    hl
                 cp      6
                 jr      nc, _lArea2
                 ld      hl, (crrntLvlAddr)
@@ -1152,8 +1159,10 @@ _bllMvngLft
                 add     hl, de
                 ld      a, (hl)
                 neg
-                ld      (ix + BLLXSPD), a
+                pop     hl
+                ld      (hl), a
                 jp      _bncUp
+
 _lArea2         cp      12
                 jr      nc, _lArea3
                 ld      hl, (crrntLvlAddr)
@@ -1161,8 +1170,10 @@ _lArea2         cp      12
                 add     hl, de
                 ld      a, (hl)
                 neg
-                ld      (ix + BLLXSPD), a
+                pop     hl
+                ld      (hl), a
                 jp      _bncUp
+
 _lArea3         cp      18
                 jr      nc, _lArea4
                 ld      hl, (crrntLvlAddr)
@@ -1170,8 +1181,10 @@ _lArea3         cp      18
                 add     hl, de
                 ld      a, (hl)
                 neg
-                ld      (ix + BLLXSPD), a
+                pop     hl
+                ld      (hl), a
                 jp      _bncUp
+
 _lArea4         cp      24
                 jr      nc, _bncUp
                 ld      hl, (crrntLvlAddr)
@@ -1179,19 +1192,18 @@ _lArea4         cp      24
                 add     hl, de
                 ld      a, (hl)
                 neg
-                ld      (ix + BLLXSPD), a
+                pop     hl
+                ld      (hl), a
 
 _bncUp 
                 ld      a, (objctBat + BTYPS)  ; Update the Y pos of the ball so that it rests ontop of the bat
-                sub     BLLPXLHGHT   
-                inc     hl
+                sub     BLLPXLHGHT
                 inc     hl
                 ld      (hl), a
                 inc     hl
                 ld      a, (hl)
                 neg                                 ; Change the balls Y direction
                 ld      (hl), a   
-;                 pop     hl
                 ret 
 
 ;****************************************************************************************************************
@@ -1397,7 +1409,7 @@ getChrctrAttr
 ; Reset the bats X pos to the center of play area
 ;****************************************************************************************************************
 rstBt    
-                ld      a, 76                       
+                ld      a, 112
                 ld      (objctBat + BTXPS), a
                 ld      a, -2
                 ld      (objctBall + BLLYSPD), a
@@ -1609,6 +1621,9 @@ ballML          dw      0                           ; Middle Left
 lives           db      5                           ; Number of lives each player has at the start of the game
 scrnStckPtr     dw      0                           ; Holds the original SP location during screen buffer copy
 
+prShftWdth      db      0                           ; Holds the width of the sprite to be shifted
+prShftHght      db      0                           ; Holds the height of the sprite to be shifted
+prShftSize      dw      0                           ; Holds the size of a sprite to shift in bytes
 ;****************************************************************************************************************
 ; Text
 ;****************************************************************************************************************
@@ -1623,9 +1638,10 @@ gmeOvrTxt       db      16, 2, 17, 2, 22, 15, 11, 'GAME  OVER'
 ; Object data
 ;****************************************************************************************************************
                         ; Xpos, XSpeed, Ypos, YSpeed
-objctBall       db      0, 1, 0, -2 
+objctBall       db      0, 1, 0, -2
+    
                         ; Xpos, XSpeed, Ypos
-objctBat        db      121, 6, 175                      
+objctBat        db      112, 4, 175                      
 
 objctMvngBlck1          ; XPos, XSpeed, YPos, YSpeed
                 db      76, 2, 115, 0  
