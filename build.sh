@@ -1,10 +1,7 @@
 #!/bin/bash
 cd ~/Documents/Code/Paddle
-echo 'Building '$1' ...'
-pasmo -1 --tapbas $1 $1.tap
+pasmo --name paddle --tapbas -1 Paddle.asm Paddle.tap > debug.txt
 retval=$?
 if [ $retval -eq 0 ]; then
-    echo 'Finished...'
-    echo 'Running Fuse with '$2'.tap'
-    /Applications/Fuse\ for\ Mac\ OS\ X/Fuse.app/Contents/MacOS/Fuse $1.tap
+    /Applications/Fuse\ for\ Mac\ OS\ X/Fuse.app/Contents/MacOS/Fuse Paddle.tap
 fi
