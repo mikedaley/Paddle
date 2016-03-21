@@ -88,16 +88,17 @@ SpriteBall1:
 ; Small Ball Data
 ;*******************************************************************************************
 SmallBallData
-                    dw SmallBallData0, SmallBallData0 + 8 * 1, SmallBallData0 + 8 * 2, SmallBallData0 + 8 * 3
-                    dw SmallBallData0 + 8 * 4, SmallBallData0 + 8 * 5, SmallBallData0 + 8 * 6, SmallBallData0 + 8 * 7
+                    dw SmallBallData0, SmallBallData0 + 10 * 1, SmallBallData0 + 10 * 2, SmallBallData0 + 10 * 3
+                    dw SmallBallData0 + 10 * 4, SmallBallData0 + 10 * 5, SmallBallData0 + 10 * 6, SmallBallData0 + 10 * 7
 
 SmallBallData0
-                    db %01100000, %00000000
-                    db %10110000, %00000000
-                    db %11110000, %00000000
-                    db %01100000, %00000000
+                    db %01110000, %00000000
+                    db %10011000, %00000000
+                    db %10111000, %00000000
+                    db %11111000, %00000000
+                    db %01110000, %00000000
 SmallBallData1
-                    ds 8 * 7
+                    ds 10 * 7
 
 ;*******************************************************************************************
 ; Bat Sprite
