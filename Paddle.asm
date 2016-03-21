@@ -96,7 +96,7 @@ shftSprts
                 ld      hl, SmallBallData0
                 ld      de, SmallBallData1
                 ld      b, 2
-                ld      c, 4
+                ld      c, 5
                 call    prShft
 
                 ld      hl, SpriteBatData0
@@ -129,28 +129,28 @@ prShft
                 ld      c, 7                        ; Load B with the number of shifts to perform
 
 _prNxtShft
-                ld      a, (prShftHght)
-                ld      b, a
+                ld      a, (prShftHght)             ; Load the height of the sprite to be shifted
+                ld      b, a                        ; Save that in B
 _prShftY                
-                push    bc
-                ld      a, (prShftWdth)
-                ld      b, a
-                xor     a                           ; Clear A and flags
+                push    bc                          ; Save B onto the stack
+                ld      a, (prShftWdth)             ; Load A with the width of the sprite
+                ld      b, a                        ; Load A into B
+                xor     a                           ; Clear A and flags ready to shift the sprite bytes right
 _prShftX
-                ld      a, (hl)
-                rra 
-                ld      (de), a
-                inc     hl
-                inc     de
-                djnz    _prShftX
+                ld      a, (hl)                     ; Load the first sprite byte into A
+                rra                                 ; Rotate right with the carry bit
+                ld      (de), a                     ; Save the rotated byte into the shift sprite location
+                inc     hl                          ; Move to the next source byte
+                inc     de                          ; Move to the next destination byte
+                djnz    _prShftX                    ; If there are still width bytes to shift then go shift them
 
-                pop     bc
-                djnz    _prShftY
+                pop     bc                          ; Restore B which holds the pixel height of the sprite
+                djnz    _prShftY                    ; If there is another pixel row to process then go do it
 
-                dec     c
-                jr      nz, _prNxtShft
+                dec     c                           ; Decrement the number of sprites to generate
+                jr      nz, _prNxtShft              ; If we are not yet at zero then process another sprite shift...
 
-                ret
+                ret                                 ; ...otherwise we are done
 
 ;****************************************************************************************************************
 ; Main loop
@@ -206,7 +206,7 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 jp      mnLp                        ; Loop
 
 _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
-                cp      GMESTTE_LSTLFE              ; Is the game state PLAYER DEAD
+                cp      GMESTTE_LSTLFE              ; Is the game state LOST LIFE
                 jr      nz, _gmeStteNxtLvl          ; If not then check if the state is NEXT LEVEL
                 ld      a, (lives)                  ; Load A with the lives left
                 dec     a                           ; -1 from lives
@@ -221,16 +221,16 @@ _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
                 call    8252                        ; ROM Print
                 pop     af                          ; Restore AF
                 cp      0                           ; Check if the players lives have reached 0 
-                jr      z, _setGmeStteLstLfe        ; Jump to set the game state to LOST LIFE
+                jp      z, _setGmeStteDead          ; Jump to set the game state to DEAD
 
-                call    rstBt                    ; Reset the bats location
+                call    rstBt                       ; Reset the bats location
                 call    plyDthSnd                   ; Play a death sound 
 
                 ld      a, GMESTTE_WTNG             ; Set the game state to WAITING
                 ld      (gmeStte), a                ; Save the game state
                 jp      mnLp
-_setGmeStteLstLfe
-                ld      a, GMESTTE_LSTLFE 
+_setGmeStteDead
+                ld      a, GMESTTE_DEAD 
                 ld      (gmeStte), a
                 jp      mnLp
 
@@ -292,6 +292,7 @@ _chckGmeSttePlyrDead
                 call    8252
                 call    watFrSpc
                 call    clrScrn
+                call    drwBrdrs
                 ld      a, 5 
                 ld      (lives), a
                 ld      a, 53                       ; The number five in the character set
@@ -414,7 +415,7 @@ drwBll
                 ld      b, a                        ; Put A into B
                 ld      a, (objctBall + BLLYPS)     ; Load A with the balls Y position
                 ld      c, a                        ; Load C with A so B = X, C = Y
-                call    Draw_16x4_Sprite            ; Call the 16x4 pixel sprite routine
+                call    Draw_16x5_Sprite            ; Call the 16x4 pixel sprite routine
                 ret
 
 ;****************************************************************************************************************
@@ -615,7 +616,7 @@ Draw_8x8_Sprite
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
-Draw_16x4_Sprite
+Draw_16x5_Sprite
                 ld      a, b                        ; Load A with the X pixel position
                 and     7                           ; Get the Bit rotate count (lower 3 bits of X position)
         
@@ -646,7 +647,7 @@ Draw_16x4_Sprite
                 add     ix, bc                      ; twice as the table contains word values
                 pop     bc                          ; Restore B which holds the X byte offset
 
-    REPT 4                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
+    REPT 5                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
                 ld      a, (ix + 0)                 ; Get the current line
                 or      b                           ; Merge in our X Offset
                 ld      l, a                        ; Load the merged low byte in L
@@ -1004,7 +1005,7 @@ _bncRght
 _updtBllChrPs                                       ; Update the balls character position used in block collision detection
                 ld      hl, objctBall
                 ld      a, (hl)                     ; Middle Top
-                add     a, BLLPXLWIDTH / 2
+                add     a, 3
                 ld      d, a
                 inc     hl
                 inc     hl
@@ -1020,7 +1021,7 @@ _updtBllChrPs                                       ; Update the balls character
                 inc     hl
                 inc     hl
                 ld      a, (hl)
-                add     a, BLLPXLHGHT / 2
+                add     a, 3
                 ld      e, a
                 call    getChrLctn
                 ld      (ballMR), bc
@@ -1028,12 +1029,12 @@ _updtBllChrPs                                       ; Update the balls character
                 dec     hl
                 dec     hl
                 ld      a, (hl)                     ; Middle Bottom
-                add     a, BLLPXLWIDTH / 2
+                add     a, 3
                 ld      d, a
                 inc     hl
                 inc     hl
                 ld      a, (hl)
-                add     a, BLLPXLHGHT - 1           ; Move 1 pixel up into the ball
+                add     a, BLLPXLHGHT               ; Move 1 pixel up into the ball
                 ld      e, a
                 call    getChrLctn
                 ld      (ballMB), bc
@@ -1044,7 +1045,7 @@ _updtBllChrPs                                       ; Update the balls character
                 inc     hl
                 inc     hl
                 ld      a, (hl)
-                add     a, BLLPXLHGHT / 2
+                add     a, 3
                 ld      e, a
                 call    getChrLctn
                 ld      (ballML), bc
@@ -1207,9 +1208,22 @@ _bncUp
                 ret 
 
 ;****************************************************************************************************************
-; Check the edge point on the ball to see if they have collided with a block based on the blocks attribute colour
+; Check Block Collision
+; Check the collisions points around the ball against the attribute buffer and if a collision is found then Remove
+; the block and bounce the ball.
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, D, E
+; Returned Registers:
+;   NONE
 ;****************************************************************************************************************
 chckBlckCllsn 
+                ld      a, (objctBall + BLLYSPD)    ; Load the Y Speed of the ball
+                cp      0                           ; Compare it with 0 to find out if the balls is moving up...
+                jp      p, MiddleRight              ; or down the screen, if moving down then doing check the top collision
+
                 ld      a, (ballMT)
                 ld      d, a
                 ld      a, (ballMT + 1)
@@ -1242,6 +1256,10 @@ MiddleRight
                 call    rmvBlck
                 ret
 MiddleBottom
+                ld      a, (objctBall + BLLYSPD)    ; Load the Y Speed of the ball
+                cp      0                           ; Compare it with 0 to find out if the balls is moving up...
+                jp      p, MiddleLeft               ; or down the screen, if moving down then doing check the top collision
+
                 ld      a, (ballMB)
                 ld      d, a
                 ld      a, (ballMB + 1)
