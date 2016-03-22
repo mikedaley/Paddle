@@ -10,7 +10,7 @@
 ; TODO
 ; * Implement IM2 to see what can be done with that
 ; * Implement reading IO Port 0x40FF for the colour attribute currently being read by the ULA. This can cause
-;   compatibility issues, but I want to see what can be done by using that rather than HALT to get more times
+;   compatibility issues, but I want to see what can be done by using that rather than HALT to get more time
 ;   to draw to the screen directly
 ;****************************************************************************************************************
 
@@ -44,8 +44,8 @@ _yLkupLp        ld      (hl), e                     ; Save E...
                 djnz    _yLkupLp                    ; Loop until all lines are done
     ENDIF
 
-                call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    drwTtlScrn                  ; Draw the title screen
+                call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    watFrSpc                    ; Wait for the space key to be pressed
                 call    clrScrn                     ; Once pressed clear the screen
                 call    drwBrdrs                    ; Draw the screen borders
@@ -82,25 +82,37 @@ clrScrn
 
 shftSprts
                 ld      hl, SpriteBlock0
-                ld      de, SpriteBlock1
+                ld      de, SpriteBlock0 + 3 * 8
                 ld      b, 3
                 ld      c, 8
                 call    prShft
 
                 ld      hl, SpriteBall0
-                ld      de, SpriteBall1
+                ld      de, SpriteBall0 + 2 * 8
                 ld      b, 2
                 ld      c, 8
                 call    prShft
 
                 ld      hl, SmallBallData0
-                ld      de, SmallBallData1
+                ld      de, SmallBallData0 + 2 * 5
                 ld      b, 2
                 ld      c, 5
                 call    prShft
 
                 ld      hl, SpriteBatData0
-                ld      de, SpriteBatData1
+                ld      de, SpriteBatData0 + 4 * 8
+                ld      b, 4
+                ld      c, 8
+                call    prShft
+
+                ld      hl, SpriteBatData1
+                ld      de, SpriteBatData1 + 4 * 8
+                ld      b, 4
+                ld      c, 8
+                call    prShft
+
+                ld      hl, SpriteBatData2
+                ld      de, SpriteBatData2 + 4 * 8
                 ld      b, 4
                 ld      c, 8
                 call    prShft
@@ -163,6 +175,7 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 jr      nz, _chckGmeStteWtng        ; If not then check if the state is WAITING
                 call    rdCntrlKys                  ; Read the keyboard
                 call    mvBll                       ; Move the ball
+                call    updtBtAnmtnFrm
                 call    drwBll                      ; Draw the ball
                 call    drwBt                       ; Draw the bat
 
@@ -190,6 +203,8 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 ld      b, BTPXLWDTH / 2 - BLLPXLWIDTH / 2  ; Calc the X pos middle of the bat
                 add     a, b                        ; Calc the new X pos for the ball so its in the middle of the bat
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
+                
+                call    updtBtAnmtnFrm
                 call    drwBll                      ; Draw the ball
                 call    drwBt                       ; Draw the bat
 
@@ -308,6 +323,36 @@ _chckGmeSttePlyrDead
                 ld      (gmeStte), a
                 call    rstBt
                 jp      mnLp
+
+;****************************************************************************************************************
+; Update bate animation
+; Updates the bats sprite frame number which is used to identify which sprite frame to draw
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+updtBtAnmtnFrm
+                ld      hl, (objctBat + 3)          ; Point DE at the animation delay counter
+                inc     hl
+                ld      (objctBat + 3), hl
+                ld      de, 1000
+                ld      a, l
+                cp      10
+                ret     nz                          ; If not equal then its not yet time to change the frame
+                ld      de, 0                       ; Reset the delay counter
+                ld      (objctBat + 3), de
+                ld      a, (objctBat + 5)
+                inc     a
+                cp      3
+                jp      nz, _svFrm
+                ld      a, 0
+_svFrm
+                ld      (objctBat + 5), a
+                ret
 
 ;****************************************************************************************************************
 ; Draw Title screen
@@ -431,7 +476,18 @@ drwBll
 ;****************************************************************************************************************
 drwBt 
                 ld      de, SpriteBatData           ; Point DE to the ball sprite data
-                ld      a, (objctBat + BTXPS)       ; Load A with the bats X position
+                ld      a, (objctBat + 5)
+                cp      0
+                jp      z, _drw
+                ld      b, a
+                ld      hl, 8
+_frmLp                          
+                add     hl, hl
+                djnz    _frmLp
+                add     hl, de
+                push    hl
+                pop     de
+_drw            ld      a, (objctBat + BTXPS)       ; Load A with the bats X position
                 ld      b, a                        ; Put A into B
                 ld      a, (objctBat + BTYPS)       ; Load A with the bats Y position
                 ld      c, a                        ; Load A with A so B = X, C = Y
@@ -1222,63 +1278,49 @@ _bncUp
 chckBlckCllsn 
                 ld      a, (objctBall + BLLYSPD)    ; Load the Y Speed of the ball
                 cp      0                           ; Compare it with 0 to find out if the balls is moving up...
-                jp      p, MiddleRight              ; or down the screen, if moving down then doing check the top collision
+                jp      p, _mddlBttm                ; or down the screen, if moving down then no need to check the top collision
 
-                ld      a, (ballMT)
-                ld      d, a
-                ld      a, (ballMT + 1)
-                ld      e, a
-                push    de
-                call    getChrctrAttr
-                pop     de
-                cp      5               
-                jr      z, MiddleRight  
-                ld      a, (objctBall + BLLYSPD)
-                cp      0
-                jp      p, MT0
-                neg
-                ld      (objctBall + BLLYSPD), a
-MT0             call    rmvBlck
-                ret
-MiddleRight 
-                ld      a, (ballMR)
-                ld      d, a
-                ld      a, (ballMR + 1)
-                ld      e, a
+                ld      de, (ballMT)                ; Load the middle collison point into DE, D = Y, E = X
+                push    de                          ; Save DE
+                call    getChrctrAttr               ; Get the character attribute at DE
+                pop     de                          ; Restore DE
+                cp      5                           ; Is the attribute returned Cyan on black...
+                jr      z, _mddlRght                ; ...if so then check the right collision point as there is no block
+                
+                ld      a, (objctBall + BLLYSPD)    ; Load A with the ball.ySpeed
+                neg                                 ; Reverse the ball.ySpeed...
+                ld      (objctBall + BLLYSPD), a    ; ...and save it back with the ball data
+                call    rmvBlck                     ; Remove the block that has just been hit
+                ret                                 ; Finished as we only check one collision per frame
+
+_mddlBttm
+                ld      de, (ballMB)
                 push    de
                 call    getChrctrAttr
                 pop     de
                 cp      5
-                jr      z, MiddleBottom
-                ld      a, (objctBall + BLLXSPD)
-                neg
-                ld      (objctBall + BLLXSPD), a
-                call    rmvBlck
-                ret
-MiddleBottom
-                ld      a, (objctBall + BLLYSPD)    ; Load the Y Speed of the ball
-                cp      0                           ; Compare it with 0 to find out if the balls is moving up...
-                jp      p, MiddleLeft               ; or down the screen, if moving down then doing check the top collision
-
-                ld      a, (ballMB)
-                ld      d, a
-                ld      a, (ballMB + 1)
-                ld      e, a
-                push    de
-                call    getChrctrAttr
-                pop     de
-                cp      5
-                jr      z, MiddleLeft
+                jr      z, _mddlLft
                 ld      a, (objctBall + BLLYSPD)
                 neg
                 ld      (objctBall + BLLYSPD), a   
                 call    rmvBlck
                 ret
-MiddleLeft 
-                ld      a, (ballML)
-                ld      d, a
-                ld      a, (ballML + 1)
-                ld      e, a
+
+_mddlRght 
+                ld      de, (ballMR)
+                push    de
+                call    getChrctrAttr
+                pop     de
+                cp      5
+                jr      z, _mddlLft
+                ld      a, (objctBall + BLLXSPD)
+                neg
+                ld      (objctBall + BLLXSPD), a
+                call    rmvBlck
+                ret
+
+_mddlLft 
+                ld      de, (ballML)
                 push    de
                 call    getChrctrAttr
                 pop     de
@@ -1291,7 +1333,7 @@ MiddleLeft
                 ret
 
 ;****************************************************************************************************************
-; Remove the block that contains the x,y provided in DE
+; Remove the block that contains the x,y provided D = Y and E = X
 ;****************************************************************************************************************
 rmvBlck
                 ld      b, 100
@@ -1306,7 +1348,7 @@ rmvBlck
 
                 push    de
                 push    bc
-                ld      de, scrTxt               ; Print the score on the screen
+                ld      de, scrTxt                  ; Print the score on the screen
                 ld      bc, 12
                 call    8252
                 pop     bc
@@ -1317,30 +1359,31 @@ rmvBlck
                 ld      (lvlBlckCnt), a                    
 
                 ; Remove the block
-                ld      a, d
+                ld      a, e
                 and     1                           ; Check to see if the number is _odd
                 cp      0
                 jr      z, _even
 
-_odd             ld      a, 5
+_odd             
+                ld      a, 5
                 push    de
                 call    setChrctrAttr
                 pop     de
-                ld      a, d
+                ld      a, e
                 sub     1
-                ld      d, a
+                ld      e, a
                 ld      a, 5
                 push    de
                 call    setChrctrAttr
                 pop     de
 
-                ld      a, d
+                ld      a, e
                 add     a, a
                 add     a, a
                 add     a, a
                 ld      b, a
 
-                ld      a, e
+                ld      a, d
                 add     a, a
                 add     a, a
                 add     a, a
@@ -1349,23 +1392,24 @@ _odd             ld      a, 5
                 call    Draw_24x8_Sprite
                 ret
 
-_even            ld      a, 5
-                push    de
-                call    setChrctrAttr
-                pop     de
-                inc     d
+_even           
                 ld      a, 5
                 push    de
                 call    setChrctrAttr
                 pop     de
-                dec     d
-                ld      a, d
+                inc     e
+                ld      a, 5
+                push    de
+                call    setChrctrAttr
+                pop     de
+                dec     e
+                ld      a, e
                 add     a, a
                 add     a, a
                 add     a, a
                 ld      b, a
 
-                ld      a, e
+                ld      a, d
                 add     a, a
                 add     a, a
                 add     a, a
@@ -1380,7 +1424,7 @@ _even            ld      a, 5
 ;****************************************************************************************************************
 setChrctrAttr 
                 ld      h, 0                        ; Get the Y pos from the corner
-                ld      l, e
+                ld      l, d
 
                 add     hl, hl                      ; Multiply the Y position by 32
                 add     hl, hl
@@ -1389,7 +1433,7 @@ setChrctrAttr
                 add     hl, hl
 
                 ld      b, 0                        ; Get the X position
-                ld      c, d
+                ld      c, e
                 add     hl, bc                      ; Add it to the Y position 
 
                 ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
@@ -1403,9 +1447,8 @@ setChrctrAttr
 ; D = X, E = Y, returns A = given attribute
 ;****************************************************************************************************************
 getChrctrAttr 
-
                 ld      h, 0                        ; Get the Y pos from the corner
-                ld      l, e
+                ld      l, d
 
                 add     hl, hl                      ; Multiply the Y position by 32
                 add     hl, hl
@@ -1414,7 +1457,7 @@ getChrctrAttr
                 add     hl, hl
 
                 ld      b, 0                        ; Get the X position
-                ld      c, d
+                ld      c, e
                 add     hl, bc                      ; Add it to the Y position 
 
                 ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
@@ -1637,11 +1680,11 @@ ballMB          dw      0                           ; Middle Bottom
 ballML          dw      0                           ; Middle Left
 
 lives           db      5                           ; Number of lives each player has at the start of the game
-scrnStckPtr     dw      0                           ; Holds the original SP location during screen buffer copy
 
 prShftWdth      db      0                           ; Holds the width of the sprite to be shifted
 prShftHght      db      0                           ; Holds the height of the sprite to be shifted
 prShftSize      dw      0                           ; Holds the size of a sprite to shift in bytes
+
 ;****************************************************************************************************************
 ; Text
 ;****************************************************************************************************************
@@ -1659,7 +1702,9 @@ gmeOvrTxt       db      16, 2, 17, 2, 22, 15, 11, 'GAME  OVER'
 objctBall       db      0, 1, 0, -2
     
                         ; Xpos, XSpeed, Ypos
-objctBat        db      112, 4, 175                      
+objctBat        db      112, 4, 175         
+                dw      0 ; 16bit counter used to time how long each frame should be visible
+                db      0 ; Animation Frame
 
 objctMvngBlck1          ; XPos, XSpeed, YPos, YSpeed
                 db      76, 2, 115, 0  
