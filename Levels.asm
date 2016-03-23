@@ -51,7 +51,7 @@ Level1Rows          db 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0
                     db 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0 
                     db 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0 
 
-Level1BatSpeed      db 1, 2, 2, 4
+Level1BatSpeed      db 1, 2, 2, 3
 Level1Title         db 12, 16, 5, 22, 15, 12, 'LEVEL 1'
 Level1TitleClear    db 12, 16, 5, 22, 15, 12, '       '
 
