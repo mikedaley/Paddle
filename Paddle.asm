@@ -87,18 +87,14 @@ shftSprts
                 ld      c, 8
                 call    prShft
 
-                ld      hl, SpriteBall0
-                ld      de, SpriteBall0 + 2 * 8
-                ld      b, 2
-                ld      c, 8
-                call    prShft
-
+                ; Shift Sprite Ball
                 ld      hl, SmallBallData0
                 ld      de, SmallBallData0 + 2 * 5
                 ld      b, 2
                 ld      c, 5
                 call    prShft
 
+                ; Shift Sprite Bat
                 ld      hl, SpriteBatData0
                 ld      de, SpriteBatData0 + 4 * 8
                 ld      b, 4
@@ -331,28 +327,26 @@ _chckGmeSttePlyrDead
 ; Entry Registers:
 ;   NONE
 ; Registers Used:
-;   B, C, D, E, H, L
+;   A, B, D, E, H, L
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
 updtBtAnmtnFrm
-                ld      hl, (objctBat + 3)          ; Point DE at the animation delay counter
-                inc     hl
-                ld      (objctBat + 3), hl
-                ld      de, 1000
-                ld      a, l
-                cp      10
-                ret     nz                          ; If not equal then its not yet time to change the frame
-                ld      de, 0                       ; Reset the delay counter
-                ld      (objctBat + 3), de
-                ld      a, (objctBat + 5)
-                inc     a
-                cp      3
-                jp      nz, _svFrm
+                ld      a, (objctBat + 3)           ; Point DE at the animation delay counter
+                inc     a                           ; Increment the frame count
+                ld      (objctBat + 3), a           ; Save the new delay amount    
+                cp      6                           ; Check the delay (1/50 * n)
+                ret     nz                          ; and return if we've not reached the delay value
+                ld      a, 0                        ; Delay has been reached so reset the delay...
+                ld      (objctBat + 3), a           ; ...and save it
+                ld      a, (objctBat + 4)           ; Load A with the current frame count
+                inc     a                           ; Increment the counter
+                cp      3                           ; Compare it against the max value allowed...
+                jp      nz, _svBtFrm                ; ...and save the new frame count if the max has not been reached
                 ld      a, 0
-_svFrm
-                ld      (objctBat + 5), a
-                ret
+_svBtFrm
+                ld      (objctBat + 4), a           ; Save the new frame number
+                ret                                 ; Return
 
 ;****************************************************************************************************************
 ; Draw Title screen
@@ -476,18 +470,18 @@ drwBll
 ;****************************************************************************************************************
 drwBt 
                 ld      de, SpriteBatData           ; Point DE to the ball sprite data
-                ld      a, (objctBat + 5)
+                ld      a, (objctBat + 4)
                 cp      0
-                jp      z, _drw
+                jp      z, _drwBt
                 ld      b, a
                 ld      hl, 8
-_frmLp                          
+_frmBtLp                          
                 add     hl, hl
-                djnz    _frmLp
+                djnz    _frmBtLp
                 add     hl, de
                 push    hl
                 pop     de
-_drw            ld      a, (objctBat + BTXPS)       ; Load A with the bats X position
+_drwBt          ld      a, (objctBat + BTXPS)       ; Load A with the bats X position
                 ld      b, a                        ; Put A into B
                 ld      a, (objctBat + BTYPS)       ; Load A with the bats Y position
                 ld      c, a                        ; Load A with A so B = X, C = Y
@@ -1698,12 +1692,12 @@ gmeOvrTxt       db      16, 2, 17, 2, 22, 15, 11, 'GAME  OVER'
 ;****************************************************************************************************************
 ; Object data
 ;****************************************************************************************************************
-                        ; Xpos, XSpeed, Ypos, YSpeed
-objctBall       db      0, 1, 0, -2
+                        ; Xpos, XSpeed, Ypos, YSpeed, Delay, Frame
+objctBall       db      0, 1, 0, -2, 0, 0
     
                         ; Xpos, XSpeed, Ypos
 objctBat        db      112, 4, 175         
-                dw      0 ; 16bit counter used to time how long each frame should be visible
+                db      0 ; Delay counter used to time how long each frame should be visible
                 db      0 ; Animation Frame
 
 objctMvngBlck1          ; XPos, XSpeed, YPos, YSpeed
