@@ -1248,16 +1248,16 @@ chkBtCllsn
                 ; First check if the ball has already passed the top of the bat
                 ld      a, (objctBat + BTYPS)       ; Load A with the bat.y
                 ld      b, a                        ; Switch B and A
-                inc     hl                          ; Point HL at the... 
+                inc     hl                          ; Point HL at... 
                 inc     hl                          ; ...ball.y 
                 ld      a, (hl)                     ; Load A with the ball.y
                 cp      b                           ; Compare it against the bat.y
-                ret     c                           ; Ball is already passed the top of the bat
+                ret     nc                          ; Ball is already passed the top of the bat
 
                 ; Has the ball reached the top of the bat? If not then no point in doing further checks
-                sub     BLLPXLHGHT               ; We need to check if the button of the ball has hit/passed bat.y
+                add     a, BLLPXLHGHT - 1           ; We need to check if the bottom of the ball has hit/passed bat.y
                 cp      b
-                ret     nc                          ; If not then we are done    
+                ret     c                           ; If not then we are done    
 
 _chkHrzntlPstn                                      
                 ; To check where on the bat the ball has collided we put the ball into bat space coordinates
