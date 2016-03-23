@@ -381,29 +381,32 @@ _svBtFrm
 updtScrSprts
                 ld      b, 5                        ; Upto to five scores can be alive at the same time
                 ld      hl, objctScore              ; Point HL at the score sprite table
-                ld      de, 3
 _nxtScr         ld      a, (hl)                     ; Load A with the timer value for the score
-                cp      0                           ; If it is 0 then the score is not being displayed
-                jp      nz, _updtScr
-                add     hl, de
-                djnz    _nxtScr
+                cp      0                           ; Is the timer 0?
+                jp      nz, _updtScr                ; If not then update it as its active...
+                inc     hl                          ; ...otherwise point HL at the next score object
+                inc     hl
+                inc     hl
+                djnz    _nxtScr                     ; Loop if there are score objects left
                 ret
 _updtScr
-                inc     a
-                cp      25                         ; Has the timer reached two seconds (1/50 * n)
-                jp      z, _rstScrTmr
-                ld      (hl), a
+                inc     a                           ; Increment the timer
+                cp      25                          ; Has the timer reached 0.5 seconds (1/50 * 25)
+                jp      z, _rstScrTmr               ; If the timer has reached its max then reset it... 
+                ld      (hl), a                     ; ...otherwise save the new timer value
+                inc     hl                          ; Point HL at the Ypos of the score... 
+                dec     (hl)                        ; ...and decrement it so the score moves up the screen
+                inc     hl                          ; Move HL to the next score object
                 inc     hl
-                dec     (hl)
-                inc     hl
-                inc     hl
-                djnz    _nxtScr
+                djnz    _nxtScr                     ; Loop if there are score objects letf
                 ret
 _rstScrTmr
-                ld      a, 0
-                ld      (hl), a
-                add     hl, de
-                djnz    _nxtScr
+                ld      a, 0                        ; Load A with 0 so that it can...
+                ld      (hl), a                     ; ...be saved in the score object marked it inactive
+                inc     hl                          ; Point HL at the next score object
+                inc     hl
+                inc     hl
+                djnz    _nxtScr                     ; Loop if there are score objects left
                 ret
 
 ;****************************************************************************************************************
@@ -415,19 +418,21 @@ _rstScrTmr
 ; Registers Used:
 ;   A, B, D, E, H, L
 ; Returned Registers:
+;   A = 0 for none found or 
 ;   HL = Address of available score sprite
 ;****************************************************************************************************************
-fndIntvScrSprt
+fndInctvScrSprt
                 ld      b, 5                        ; Five scores available
                 ld      hl, objctScore              ; Point HL at score object table
-                ld      de, 3                       ; ...otherwise point HL at...
 _chkNxtScr      ld      a, (hl)                     ; Load A with the timer of the first score object
                 cp      0                           ; If it is 0 then...
                 jp      z, _fndScrSprt              ; ...its available so return the address in HL
-                add     hl, de                      ; ...the next score object
+                inc     hl                          ; Move HL to the next score object
+                inc     hl                          ; Using INC HL as it is saving 3 t-states over using ADD HL, DE
+                inc     hl
                 djnz    _chkNxtScr                  ; Loop if B > 0
-                ld      a, 0                        ; Nothing found so set HL = 0...
-                ret                                 ; ...and return
+                ld      a, 0                        ; Nothing found so set A = 0...
+                ret
 _fndScrSprt
                 inc     a                           ; Found a free score so set its timer to 1...
                 ld      (hl), a                     ; ...and save it back into the table
@@ -540,8 +545,9 @@ _chkScrActv
                 ld      a, (hl)                     ; Get the timer for the first score object
                 cp      0                           ; Check it against 0
                 jp      nz, _drwCrrntScr            ; If its not zero then its active so draw it
-                ld      de, 3                       ; Move HL to the...
-                add     hl, de                      ; ...next score object
+                inc     hl
+                inc     hl
+                inc     hl
                 djnz    _chkScrActv                 ; Loop if there are more scores to check
                 ret                                 ; Finished
 
@@ -558,8 +564,9 @@ _drwCrrntScr
                 call    Draw_24x8_Sprite            ; Call the 16x4 pixel sprite routine
                 pop     hl                          ; Restore HL
                 pop     bc                          ; Restore BC
-                ld      de, 3                       ; Point HL at the...
-                add     hl, de                      ; ...next score object
+                inc     hl
+                inc     hl
+                inc     hl
                 djnz    _chkScrActv                 ; Loop if there are more scores to check
                 ret                                 ; Finished
 
