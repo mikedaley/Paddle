@@ -470,11 +470,11 @@ drwBll
 ;****************************************************************************************************************
 drwBt 
                 ld      de, SpriteBatData           ; Point DE to the ball sprite data
-                ld      a, (objctBat + 4)
-                cp      0
-                jp      z, _drwBt
-                ld      b, a
-                ld      hl, 8
+                ld      a, (objctBat + 4)           ; Load the current animation frame for the ball
+                cp      0                           ; If its zero...
+                jp      z, _drwBt                   ; ...then just go a draw the bat...
+                ld      b, a                        ; Load B with the frame number
+                ld      hl, 8                       ; Start off by setting HL to 8
 _frmBtLp                          
                 add     hl, hl
                 djnz    _frmBtLp
@@ -1259,7 +1259,10 @@ _bncUp
 ;****************************************************************************************************************
 ; Check Block Collision
 ; Check the collisions points around the ball against the attribute buffer and if a collision is found then Remove
-; the block and bounce the ball.
+; the block and bounce the ball.  By checking each collision point around the ball sprite we can find out which
+; part of the ball has hit a tile. This then allows us to update the sprites X or Y speed causing the ball to 
+; appear to bounce off the tile. A collision is identified if the attribute at the collision point is not 5 which
+; represents a black background and cyan ink.
 ;
 ; Entry Registers:
 ;   NONE
@@ -1278,13 +1281,12 @@ chckBlckCllsn
                 call    getChrctrAttr               ; Get the character attribute at DE
                 pop     de                          ; Restore DE
                 cp      5                           ; Is the attribute returned Cyan on black...
-                jr      z, _mddlRght                ; ...if so then check the right collision point as there is no block
+                jr      z, _mddlBttm                ; ...if so then check the right collision point as there is no block
                 
                 ld      a, (objctBall + BLLYSPD)    ; Load A with the ball.ySpeed
                 neg                                 ; Reverse the ball.ySpeed...
                 ld      (objctBall + BLLYSPD), a    ; ...and save it back with the ball data
                 call    rmvBlck                     ; Remove the block that has just been hit
-                ret                                 ; Finished as we only check one collision per frame
 
 _mddlBttm
                 ld      de, (ballMB)
@@ -1292,12 +1294,11 @@ _mddlBttm
                 call    getChrctrAttr
                 pop     de
                 cp      5
-                jr      z, _mddlLft
+                jr      z, _mddlRght
                 ld      a, (objctBall + BLLYSPD)
                 neg
                 ld      (objctBall + BLLYSPD), a   
                 call    rmvBlck
-                ret
 
 _mddlRght 
                 ld      de, (ballMR)
@@ -1310,7 +1311,6 @@ _mddlRght
                 neg
                 ld      (objctBall + BLLXSPD), a
                 call    rmvBlck
-                ret
 
 _mddlLft 
                 ld      de, (ballML)
