@@ -1,2 +1,2 @@
 #!/bin/bash
-tape2wav Paddle.asm.tap Paddle.wav
+tape2wav Paddle.tap Paddle.wav
