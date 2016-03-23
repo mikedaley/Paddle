@@ -1040,10 +1040,9 @@ _bncRght
                 jp      _mvY                        ; Check for a bounce in the y-axis
 
 ;****************************************************************************************************************
-; Update Balls Character Position
-; The balls character position is stored for use in collision detection with a block. The character position of 
-; the ball is checked against the postion of blocks. If a block exists in the same character position as the ball
-; then a collision has taken place
+; Update Balls collision points
+; Four variables store collision points on the ball, these are middle top, middle right, middle bottom and middle left.
+; 
 ;
 ; Entry Registers:
 ;   NONE
@@ -1053,38 +1052,38 @@ _bncRght
 ;   NONE
 ;****************************************************************************************************************
 _updtBllChrPs                                       ; Update the balls character position used in block collision detection
-                ld      hl, objctBall
-                ld      a, (hl)                     ; Middle Top
-                add     a, 3
-                ld      d, a
-                inc     hl
-                inc     hl
-                ld      e, (hl)
-                call    getChrLctn
-                ld      (ballMT), bc
+                ld      hl, objctBall               ; Load HL with the address of the ball object data
+                ld      a, (hl)                     ; Load A with the X position of the ball
+                add     a, BLLPXLWIDTH / 2          ; Increment A by half the width of the ball sprite 
+                ld      d, a                        ; Store A in D 
+                inc     hl                          ; Point HL at the...
+                inc     hl                          ; ...Y position of the ball
+                ld      e, (hl)                     ; Load the Y position into E
+                call    getChrLctn                  ; Get the character location based on D = X and Y = E
+                ld      (ballMT), bc                ; The character location is returned in BC so we save that
 
-                dec     hl
-                dec     hl
-                ld      a, (hl)                     ; Middle Right
-                add     a, BLLPXLWIDTH
-                ld      d, a
-                inc     hl
-                inc     hl
-                ld      a, (hl)
-                add     a, 3
-                ld      e, a
-                call    getChrLctn
-                ld      (ballMR), bc
+                dec     hl                          ; Point HL at...
+                dec     hl                          ; X position of the ball object
+                ld      a, (hl)                     ; Load A with the balls X position...
+                add     a, BLLPXLWIDTH              ; ...and add the width of the ball to find the right hand edge
+                ld      d, a                        ; Save A to D
+                inc     hl                          ; Point HL at...
+                inc     hl                          ; ...balls Y position
+                ld      a, (hl)                     ; Load A with the Y position
+                add     a, BLLPXLHGHT / 2           ; Add half the height of the ball sprite to Y
+                ld      e, a                        ; Save A in E
+                call    getChrLctn                  ; Get the character location based on D = X and E = Y
+                ld      (ballMR), bc                ; The character locatiojn is returned in BC so we save that
 
                 dec     hl
                 dec     hl
                 ld      a, (hl)                     ; Middle Bottom
-                add     a, 3
+                add     a, BLLPXLWIDTH / 2
                 ld      d, a
                 inc     hl
                 inc     hl
                 ld      a, (hl)
-                add     a, BLLPXLHGHT               ; Move 1 pixel up into the ball
+                add     a, BLLPXLHGHT     
                 ld      e, a
                 call    getChrLctn
                 ld      (ballMB), bc
@@ -1095,7 +1094,7 @@ _updtBllChrPs                                       ; Update the balls character
                 inc     hl
                 inc     hl
                 ld      a, (hl)
-                add     a, 3
+                add     a, BLLPXLHGHT / 2
                 ld      e, a
                 call    getChrLctn
                 ld      (ballML), bc
