@@ -1519,7 +1519,7 @@ _odd
                 ld      de, SpriteBlockData
                 call    Draw_24x8_Sprite
 
-                call    fndIntvScrSprt              ; Find an available score sprite
+                call    fndInctvScrSprt             ; Find an available score sprite
                 cp      0                           ; Check if A is equal to 0 and...
                 ret     z                           ; ...return if it is
                 pop     bc                          ; Save BC which holds the pixel location of the block
@@ -1558,9 +1558,9 @@ _even
                 ld      de, SpriteBlockData
                 call    Draw_24x8_Sprite
 
-                call    fndIntvScrSprt              ; Find an available score sprite
-                cp      0                           ; ...equal to 0 and...
-                ret     z                           ; ...return if it is
+                call    fndInctvScrSprt             ; Find an available score sprite
+                cp      0                           ; Check if A is zero...
+                ret     z                           ; ...and return if it is
                 pop     bc                          ; Save BC which holds the pixel location of the block
                 inc     hl                          ; Point HL at the Y position of the score object
                 ld      a, c                        ; Load B into A...
