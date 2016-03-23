@@ -28,7 +28,7 @@ init
                 
 .directDraw     equ     1
     IF !.directDraw
-                ; Create the y-axis screen memory lookup table
+                ; Create a linear y-axis screen memory lookup table
                 ld      hl, scrnLnLkup              ; Point HL at the address of the y axis loopup table
                 ld      de, SCRNBFFR                ; Point DE at the address of the screen buffer
                 ld      b, 192                      ; We need an address for all 192 lines on screen
@@ -113,6 +113,13 @@ shftSprts
                 ld      c, 8
                 call    prShft
 
+                ; Score 115 Sprite
+                ld      hl, Score115_0
+                ld      de, Score115_0 + 3 * 8
+                ld      b, 3
+                ld      c, 8
+                call    prShft
+
                 ret
 
 ;****************************************************************************************************************
@@ -171,13 +178,18 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 jr      nz, _chckGmeStteWtng        ; If not then check if the state is WAITING
                 call    rdCntrlKys                  ; Read the keyboard
                 call    mvBll                       ; Move the ball
-                call    updtBtAnmtnFrm
                 call    drwBll                      ; Draw the ball
+
+                call    updtScrSprts
+                call    drwScr
+
+                call    updtBtAnmtnFrm
                 call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
+                call    drwScr
                 call    drwBt                       ; Erase the bat (XOR)
                 ld      a, (lvlBlckCnt)             ; Load A with the number of blocks that are still visible
                 cp      0                           ; Check the number of blocks against 0
@@ -202,11 +214,16 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 
                 call    updtBtAnmtnFrm
                 call    drwBll                      ; Draw the ball
+
+                call    updtScrSprts
+                call    drwScr
+
                 call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
+                call    drwScr
                 call    drwBt                       ; Erase the bat (XOR)
                 ld      bc, 32766                   ; Want to see if SPACE has been pressed
                 in      a, (c)                      ; Read the port
@@ -349,6 +366,74 @@ _svBtFrm
                 ret                                 ; Return
 
 ;****************************************************************************************************************
+; Update Score Sprites
+; Updates the score sprites that are displayed on screen when a block has been destroyed. A table is stored at
+; objectScore which is used to store the x, y, yspeed and timer for each score sprite that is visible. A score
+; is deemed to be visible if the timer is not visible.
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   A, B, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+updtScrSprts
+                ld      b, 5                        ; Upto to five scores can be alive at the same time
+                ld      hl, objctScore              ; Point HL at the score sprite table
+                ld      de, 3
+_nxtScr         ld      a, (hl)                     ; Load A with the timer value for the score
+                cp      0                           ; If it is 0 then the score is not being displayed
+                jp      nz, _updtScr
+                add     hl, de
+                djnz    _nxtScr
+                ret
+_updtScr
+                inc     a
+                cp      25                         ; Has the timer reached two seconds (1/50 * n)
+                jp      z, _rstScrTmr
+                ld      (hl), a
+                inc     hl
+                dec     (hl)
+                inc     hl
+                inc     hl
+                djnz    _nxtScr
+                ret
+_rstScrTmr
+                ld      a, 0
+                ld      (hl), a
+                add     hl, de
+                djnz    _nxtScr
+                ret
+
+;****************************************************************************************************************
+; Find Inactive Score Sprite
+; Returns the address of an inactive score sprite that can be used to display the score for the tile just hit
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   A, B, D, E, H, L
+; Returned Registers:
+;   HL = Address of available score sprite
+;****************************************************************************************************************
+fndIntvScrSprt
+                ld      b, 5                        ; Five scores available
+                ld      hl, objctScore              ; Point HL at score object table
+                ld      de, 3                       ; ...otherwise point HL at...
+_chkNxtScr      ld      a, (hl)                     ; Load A with the timer of the first score object
+                cp      0                           ; If it is 0 then...
+                jp      z, _fndScrSprt              ; ...its available so return the address in HL
+                add     hl, de                      ; ...the next score object
+                djnz    _chkNxtScr                  ; Loop if B > 0
+                ld      a, 0                        ; Nothing found so set HL = 0...
+                ret                                 ; ...and return
+_fndScrSprt
+                inc     a                           ; Found a free score so set its timer to 1...
+                ld      (hl), a                     ; ...and save it back into the table
+                ret                                 ; HL is already pointing at the current object so return
+
+;****************************************************************************************************************
 ; Draw Title screen
 ; Loads the title screen bitmap and attribute data into the screen file
 ;
@@ -436,6 +521,47 @@ _vrtclLp2
                 jr      nz, _vrtclLp2
 
                 ret
+
+;****************************************************************************************************************
+; Draw Scores
+; Loop through the score sprite table and draw any sprites that have a timer value > 0
+
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+drwScr 
+                ld      b, 5                        ; There are a maximum of five scores that can be drawn
+                ld      hl, objctScore              ; Point HL at the start of the score object table
+_chkScrActv
+                ld      a, (hl)                     ; Get the timer for the first score object
+                cp      0                           ; Check it against 0
+                jp      nz, _drwCrrntScr            ; If its not zero then its active so draw it
+                ld      de, 3                       ; Move HL to the...
+                add     hl, de                      ; ...next score object
+                djnz    _chkScrActv                 ; Loop if there are more scores to check
+                ret                                 ; Finished
+
+_drwCrrntScr
+                push    bc                          ; Save BC as its holding our score loop count in B
+                push    hl                          ; Save HL as this is our pointer into the object table
+                inc     hl                          ; Point HL at the Y position of the score
+                ld      a, (hl)                     ; Load A with the balls Y position
+                ld      c, a                        ; Load A into C
+                inc     hl                          ; Point HL at the X position of the score
+                ld      a, (hl)                     ; Load A with the balls X position
+                ld      b, a                        ; Load A into B
+                ld      de, Score115                ; Point DE to the ball sprite data
+                call    Draw_24x8_Sprite            ; Call the 16x4 pixel sprite routine
+                pop     hl                          ; Restore HL
+                pop     bc                          ; Restore BC
+                ld      de, 3                       ; Point HL at the...
+                add     hl, de                      ; ...next score object
+                djnz    _chkScrActv                 ; Loop if there are more scores to check
+                ret                                 ; Finished
 
 ;****************************************************************************************************************
 ; Draw Ball Sprite
@@ -854,6 +980,7 @@ Draw_24x8_Sprite
 ;
 ; Entry Registers:
 ;   DE = Pointer to the sprite data to be drawn
+;   BC = Pixel location, B = X, C = Y
 ; Used Registers:
 ;   A, B, C, D, E, H, L, IX
 ; Returned Registers:
@@ -1381,8 +1508,21 @@ _odd
                 add     a, a
                 add     a, a
                 ld      c, a
+                push    bc
                 ld      de, SpriteBlockData
                 call    Draw_24x8_Sprite
+
+                call    fndIntvScrSprt              ; Find an available score sprite
+                cp      0                           ; Check if A is equal to 0 and...
+                ret     z                           ; ...return if it is
+                pop     bc                          ; Save BC which holds the pixel location of the block
+                inc     hl                          ; Point HL at the Y position of the score object
+                ld      a, c                        ; Load B into A...
+                ld      (hl), a                     ; ...and then save into the object 
+                inc     hl                          ; Move HL to the X pos...
+                ld      a, b                        ; ...and save the X pos...
+                ld      (hl), a                     ; ...into the score object
+
                 ret
 
 _even           
@@ -1407,8 +1547,21 @@ _even
                 add     a, a
                 add     a, a
                 ld      c, a
+                push    bc
                 ld      de, SpriteBlockData
                 call    Draw_24x8_Sprite
+
+                call    fndIntvScrSprt              ; Find an available score sprite
+                cp      0                           ; ...equal to 0 and...
+                ret     z                           ; ...return if it is
+                pop     bc                          ; Save BC which holds the pixel location of the block
+                inc     hl                          ; Point HL at the Y position of the score object
+                ld      a, c                        ; Load B into A...
+                ld      (hl), a                     ; ...and then save into the object 
+                inc     hl                          ; Move HL to the X pos...
+                ld      a, b                        ; ...and save the X pos...
+                ld      (hl), a                     ; ...into the score object
+
                 ret
 
 ;****************************************************************************************************************
@@ -1702,8 +1855,12 @@ objctBat        db      112, 4, 175
 objctMvngBlck1          ; XPos, XSpeed, YPos, YSpeed
                 db      76, 2, 115, 0  
 
-objctMvngBlck2          ; XPod, XSpeed, YPos, YSpeed
-                db      16, -1, 16, 0   
+objctMvngBlck2          ; XPos, XSpeed, YPos, YSpeed
+                db      16, -1, 16, 0
+
+                        ; Timer, Ypos, Xpos
+objctScore      db      0, 0, 0
+                ds      4 * 4   
 
 ;****************************************************************************************************************
 ; Includes
