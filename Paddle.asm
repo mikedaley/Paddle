@@ -1644,52 +1644,48 @@ ldLvl
                 inc     hl
                 ld      d, (hl)
                 ld      (crrntLvlAddr), de          ; Store away 
-                ld      hl, (crrntLvlAddr)          ; and load HL with that address
+                push    de
+
+                ; Copy the level row data into the temp level data structure
+                ld      de, LEVEL_ROWS
+                add     hl, de
+                ld      de, lvlData
+                ld      bc, 15 * 7
+                ldir
+                pop     hl
 
                 ; Load the block colours from the level data
-                ld      de, ATTRSCRNADDR + (32 * 4)
+                ld      de, ATTRSCRNADDR + (32 * 4) ; The block rows start on the 4th row down the screen
                 ld      bc, ROW_CLR_BYTES
                 ldir
 
-                ld      hl, (crrntLvlAddr)
-                ld      de, LVL_CLR_ROW_2
-                add     hl, de
-                ld      de, ATTRSCRNADDR + (32 * 5)
+                inc     de
+                inc     de
                 ld      bc, ROW_CLR_BYTES
                 ldir
 
-                ld      hl, (crrntLvlAddr)
-                ld      de, LVL_CLR_ROW_3
-                add     hl, de
-                ld      de, ATTRSCRNADDR + (32 * 6)
+                inc     de
+                inc     de
                 ld      bc, ROW_CLR_BYTES
                 ldir
 
-                ld      hl, (crrntLvlAddr)
-                ld      de, LVL_CLR_ROW_4
-                add     hl, de
-                ld      de, ATTRSCRNADDR + (32 * 7)
+                inc     de
+                inc     de
                 ld      bc, ROW_CLR_BYTES
                 ldir
 
-                ld      hl, (crrntLvlAddr)
-                ld      de, LVL_CLR_ROW_5
-                add     hl, de
-                ld      de, ATTRSCRNADDR + (32 * 8)
+                inc     de
+                inc     de
                 ld      bc, ROW_CLR_BYTES
                 ldir
 
-                ld      hl, (crrntLvlAddr)
-                ld      de, LVL_CLR_ROW_6
-                add     hl, de
-                ld      de, ATTRSCRNADDR + (32 * 9)
+                inc     de
+                inc     de
                 ld      bc, ROW_CLR_BYTES
                 ldir
 
-                ld      hl, (crrntLvlAddr)
-                ld      de, LVL_CLR_ROW_7
-                add     hl, de
-                ld      de, ATTRSCRNADDR + (32 * 10)
+                inc     de
+                inc     de
                 ld      bc, ROW_CLR_BYTES
                 ldir
 
