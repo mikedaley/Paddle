@@ -184,6 +184,25 @@ _prShftX
                 ret                                 ; ...otherwise we are done
 
 ;****************************************************************************************************************
+; Debug Print
+;****************************************************************************************************************
+IF .debug
+dbgPrnt
+                ld      e, 176
+                ld      d, 8*3
+                call    Pixaddr
+                ld      a, (objctBat)
+                call    HexByte
+
+;                 ld      e, 8*11
+;                 ld      d, 176
+;                 call    Pixaddr
+;                 ld      bc, (objctBall+2)
+;                 call    HexWord
+
+                ret
+ENDIF
+;****************************************************************************************************************
 ; Main loop
 ;****************************************************************************************************************
 mnLp 
@@ -202,15 +221,19 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 call    updtBtAnmtnFrm
                 call    drwBt                       ; Draw the bat
 
+        IF .debug
+                call    dbgPrnt
+        ENDIF
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
                 call    drwScr
                 call    drwBt                       ; Erase the bat (XOR)
+
                 ld      a, (lvlBlckCnt)             ; Load A with the number of blocks that are still visible
                 cp      0                           ; Check the number of blocks against 0
                 jr      nz, mnLp                    ; If not yet 0 then loop
-                ld      a, GMESTTE_NXTLVL           ; No more blocks yet so set the game state to NEXT LEVEL
+                ld      a, GMESTTE_NXTLVL           ; No more blocks so set the game state to NEXT LEVEL
                 ld      (gmeStte), a                ; Save the game state and loop
                 jp      mnLp
 
@@ -236,15 +259,21 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
 
                 call    drwBt                       ; Draw the bat
 
+        IF .debug
+                call    dbgPrnt
+        ENDIF
+
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
                 call    drwScr
                 call    drwBt                       ; Erase the bat (XOR)
+                
                 ld      bc, 32766                   ; Want to see if SPACE has been pressed
                 in      a, (c)                      ; Read the port
                 rra                                 ; Rotate Right
                 jp      c, mnLp                     ; If SPACE is not pressed then keep looping
+                
                 ld      a, GMESTTE_PLYNG            ; Otherwise update the game state to GMESTTE_PLYNG
                 ld      (gmeStte), a                ; Save the game state
                 jp      mnLp                        ; Loop
@@ -1494,7 +1523,7 @@ rmvBlck
                 push    de
                 push    bc
                 ld      de, scrTxt                  ; Print the score on the screen
-                ld      bc, 12
+                ld      bc, scrTxtEnd - scrTxt
                 call    8252
                 pop     bc
                 pop     de
