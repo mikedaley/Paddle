@@ -345,6 +345,8 @@ _chckGmeSttePlyrDead
                 ld      bc, 6
                 call    8252
                 call    rstScr
+                ld      a, 0                        ; Reset the level...
+                ld      (lvlBlckCnt), a             ; ...block count
                 ld      a, 0
                 ld      (crrntLvl), a
                 call    ldLvl
