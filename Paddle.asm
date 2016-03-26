@@ -1508,32 +1508,32 @@ rmvBlck
                 jr      z, _even
 
 _odd             
-                ld      a, 5
-                push    de
-                call    setChrctrAttr
-                pop     de
-                ld      a, e
-                sub     1
-                ld      e, a
-                ld      a, 5
-                push    de
-                call    setChrctrAttr
-                pop     de
+                ld      a, 5                        ; Load A with 5 = Cyan on Black
+                push    de                          ; Save the coords in DE
+                call    setChrctrAttr               ; set the attribute at DE to a value of 5
+                pop     de                          ; Restore DE
+                ld      a, e                        ; Load A with E
+                sub     1                           ; Subtract 1 to get the preceeding attribute X value
+                ld      e, a                        ; Load E with the new X coord value
+                ld      a, 5                        ; Load A with 5 for Cyan on Black
+                push    de                          ; Save DE on the stack
+                call    setChrctrAttr               ; Set this attribute as well
+                pop     de                          ; Restore DE
 
-                ld      a, e
-                add     a, a
-                add     a, a
-                add     a, a
+                ld      a, e                        ; Load A with E (X coord)
+                add     a, a                        ; Multply A with 8...
+                add     a, a                        ; ...to convert from character to pixel coords
+                add     a, a                        ; ADD A, A uses less t-states than RL A
                 ld      b, a
 
-                ld      a, d
+                ld      a, d                        ; Multiply the Y coord by 8
                 add     a, a
                 add     a, a
                 add     a, a
                 ld      c, a
-                push    bc
-                ld      de, SpriteBlockData
-                call    Draw_24x8_Sprite
+                push    bc                          ; Save BC
+                ld      de, SpriteBlockData         ; Point to the block sprite data
+                call    Draw_24x8_Sprite            ; Draw the block (XOR) to remove block
 
                 call    fndInctvScrSprt             ; Find an available score sprite
                 cp      0                           ; Check if A is equal to 0 and...
