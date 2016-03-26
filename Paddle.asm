@@ -1646,7 +1646,8 @@ ldLvl
                 ld      (crrntLvlAddr), de          ; Store away 
                 push    de
 
-                ; Copy the level row data into the temp level data structure
+                ; Copy the level row data into the temp level data structure. This will be used to check how many
+                ; hits a block needs to be destroyed.
                 ld      de, LEVEL_ROWS
                 add     hl, de
                 ld      de, lvlData
@@ -1654,40 +1655,16 @@ ldLvl
                 ldir
                 pop     hl
 
-                ; Load the block colours from the level data
-                ld      de, ATTRSCRNADDR + (32 * 4) ; The block rows start on the 4th row down the screen
-                ld      bc, ROW_CLR_BYTES
-                ldir
-
-                inc     de
-                inc     de
-                ld      bc, ROW_CLR_BYTES
-                ldir
-
-                inc     de
-                inc     de
-                ld      bc, ROW_CLR_BYTES
-                ldir
-
-                inc     de
-                inc     de
-                ld      bc, ROW_CLR_BYTES
-                ldir
-
-                inc     de
-                inc     de
-                ld      bc, ROW_CLR_BYTES
-                ldir
-
-                inc     de
-                inc     de
-                ld      bc, ROW_CLR_BYTES
-                ldir
-
-                inc     de
-                inc     de
-                ld      bc, ROW_CLR_BYTES
-                ldir
+                ; Load the block colours from the level data into the attribute buffer starting at the 4th row
+                ld      a, 7                        ; Number of rows to load
+                ld      de, ATTRSCRNADDR + (32 * 4) ; Load into the 4th row of attributes
+_lvlRwLp
+                ld      bc, ROW_CLR_BYTES           ; Set how many bytes to copy
+                ldir                                ; Perform the copy
+                inc     de                          ; Move DE to the start of the next row in the...
+                inc     de                          ; ...attribute buffer
+                dec     a                           ; Reduce the row count...
+                jp      nz, _lvlRwLp                ; ...and loop if there are more rows to copy
 
                 ; Draw the blocks based on the levels block lookup table
 _nxtBlckRw      ld      a, 0
@@ -1700,8 +1677,8 @@ _nxtBlckRw      ld      a, 0
 _drwNxtBlck     ld      bc, (currntBlckY)
                 ld      a, (hl)
                 inc     hl
-                cp      1
-                jr      nz, _skpBlck
+                cp      0
+                jr      z, _skpBlck
 
                 ld      a, (lvlBlckCnt)
                 inc     a
