@@ -44,6 +44,22 @@ _yLkupLp        ld      (hl), e                     ; Save E...
                 djnz    _yLkupLp                    ; Loop until all lines are done
     ENDIF
 
+                ld      hl, 15616                   ; Copy the ROM standard font
+                ld      de, Font                    ; ...to the font table in game
+                ld      bc, 768                     
+                ldir
+                ld      hl, NumberFont              ; Copy the custom numbers...
+                ld      de, Font + (8 * 16)         ; ...over the standard font we copied
+                ld      bc, 80
+                ldir
+                ld      hl, CharFont                ; Copy the custom Characters...
+                ld      de, Font + (8 * 33)         ; ...over the standard font we copied
+                ld      bc, 208
+                ldir
+
+                ld      hl, Font - 256              ; Point HL to our new font data and...
+                ld      (23606), hl                 ; ...update the CHARS sysvar with the new location 
+
                 call    drwTtlScrn                  ; Draw the title screen
                 call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    watFrSpc                    ; Wait for the space key to be pressed
@@ -54,7 +70,7 @@ _yLkupLp        ld      (hl), e                     ; Save E...
                 ld      bc, 8                       ; Set the length of the string
                 call    8252                        ; ROM print the string
 
-                ld      a, 0                        ; Load A with 0 for the initial level
+                ld      a, 0                         ; Load A with 0 for the initial level
                 ld      (crrntLvl), a               ; Save the level 
                 call    ldLvl                       ; Load the current level
 
