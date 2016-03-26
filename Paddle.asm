@@ -51,10 +51,10 @@ init
                 call    drwBrdrs                    ; Draw the screen borders
 
                 ld      de, lvsTxt                  ; Load DE with the address of the Lives Text
-                ld      bc, 8                       ; Set the length of the string
+                ld      bc, lvsTxtEnd - lvsTxt      ; Set the length of the string
                 call    8252                        ; ROM print the string
 
-                ld      a, 0                         ; Load A with 0 for the initial level
+                ld      a, 0                        ; Load A with 0 for the initial level
                 ld      (crrntLvl), a               ; Save the level 
                 call    ldLvl                       ; Load the current level
 
@@ -71,11 +71,11 @@ clrScrn
                 call    8252                        ; ROM print
 
                 ld      de, scrTxt                  ; Point DE to the score text
-                ld      bc, 12                      ; Set the length of the string
+                ld      bc, scrTxtEnd - scrTxt      ; Set the length of the string
                 call    8252                        ; ROM print
 
                 ld      de, lvsLblTxt               ; Point DE to lives label text
-                ld      bc, 10                      ; Set the length of the string
+                ld      bc, lvsLblTxtEnd - lvsLblTxt; Set the length of the string
                 call    8252                        ; ROM print
 
                 ret
@@ -274,7 +274,7 @@ _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
                 ld      (lvsTxt + 5), a             ; Update the lives text with the new lives character at position 5 in the string
 
                 ld      de, lvsTxt                  ; Load DE with the levels text
-                ld      bc, 6                       ; Set attribute to yellow ink on black background
+                ld      bc, lvsTxtEnd - lvsTxt      ; Set attribute to yellow ink on black background
                 call    8252                        ; ROM Print
                 pop     af                          ; Restore AF
                 cp      0                           ; Check if the players lives have reached 0 
@@ -345,7 +345,7 @@ _chckGmeSttePlyrDead
                 cp      GMESTTE_DEAD
                 jp      nz, mnLp
                 ld      de, gmeOvrTxt
-                ld      bc, 17
+                ld      bc, gmeOvrTxtEnd - gmeOvrTxt
                 call    8252
                 call    watFrSpc
                 call    clrScrn
@@ -355,7 +355,7 @@ _chckGmeSttePlyrDead
                 ld      a, 53                       ; The number five in the character set
                 ld      (lvsTxt + 5), a
                 ld      de, lvsTxt
-                ld      bc, 6
+                ld      bc, lvsTxtEnd - lvsTxt
                 call    8252
                 call    rstScr
                 ld      a, 0                        ; Reset the level...
@@ -1775,7 +1775,7 @@ _mkZero         ld      (de), a
                 inc     de
                 djnz    _mkZero
                 ld      de, scrTxt                  ; Print the score on the screen
-                ld      bc, 12
+                ld      bc, scrTxtEnd - scrTxt
                 call    8252
                 ret
 
@@ -1847,10 +1847,19 @@ prShftSize      dw      0                           ; Holds the size of a sprite
 ;****************************************************************************************************************
                         ; Colour, Yellow, Position, X, Y, Text
 scrLblTxt       db      16, 6, 22, 0, 1, 'SCORE'
+scrLblTxtEnd
+
 scrTxt          db      16, 6, 22, 0, 8, '0000000'
+scrTxtEnd
+
 lvsLblTxt       db      16, 6, 22, 0, 24, 'LIVES'
+lvsLblTxtEnd
+
 lvsTxt          db      16, 6, 22, 0, 30, '5'
-gmeOvrTxt       db      16, 7, 17, 2, 22, 15, 11, 'GAME  OVER'
+lvsTxtEnd
+
+gmeOvrTxt       db      16, 7, 17, 2, 22, 15, 11, ' GAME OVER '
+gmeOvrTxtEnd
 
 ;****************************************************************************************************************
 ; Object data
@@ -1859,7 +1868,7 @@ gmeOvrTxt       db      16, 7, 17, 2, 22, 15, 11, 'GAME  OVER'
 objctBall       db      0, 1, 0, -2, 0, 0
     
                         ; Xpos, XSpeed, Ypos
-objctBat        db      112, 4, 175         
+objctBat        db      112, 4, 150         
                 db      0 ; Delay counter used to time how long each frame should be visible
                 db      0 ; Animation Frame
 
@@ -1871,8 +1880,9 @@ objctMvngBlck2          ; XPos, XSpeed, YPos, YSpeed
 
                         ; Timer, Ypos, Xpos
 objctScore      db      0, 0, 0
-                ds      4 * 4   
+                ds      4 * 3                       ; Make space for four score details making 5 in total   
 
+crrntScrCnt     db      0
 ;****************************************************************************************************************
 ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
 ;****************************************************************************************************************
@@ -1882,8 +1892,11 @@ lvlData
 ;****************************************************************************************************************
 ; Includes
 ;****************************************************************************************************************
-include     Levels.asm
-include     Title.asm
-include     Constants.asm
+                include     Levels.asm
+                include     Title.asm
+        IF .debug
+                include     Debug.asm
+        ENDIF
+                include     Constants.asm
 
                 END init
