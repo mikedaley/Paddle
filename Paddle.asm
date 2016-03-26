@@ -16,6 +16,8 @@
 
                 org     32768                       ; Put all the code in unconetended memory
 
+.debug          equ     1
+
 ;****************************************************************************************************************
 ; Init
 ;****************************************************************************************************************           
@@ -26,24 +28,6 @@ init
                 ld      a, 5                        ; Set the ink colour
                 ld      (23693), a  
                 
-.directDraw     equ     1
-    IF !.directDraw
-                ; Create a linear y-axis screen memory lookup table
-                ld      hl, scrnLnLkup              ; Point HL at the address of the y axis loopup table
-                ld      de, SCRNBFFR                ; Point DE at the address of the screen buffer
-                ld      b, 192                      ; We need an address for all 192 lines on screen
-_yLkupLp        ld      (hl), e                     ; Save E...
-                inc     hl                          ; ...and...
-                ld      (hl), d                     ; ...D into the screen lookup table
-                inc     hl                          ; Move to the next buffer location
-                push    hl                          ; Save HL
-                ld      hl, 32                      ; HL is loaded with 32, number of bytes per screen line
-                add     hl, de                      ; Add that to DE to get the next lookup address
-                ex      de, hl                      ; Switch DE and HL
-                pop     hl                          ; Restore HL
-                djnz    _yLkupLp                    ; Loop until all lines are done
-    ENDIF
-
                 ld      hl, 15616                   ; Copy the ROM standard font
                 ld      de, Font                    ; ...to the font table in game
                 ld      bc, 768                     
