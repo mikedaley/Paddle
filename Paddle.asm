@@ -324,7 +324,7 @@ _lvlDsplyWtng   halt                                ; Wait for the scan line to 
                 ld      e, l
                 inc     de
                 call    8252
-                ld      a, GMESTTE_WTNG             ; Set the  
+                ld      a, GMESTTE_WTNG             ; Set the game state to WAITING
                 ld      (gmeStte), a
                 jp      mnLp
 
