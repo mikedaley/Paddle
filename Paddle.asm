@@ -106,8 +106,8 @@ init
 
                 call    drwTtlScrn                  ; Draw the title screen
                 call    shftSprts                   ; Create shifted versions of the sprites being used
-                call    watFrSpc                    ; Wait for the space key to be pressed
-                call    clrScrn                     ; Once pressed clear the screen
+                call    watFrSpc                    ; Wait for the space key to be pressed...
+                call    clrScrn                     ; ...and once pressed clear the screen
                 call    drwBrdrs                    ; Draw the screen borders
 
                 ld      de, lvsTxt                  ; Load DE with the address of the Lives Text
@@ -266,7 +266,7 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 call    drwBt                       ; Draw the bat
 
         IF .debug
-                call    dbgPrnt
+                call    dbgPrnt                     ; Print debug output during development
         ENDIF
                 halt                                ; Wait for the scan line to reach the top of the screen
 
@@ -304,7 +304,7 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 call    drwBt                       ; Draw the bat
 
         IF .debug
-                call    dbgPrnt
+                call    dbgPrnt                     ; Print debug output during development
         ENDIF
 
                 halt                                ; Wait for the scan line to reach the top of the screen
@@ -1938,9 +1938,9 @@ objctMvngBlck1          ; XPos, XSpeed, YPos, YSpeed
 objctMvngBlck2          ; XPos, XSpeed, YPos, YSpeed
                 db      16, -1, 16, 0
 
-                        ; Timer, Ypos, Xpos
-objctScore      db      0, 0, 0
-                ds      4 * 3                       ; Make space for four score details making 5 in total   
+                        
+objctScore              ; Timer, Ypos, Xpos
+                ds      5 * 3                       ; Make space for five score details
 
 crrntScrCnt     db      0
 ;****************************************************************************************************************
@@ -1953,10 +1953,9 @@ lvlData
 ; Includes
 ;****************************************************************************************************************
                 include     Levels.asm
-                include     Title.asm
         IF .debug
-                include     Debug.asm
+                include     Debug.asm               ; Only need the debug routines during development
         ENDIF
-                include     Constants.asm
+                include     Graphics.asm
 
                 END init
