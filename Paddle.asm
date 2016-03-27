@@ -1666,6 +1666,31 @@ _even
 ; Set the attribute at the given X, Y
 ; D = X, E = Y, A = value to set
 ;****************************************************************************************************************
+chkBlckState
+                ld      h, 0                        ; Get the Y pos from the corner
+                ld      l, d
+
+                add     hl, hl                      ; Multiply the Y position by 32
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+
+                ld      b, 0                        ; Get the X position
+                ld      c, e
+                add     hl, bc                      ; Add it to the Y position 
+
+                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
+                add     hl, de
+
+                ld      (hl), a                     ; Load the attribute at HL
+                ret
+
+
+;****************************************************************************************************************
+; Set the attribute at the given X, Y
+; D = X, E = Y, A = value to set
+;****************************************************************************************************************
 setChrctrAttr 
                 ld      h, 0                        ; Get the Y pos from the corner
                 ld      l, d
