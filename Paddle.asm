@@ -14,13 +14,73 @@
 ;   to draw to the screen directly
 ;****************************************************************************************************************
 
-                org     32768                       ; Put all the code in unconetended memory
+;*******************************************************************************************
+; Value Constants
+;*******************************************************************************************
+SCRNBFFR            equ            57856
+BTMPSCRNSDDR        equ            16384                            ; Location in memory of the bitmap screen data
+BTMPSCRSZ           equ            6144                             ; Size of the bitmap screen data
+ATTRSCRNADDR        equ            22528                            ; Location in memory of the screen attribute data
+ATTRSCRNSZ          equ            768                              ; Size of the screen attribute data
+SCRNSZ              equ            6911                             ; Full size of both bitmap and attribute screen data
+BTMXRGHT            equ            224                              ; Furthest pixel to the right the paddle can be drawn
+BTMXLFT             equ            8                                ; Furthes pixel to the left the bat can be drawn
+SCRNLFT             equ            8
+SCRNRGHT            equ            248
+SCRNTP              equ            10
+SCRNBTTM            equ            180
+SCRNEDGSZ           equ            4
 
-.debug          equ     1
+NUM_BLOCKS          equ            3
+
+; Offsets into the BALL structure
+BLLXPS              equ            0
+BLLXSPD             equ            1
+BLLYPS              equ            2
+BLLYSPD             equ            3
+
+; BALL constants
+BLLPXLHGHT          equ            5
+BLLPXLWIDTH         equ            5
+
+; Offsets into the BAT structure
+BTXPS               equ            0
+BTSPD               equ            1
+BTYPS               equ            2
+
+; BAT constants
+BTPXLHGHT           equ            8
+BTPXLWDTH           equ            24
+
+; Block constants
+BLCKWDTH            equ            16
+
+; Game States
+GMESTTE_PLYNG       equ            1
+GMESTTE_WTNG        equ            2
+GMESTTE_DEAD        equ            4
+GMESTTE_DSPLYLVL    equ            8
+GMESTTE_NXTLVL      equ            16
+GMESTTE_LSTLFE      equ            32
+
+;****************************************************************************************************************
+; Start Code
+;****************************************************************************************************************           
+
+
+                org     24064                       ; Set origin just above the system variables in contended memory
+
+                include Contended.asm               ; Load data and code that can sit in contended memory
+
+                org     32768                       ; Set the origin to uncontended memory for fast routines 
 
 ;****************************************************************************************************************
 ; Init
 ;****************************************************************************************************************           
+
+.debug          equ     1
+
+
 init 
                 ld      a, 0                        ; Set the border colour
                 out     (254), a                    
