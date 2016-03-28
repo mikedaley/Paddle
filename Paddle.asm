@@ -12,6 +12,9 @@
 ; * Implement reading IO Port 0x40FF for the colour attribute currently being read by the ULA. This can cause
 ;   compatibility issues, but I want to see what can be done by using that rather than HALT to get more time
 ;   to draw to the screen directly
+; * Make table data sit in 256 boundaries so you only need to increment the LSB and not the whole word for
+;   address access
+;
 ;****************************************************************************************************************
 
 ;*******************************************************************************************
@@ -67,12 +70,11 @@ GMESTTE_LSTLFE      equ            32
 ; Start Code
 ;****************************************************************************************************************           
 
-
-                org     24064                       ; Set origin just above the system variables in contended memory
+                org     0x5E00                      ; Set origin just above the system variables in contended memory
 
                 include Contended.asm               ; Load data and code that can sit in contended memory
 
-                org     32768                       ; Set the origin to uncontended memory for fast routines 
+                org     0x8000                      ; Set the origin to uncontended memory for fast routines 
 
 ;****************************************************************************************************************
 ; Init
@@ -83,26 +85,26 @@ GMESTTE_LSTLFE      equ            32
 
 init 
                 ld      a, 0                        ; Set the border colour
-                out     (254), a                    
+                out     (0xFE), a                    
                         
                 ld      a, 5                        ; Set the ink colour
-                ld      (23693), a  
+                ld      (0x5C8D), a  
                 
-                ld      hl, 15616                   ; Copy the ROM standard font
+                ld      hl, 0x3D00                  ; Copy the ROM standard font
                 ld      de, Font                    ; ...to the font table in game
-                ld      bc, 768                     
+                ld      bc, 0x300                     
                 ldir
                 ld      hl, NumberFont              ; Copy the custom numbers...
                 ld      de, Font + (8 * 16)         ; ...over the standard font we copied
-                ld      bc, 80
+                ld      bc, 0x50
                 ldir
                 ld      hl, CharFont                ; Copy the custom Characters...
                 ld      de, Font + (8 * 33)         ; ...over the standard font we copied
-                ld      bc, 208
+                ld      bc, 0xD0
                 ldir
 
-                ld      hl, Font - 256              ; Point HL to our new font data and...
-                ld      (23606), hl                 ; ...update the CHARS sysvar with the new location 
+                ld      hl, Font - 0x100            ; Point HL to our new font data and...
+                ld      (0x5C36), hl                ; ...update the CHARS sysvar with the new location 
 
                 call    drwTtlScrn                  ; Draw the title screen
                 call    shftSprts                   ; Create shifted versions of the sprites being used
@@ -112,7 +114,7 @@ init
 
                 ld      de, lvsTxt                  ; Load DE with the address of the Lives Text
                 ld      bc, lvsTxtEnd - lvsTxt      ; Set the length of the string
-                call    8252                        ; ROM print the string
+                call    0x203C                      ; ROM print the string
 
                 ld      a, 0                        ; Load A with 0 for the initial level
                 ld      (crrntLvl), a               ; Save the level 
@@ -124,7 +126,7 @@ init
                 jp      mnLp                        ; Jump tp the main loop
 
 clrScrn     
-                call    3503                        ; ROM clear screen
+                call    0x0DAF                      ; ROM clear screen
 
                 ld      de, scrLblTxt               ; Point DE to the score label text
                 ld      bc, 10                      ; Set the length of the string
@@ -1968,6 +1970,7 @@ objctScore              ; Timer, Ypos, Xpos
                 ds      5 * 3                       ; Make space for five score details
 
 crrntScrCnt     db      0
+
 ;****************************************************************************************************************
 ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
 ;****************************************************************************************************************
