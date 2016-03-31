@@ -421,7 +421,7 @@ updtBtAnmtnFrm
                 ld      (objctBat + 3), a           ; ...and save it
                 ld      a, (objctBat + 4)           ; Load A with the current frame count
                 inc     a                           ; Increment the counter
-                cp      3                           ; Compare it against the max value allowed...
+                cp      4                           ; Compare it against the max value allowed...
                 jp      nz, _svBtFrm                ; ...and save the new frame count if the max has not been reached
                 ld      a, 0
 _svBtFrm
@@ -576,7 +576,7 @@ _hrzntlLp
                 push    hl
                 push    bc
                 ld      de, HorizBlockData
-                call    Draw_8x8_Sprite
+                call    drwSprt
                 pop     bc
                 pop     hl
                 ld      a, b
@@ -595,7 +595,7 @@ _vrtclLp1
                 push    hl
                 push    bc
                 ld      de, VertLBlockData
-                call    Draw_8x8_Sprite
+                call    drwSprt
                 pop     bc
                 pop     hl
                 ld      a,c
@@ -614,7 +614,7 @@ _vrtclLp2
                 push    hl
                 push    bc
                 ld      de, VertRBlockData
-                call    Draw_8x8_Sprite
+                call    drwSprt
                 pop     bc
                 pop     hl
                 ld      a,c
@@ -694,7 +694,7 @@ drwBll
                 ld      b, a                        ; Put A into B
                 ld      a, (objctBall + BLLYPS)     ; Load A with the balls Y position
                 ld      c, a                        ; Load C with A so B = X, C = Y
-                call    Draw_16x5_Sprite            ; Call the 16x4 pixel sprite routine
+                call    drwSprt                     ; Draw sprite
                 ret
 
 ;****************************************************************************************************************
@@ -709,23 +709,20 @@ drwBll
 ;   NONE
 ;****************************************************************************************************************
 drwBt 
-                ld      de, SpriteBatData           ; Point DE to the ball sprite data
-                ld      a, (objctBat + 4)           ; Load the current animation frame for the ball
-                cp      0                           ; If its zero...
-                jp      z, _drwBt                   ; ...then just go a draw the bat...
-                ld      b, a                        ; Load B with the frame number
-                ld      hl, 8                       ; Start off by setting HL to 8
-_frmBtLp                          
-                add     hl, hl
-                djnz    _frmBtLp
-                add     hl, de
-                push    hl
-                pop     de
-_drwBt          ld      a, (objctBat + BTXPS)       ; Load A with the bats X position
+                ld      a, (objctBat + 4)           ; Load the current frame number
+                ld      e, a                        ; Load the frame into E...
+                ld      d, 0                        ; ...and clear D
+                ld      hl, SpriteBatFrameTable     ; Load HL with the address of the frame table
+                add     hl, de                      ; Add the frame number to the frame table...
+                add     hl, de                      ; ...twice as the table is made up of word entries
+                ld      e, (hl)                     ; Load E with the LSB of the frame address
+                inc     hl                          ; Move to the MSB of the address
+                ld      d, (hl)                     ; Load D with the MSB of the frame address
+                ld      a, (objctBat + BTXPS)       ; Load A with the bats X position
                 ld      b, a                        ; Put A into B
                 ld      a, (objctBat + BTYPS)       ; Load A with the bats Y position
                 ld      c, a                        ; Load A with A so B = X, C = Y
-                call    Draw_32x8_Sprite            ; Call the 32x8 pixel sprite routine
+                call    drwSprt                     ; Draw sprite
                 ret
 
 ;****************************************************************************************************************
@@ -745,7 +742,7 @@ drwMvngBlck
                 ld      b, a
                 ld      a, (ix + BLLYPS)
                 ld      c, a
-                call    Draw_24x8_Sprite
+                call    drwSprt
                 ret
 
 ;************************************************************************************************************************
@@ -1302,7 +1299,7 @@ _odd
                 ld      c, a
                 push    bc                          ; Save BC
                 ld      de, SpriteBlockData         ; Point to the block sprite data
-                call    Draw_24x8_Sprite            ; Draw the block (XOR) to remove block
+                call    drwSprt                     ; Draw the block (XOR) to remove block
 
                 call    fndInctvScrSprt             ; Find an available score sprite
                 cp      0                           ; Check if A is equal to 0 and...
@@ -1341,7 +1338,7 @@ _even
                 ld      c, a
                 push    bc
                 ld      de, SpriteBlockData
-                call    Draw_24x8_Sprite
+                call    drwSprt
 
                 call    fndInctvScrSprt             ; Find an available score sprite
                 cp      0                           ; Check if A is zero...
@@ -1496,7 +1493,7 @@ _drwNxtBlck     ld      bc, (currntBlckY)
 
                 push    hl
                 ld      de, SpriteBlockData
-                call    Draw_24x8_Sprite
+                call    drwSprt
                 pop     hl
 
 _skpBlck        ld      a, (currntBlckX)
