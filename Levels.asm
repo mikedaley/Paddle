@@ -18,7 +18,7 @@ LVL_CLR_ROW_7       equ     ROW_CLR_BYTES * 6
 LEVEL_ROWS          equ     210
 
 LEVEL_BAT_SPEEDS    equ     LEVEL_ROWS + 105
-lvlTtl              equ     LEVEL_ROWS + 105 + 4
+LEVEL_TITLE         equ     LEVEL_ROWS + 105 + 4
 
 BLOCKS_PER_ROW      equ     11
 
