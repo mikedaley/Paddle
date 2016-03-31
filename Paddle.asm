@@ -14,6 +14,10 @@
 ;   to draw to the screen directly
 ; * Make table data sit in 256 boundaries so you only need to increment the LSB and not the whole word for
 ;   address access
+; * Power ups/downs:
+;       - Beer Bottle which makes paddle controls work backwards
+;       - Clock which slows down time
+;       - Multi ball powerups
 ;
 ;****************************************************************************************************************
 
@@ -176,58 +180,13 @@ shftSprts
                 call    prShft
 
                 ; Score 115 Sprite
-                ld      hl, Score115_0
-                ld      de, Score115_0 + 3 * 8
-                ld      b, 3
-                ld      c, 8
-                call    prShft
+;                 ld      hl, Score115_0
+;                 ld      de, Score115_0 + 3 * 8
+;                 ld      b, 3
+;                 ld      c, 8
+;                 call    prShft
 
                 ret
-
-;****************************************************************************************************************
-; Preshift sprite data
-; Uses source sprite data to create 7 pre-shifted versions
-;
-; Entry Registers:
-;   HL = Sprite source Addr
-;   DE = First shift sprite Addr
-;   B = Pixels wide
-;   C = Pixel high
-; Registers Used:
-;   A, B, C, D, E, H, L
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-prShft
-                ld      a, b
-                ld      (prShftWdth), a             ; Save width
-                ld      a, c
-                ld      (prShftHght), a             ; Save height
-                ld      c, 7                        ; Load B with the number of shifts to perform
-
-_prNxtShft
-                ld      a, (prShftHght)             ; Load the height of the sprite to be shifted
-                ld      b, a                        ; Save that in B
-_prShftY                
-                push    bc                          ; Save B onto the stack
-                ld      a, (prShftWdth)             ; Load A with the width of the sprite
-                ld      b, a                        ; Load A into B
-                xor     a                           ; Clear A and flags ready to shift the sprite bytes right
-_prShftX
-                ld      a, (hl)                     ; Load the first sprite byte into A
-                rra                                 ; Rotate right with the carry bit
-                ld      (de), a                     ; Save the rotated byte into the shift sprite location
-                inc     hl                          ; Move to the next source byte
-                inc     de                          ; Move to the next destination byte
-                djnz    _prShftX                    ; If there are still width bytes to shift then go shift them
-
-                pop     bc                          ; Restore B which holds the pixel height of the sprite
-                djnz    _prShftY                    ; If there is another pixel row to process then go do it
-
-                dec     c                           ; Decrement the number of sprites to generate
-                jr      nz, _prNxtShft              ; If we are not yet at zero then process another sprite shift...
-
-                ret                                 ; ...otherwise we are done
 
 ;****************************************************************************************************************
 ; Debug Print
@@ -236,18 +195,19 @@ IF .debug
 dbgPrnt
                 ld      e, 176
                 ld      d, 8*3
-                call    Pixaddr
+                call    getPixelAddr
                 ld      a, (objctBat)
                 call    HexByte
 
 ;                 ld      e, 8*11
 ;                 ld      d, 176
-;                 call    Pixaddr
+;                 call    getPixelAddr
 ;                 ld      bc, (objctBall+2)
 ;                 call    HexWord
 
                 ret
 ENDIF
+
 ;****************************************************************************************************************
 ; Main loop
 ;****************************************************************************************************************
@@ -273,7 +233,8 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
-                call    drwScr
+                call    rstrScrBckgrnd
+
                 call    drwBt                       ; Erase the bat (XOR)
 
                 ld      a, (lvlBlckCnt)             ; Load A with the number of blocks that are still visible
@@ -302,6 +263,15 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
 
                 call    updtScrSprts
                 call    drwScr
+
+;                 ld      de, tempData
+;                 ld      b, 4*8
+;                 ld      c, 7*8
+;                 call    sve16x8
+;                 ld      de, tempData
+;                 ld      b, 8
+;                 ld      c, 24
+;                 call    rstr16x8
 
                 call    drwBt                       ; Draw the bat
 
@@ -477,29 +447,67 @@ updtScrSprts
 _nxtScr         ld      a, (hl)                     ; Load A with the timer value for the score
                 cp      0                           ; Is the timer 0?
                 jp      nz, _updtScr                ; If not then update it as its active...
-                inc     hl                          ; ...otherwise point HL at the next score object
-                inc     hl
-                inc     hl
+                ld      de, 19                      ; Move to the...
+                add     hl, de                      ; ...score object
                 djnz    _nxtScr                     ; Loop if there are score objects left
                 ret
 _updtScr
                 inc     a                           ; Increment the timer
                 cp      25                          ; Has the timer reached 0.5 seconds (1/50 * 25)
                 jp      z, _rstScrTmr               ; If the timer has reached its max then reset it... 
+                push    bc
                 ld      (hl), a                     ; ...otherwise save the new timer value
                 inc     hl                          ; Point HL at the Ypos of the score... 
                 dec     (hl)                        ; ...and decrement it so the score moves up the screen
-                inc     hl                          ; Move HL to the next score object
+                
+                ld      c, (hl)
+                inc     hl                          
+                ld      b, (hl)
                 inc     hl
+                push    hl
+                ex      de, hl
+                call    sve16x8
+                pop     hl
+                pop     bc
+
+                ld      de, 16                      ; Already moved 1 byte into the structure so add 18
+                add     hl, de                      ; to get to the next score object
                 djnz    _nxtScr                     ; Loop if there are score objects letf
                 ret
 _rstScrTmr
                 ld      a, 0                        ; Load A with 0 so that it can...
                 ld      (hl), a                     ; ...be saved in the score object marked it inactive
-                inc     hl                          ; Point HL at the next score object
-                inc     hl
-                inc     hl
+                ld      de, 19                      ; Move to the next...
+                add     hl, de                      ; ...object score
                 djnz    _nxtScr                     ; Loop if there are score objects left
+                ret
+
+rstrScrBckgrnd
+                ld      b, 5                        ; Upto to five scores can be alive at the same time
+                ld      hl, objctScore              ; Point HL at the score sprite table
+_nxtBckgrnd     ld      a, (hl)                     ; Load A with the timer value for the score
+                cp      0                           ; Is the timer 0?
+                jp      nz, _updtBckgrnd                ; If not then update it as its active...
+                ld      de, 19                      ; Move to the...
+                add     hl, de                      ; ...score object
+                djnz    _nxtBckgrnd                     ; Loop if there are score objects left
+                ret
+_updtBckgrnd
+                push    bc
+                inc     hl                          ; Point HL at the Ypos of the score... 
+                ld      c, (hl)
+                inc     hl                          
+                ld      b, (hl)
+                inc     hl
+                push    hl
+                ex      de, hl
+                call    rstr16x8
+                pop     hl
+                pop     bc
+
+                ld      de, 16            
+                add     hl, de                      ; to get to the next score object
+                djnz    _nxtBckgrnd                     ; Loop if there are score objects letf
                 ret
 
 ;****************************************************************************************************************
@@ -520,9 +528,8 @@ fndInctvScrSprt
 _chkNxtScr      ld      a, (hl)                     ; Load A with the timer of the first score object
                 cp      0                           ; If it is 0 then...
                 jp      z, _fndScrSprt              ; ...its available so return the address in HL
-                inc     hl                          ; Move HL to the next score object
-                inc     hl                          ; Using INC HL as it is saving 3 t-states over using ADD HL, DE
-                inc     hl
+                ld      de, 19
+                add     hl, de
                 djnz    _chkNxtScr                  ; Loop if B > 0
                 ld      a, 0                        ; Nothing found so set A = 0...
                 ret
@@ -635,12 +642,11 @@ drwScr
                 ld      b, 5                        ; There are a maximum of five scores that can be drawn
                 ld      hl, objctScore              ; Point HL at the start of the score object table
 _chkScrActv
-                ld      a, (hl)                     ; Get the timer for the first score object
+                ld      a, (hl)                     ; Get the timer for the score object
                 cp      0                           ; Check it against 0
                 jp      nz, _drwCrrntScr            ; If its not zero then its active so draw it
-                inc     hl
-                inc     hl
-                inc     hl
+                ld      de, 19
+                add     hl, de
                 djnz    _chkScrActv                 ; Loop if there are more scores to check
                 ret                                 ; Finished
 
@@ -653,13 +659,21 @@ _drwCrrntScr
                 inc     hl                          ; Point HL at the X position of the score
                 ld      a, (hl)                     ; Load A with the balls X position
                 ld      b, a                        ; Load A into B
-                ld      de, Score115                ; Point DE to the ball sprite data
-                call    Draw_24x8_Sprite            ; Call the 16x4 pixel sprite routine
+
+                inc     hl                          ; Point HL at the background temp store
+                push    hl
+                push    hl
+                pop     de
+                call    sve16x8
+                pop     hl
+
+                ld      de, Score115                ; Point DE to the score sprite data
+                call    drwMskd24x8Sprt             ; Draw the score sprite
+
                 pop     hl                          ; Restore HL
                 pop     bc                          ; Restore BC
-                inc     hl
-                inc     hl
-                inc     hl
+                ld      de, 19
+                add     hl, de
                 djnz    _chkScrActv                 ; Loop if there are more scores to check
                 ret                                 ; Finished
 
@@ -825,328 +839,6 @@ _blckHtEdg
                 neg
                 ld      (ix + BLLXSPD), a
                 ret
-
-;****************************************************************************************************************
-; Draw 8x8 pixel sprite
-; Draws a sprite that is 8x8 pixels
-;
-; Entry Registers:
-;   DE = Pointer to the sprite data to be drawn
-; Used Registers:
-;   A, B, C, D, E, H, L, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-Draw_8x8_Sprite      
-                ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
-                and     7   
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset for the screen memory address
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     31
-                ld      b, a                        ; Store the X Byte Offset
-                push    bc
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                          
-
-;****************************************************************************************************************
-; Draw 16x4 pixel sprite
-; Draws a sprite that is 16x4 pixels
-;
-; Entry Registers:
-;   DE = Pointer to the sprite data to be drawn
-; Used Registers:
-;   A, B, C, D, E, H, L, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-Draw_16x5_Sprite
-                ld      a, b                        ; Load A with the X pixel position
-                and     7                           ; Get the Bit rotate count (lower 3 bits of X position)
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory as
-                ; we are using pre-shifted sprites
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset of the screen memory address based on the X pixel position
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     %00011111                   ; 31
-                ld      b, a                        ; Store the X pixel byte offset into the screen buffer
-                push    bc                          ; Save B as we will be using it to merge the X offset into the 
-                                                    ; buffer address
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 5                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                                 ; All done!  
-
-;****************************************************************************************************************
-; Draw 16x8 pixel sprite
-; Draws a sprite that is 16x8 pixels
-;
-; Entry Registers:
-;   DE = Pointer to the sprite data to be drawn
-; Used Registers:
-;   A, B, C, D, E, H, L, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-Draw_16x8_Sprite
-                ld      a, b                        ; Load A with the X pixel position
-                and     7                           ; Get the Bit rotate count (lower 3 bits of X position)
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory as
-                ; we are using pre-shifted sprites
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset of the screen memory address based on the X pixel position
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     %00011111                   ; 31
-                ld      b, a                        ; Store the X pixel byte offset into the screen buffer
-                push    bc                          ; Save B as we will be using it to merge the X offset into the 
-                                                    ; buffer address
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                                 ; All done!  
-
-;****************************************************************************************************************
-; Draw 24x8 pixel sprite
-; Draws a sprite that is 24x8 pixels
-;
-; Entry Registers:
-;   DE = Pointer to the sprite data to be drawn
-; Used Registers:
-;   A, B, C, D, E, H, L, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-Draw_24x8_Sprite      
-                ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
-                and     7   
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset for the screen memory address
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     31
-                ld      b, a                        ; Store the X Byte Offset
-                push    bc
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM               
-                ret                                 ; All done! 
-
-;****************************************************************************************************************
-; Draw 32x8 pixel sprite
-; Draws a sprite that is 32x8 pixels
-;
-; Entry Registers:
-;   DE = Pointer to the sprite data to be drawn
-;   BC = Pixel location, B = X, C = Y
-; Used Registers:
-;   A, B, C, D, E, H, L, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-Draw_32x8_Sprite      
-                ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
-                and     7   
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset for the screen memory address
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     31
-                ld      b, a                        ; Store the X Byte Offset
-                push    bc
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                                 ; All done!  
 
 ;****************************************************************************************************************
 ; Get Character Location 
@@ -1929,6 +1621,8 @@ prShftWdth      db      0                           ; Holds the width of the spr
 prShftHght      db      0                           ; Holds the height of the sprite to be shifted
 prShftSize      dw      0                           ; Holds the size of a sprite to shift in bytes
 
+crrntScrCnt     db      0                           ; How many scores are visible on screen
+
 ;****************************************************************************************************************
 ; Text
 ;****************************************************************************************************************
@@ -1966,10 +1660,9 @@ objctMvngBlck2          ; XPos, XSpeed, YPos, YSpeed
                 db      16, -1, 16, 0
 
                         
-objctScore              ; Timer, Ypos, Xpos
-                ds      5 * 3                       ; Make space for five score details
+objctScore              ; Timer 1 byte, Ypos 1 byte, Xpos 1 byte, Screen Background 16 bytes
+                ds      5 * 19                       ; Make space for five score banners
 
-crrntScrCnt     db      0
 
 ;****************************************************************************************************************
 ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
@@ -1980,6 +1673,7 @@ lvlData
 ;****************************************************************************************************************
 ; Includes
 ;****************************************************************************************************************
+                include     Library.asm
                 include     Levels.asm
         IF .debug
                 include     Debug.asm               ; Only need the debug routines during development
