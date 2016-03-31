@@ -67,8 +67,9 @@ SpriteBatDataFrame0:
                     dw SpriteBatData0, SpriteBatData0 + 32 * 1, SpriteBatData0 + 32 * 2, SpriteBatData0 + 32 * 3
                     dw SpriteBatData0 + 32 * 4, SpriteBatData0 + 32 * 5, SpriteBatData0 + 32 * 6, SpriteBatData0 + 32 * 7
 
-SpriteBatData0:     db %00000101, %01010101, %01010000, %00000000
-                    db %01111000, %00000000, %00011110, %00000000
+SpriteBatData0:     
+                    db %00000000, %00000000, %00000000, %00000000
+                    db %01010101, %01011010, %10101010, %00000000
                     db %11110000, %00111100, %00001111, %00000000
                     db %10111111, %11100111, %11111101, %00000000
                     db %11011111, %11100111, %11111011, %00000000
@@ -85,8 +86,9 @@ SpriteBatDataFrame1:
                     dw SpriteBatData1, SpriteBatData1 + 32 * 1, SpriteBatData1 + 32 * 2, SpriteBatData1 + 32 * 3
                     dw SpriteBatData1 + 32 * 4, SpriteBatData1 + 32 * 5, SpriteBatData1 + 32 * 6, SpriteBatData1 + 32 * 7
 
-SpriteBatData1:     db %00000101, %01010101, %01010000, %00000000
-                    db %01111000, %00000000, %00011110, %00000000
+SpriteBatData1:     
+                    db %00000000, %00000000, %00000000, %00000000
+                    db %01010101, %01011010, %10101010, %00000000
                     db %11110000, %11000011, %00001111, %00000000
                     db %10111111, %10011001, %11111101, %00000000
                     db %11011111, %10011001, %11111011, %00000000
@@ -102,8 +104,9 @@ SpriteBatDataFrame2:
                     dw SpriteBatData2, SpriteBatData2 + 32 * 1, SpriteBatData2 + 32 * 2, SpriteBatData2 + 32 * 3
                     dw SpriteBatData2 + 32 * 4, SpriteBatData2 + 32 * 5, SpriteBatData2 + 32 * 6, SpriteBatData2 + 32 * 7
 
-SpriteBatData2:     db %00000101, %01010101, %01010000, %00000000
-                    db %01111000, %00000000, %00011110, %00000000
+SpriteBatData2:     
+                    db %00000000, %00000000, %00000000, %00000000
+                    db %01010101, %01011010, %10101010, %00000000
                     db %11110011, %00000000, %11001111, %00000000
                     db %10111110, %01111110, %01111101, %00000000
                     db %11011110, %01111110, %01111011, %00000000
