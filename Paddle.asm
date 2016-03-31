@@ -22,53 +22,55 @@
 ;****************************************************************************************************************
 
 ;*******************************************************************************************
-; Value Constants
+;Constants
 ;*******************************************************************************************
-SCRNBFFR            equ            57856
-BTMPSCRNSDDR        equ            16384                            ; Location in memory of the bitmap screen data
-BTMPSCRSZ           equ            6144                             ; Size of the bitmap screen data
-ATTRSCRNADDR        equ            22528                            ; Location in memory of the screen attribute data
-ATTRSCRNSZ          equ            768                              ; Size of the screen attribute data
-SCRNSZ              equ            6911                             ; Full size of both bitmap and attribute screen data
-BTMXRGHT            equ            224                              ; Furthest pixel to the right the paddle can be drawn
-BTMXLFT             equ            8                                ; Furthes pixel to the left the bat can be drawn
-SCRNLFT             equ            8
-SCRNRGHT            equ            248
-SCRNTP              equ            10
-SCRNBTTM            equ            180
-SCRNEDGSZ           equ            4
-
-NUM_BLOCKS          equ            3
-
-; Offsets into the BALL structure
-BLLXPS              equ            0
-BLLXSPD             equ            1
-BLLYPS              equ            2
-BLLYSPD             equ            3
-
-; BALL constants
-BLLPXLHGHT          equ            5
-BLLPXLWIDTH         equ            5
-
-; Offsets into the BAT structure
-BTXPS               equ            0
-BTSPD               equ            1
-BTYPS               equ            2
-
-; BAT constants
-BTPXLHGHT           equ            8
-BTPXLWDTH           equ            24
-
-; Block constants
-BLCKWDTH            equ            16
-
-; Game States
-GMESTTE_PLYNG       equ            1
-GMESTTE_WTNG        equ            2
-GMESTTE_DEAD        equ            4
-GMESTTE_DSPLYLVL    equ            8
-GMESTTE_NXTLVL      equ            16
-GMESTTE_LSTLFE      equ            32
+SCRNBFFR                equ                 57856
+BTMPSCRNSDDR            equ                 16384   ; Location in memory of the bitmap screen data
+BTMPSCRSZ               equ                 6144    ; Size of the bitmap screen data
+ATTRSCRNADDR            equ                 22528   ; Location in memory of the screen attribute data
+ATTRSCRNSZ              equ                 768     ; Size of the screen attribute data
+SCRNSZ                  equ                 6911    ; Full size of both bitmap and attribute screen data
+BTMXRGHT                equ                 224     ; Furthest pixel to the right the paddle can be drawn
+BTMXLFT                 equ                 8       ; Furthes pixel to the left the bat can be drawn
+SCRNLFT                 equ                 8
+SCRNRGHT                equ                 248
+SCRNTP                  equ                 10
+SCRNBTTM                equ                 180
+SCRNEDGSZ               equ                 4
+            
+NUM_BLOCKS              equ                 3
+            
+; Offsets into the B    ALL structure       
+BLLXPS                  equ                 0
+BLLXSPD                 equ                 1
+BLLYPS                  equ                 2
+BLLYSPD                 equ                 3
+            
+; BALL constants            
+BLLPXLHGHT              equ                 5
+BLLPXLWIDTH             equ                 5
+            
+; Offsets into the B    AT structure        
+BTXPS                   equ                 0
+BTSPD                   equ                 1
+BTYPS                   equ                 2
+BTANMTONDLY             equ                 3
+BTANMTONFRM             equ                 4
+            
+; BAT constants         
+BTPXLHGHT               equ                 8
+BTPXLWDTH               equ                 24
+            
+; Block constants           
+BLCKWDTH                equ                 16
+            
+; Game States           
+GMESTTE_PLYNG           equ                 1
+GMESTTE_WTNG            equ                 2
+GMESTTE_DEAD            equ                 4
+GMESTTE_DSPLYLVL        equ                 8
+GMESTTE_NXTLVL          equ                 16
+GMESTTE_LSTLFE          equ                 32
 
 ;****************************************************************************************************************
 ; Start Code
@@ -196,14 +198,14 @@ dbgPrnt
                 ld      e, 176
                 ld      d, 8*3
                 call    getPixelAddr
-                ld      a, (objctBat)
+                ld      a, (objctBat)               ; Bat X Position
                 call    HexByte
 
-;                 ld      e, 8*11
-;                 ld      d, 176
-;                 call    getPixelAddr
-;                 ld      bc, (objctBall+2)
-;                 call    HexWord
+                ld      e, 176
+                ld      d, 8*6
+                call    getPixelAddr
+                ld      a, (objctBat + 4)           ; Bat animation frame
+                call    HexByte
 
                 ret
 ENDIF
@@ -214,6 +216,8 @@ ENDIF
 mnLp 
                 ld      a, (gmeStte)                ; Check the game state
 
+;****************************************************************************************************************
+; PLAYING
 _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 cp      GMESTTE_PLYNG               ; Is the game state PLAYING
                 jr      nz, _chckGmeStteWtng        ; If not then check if the state is WAITING
@@ -244,6 +248,8 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 ld      (gmeStte), a                ; Save the game state and loop
                 jp      mnLp
 
+;****************************************************************************************************************
+; WAITING
 _chckGmeStteWtng                                    ; *** Game state WAITING
                 cp      GMESTTE_WTNG                ; Is the game state WAITING    
                 jp      nz, _chckGmeStteLstLfe      ; If not then check if the state is PLAYER DEAD
@@ -258,22 +264,13 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 add     a, b                        ; Calc the new X pos for the ball so its in the middle of the bat
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
                 
-                call    updtBtAnmtnFrm
-                call    drwBll                      ; Draw the ball
+                call    updtBtAnmtnFrm              ; Update the animation frame of the bat
+                call    drwBll                      ; Draw the ball first as it could be the closest sprite to the top of the screen
 
-                call    updtScrSprts
-                call    drwScr
+                call    updtScrSprts                ; Update the position of any active score sprites
+                call    drwScr                      ; Draw score sprites
 
-;                 ld      de, tempData
-;                 ld      b, 4*8
-;                 ld      c, 7*8
-;                 call    sve16x8
-;                 ld      de, tempData
-;                 ld      b, 8
-;                 ld      c, 24
-;                 call    rstr16x8
-
-                call    drwBt                       ; Draw the bat
+                call    drwBt                       ; Draw the bat last as its at the bottom of the screen
 
         IF .debug
                 call    dbgPrnt                     ; Print debug output during development
@@ -282,7 +279,6 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
-                call    drwScr
                 call    drwBt                       ; Erase the bat (XOR)
                 
                 ld      bc, 32766                   ; Want to see if SPACE has been pressed
@@ -294,6 +290,8 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 ld      (gmeStte), a                ; Save the game state
                 jp      mnLp                        ; Loop
 
+;****************************************************************************************************************
+; LOST LIFE
 _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
                 cp      GMESTTE_LSTLFE              ; Is the game state LOST LIFE
                 jr      nz, _gmeStteNxtLvl          ; If not then check if the state is NEXT LEVEL
@@ -338,11 +336,13 @@ _incLvl         ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISP
                 call    ldLvl                       ; Load the new level
                 jp      mnLp                        ; Loop
 
+;****************************************************************************************************************
+; DISPLAY LEVEL
 _chckGmeStteDsplyLvl                                ; *** Game state DISPLAY LEVEL
                 cp      GMESTTE_DSPLYLVL            ; Is the game state DISPLAY LEVEL
                 jp      nz, _chckGmeSttePlyrDead    ; If not then check if the game state is PLAYER DEAD
                 ld      hl, (crrntLvlAddr)          ; Load HL with the current level address
-                ld      de, lvlTtl                  ; Load DE with the offset in the level data to the level title
+                ld      de, LEVEL_TITLE             ; Load DE with the offset in the level data to the level title
                 add     hl, de                      ; Move HL to the level title
                 ld      b, 0                        ; Set b to 0                            
                 ld      c, (hl)                     ; Load C with the length of the string to print
@@ -357,8 +357,8 @@ _lvlDsplyWtng   halt                                ; Wait for the scan line to 
                 or      e                           ; ...the timer has run down
                 jr      nz, _lvlDsplyWtng           ; If not then loop again
                 ld      hl, (crrntLvlAddr)          ; Load HL with the address of the current level data
-                ld      de, lvlTtl                  ; Load DE with the levels title position 
-                add     hl, de                      ; and add it to DE
+                ld      de, LEVEL_TITLE             ; Load DE with the levels title position...
+                add     hl, de                      ; ...and add it to DE
                 ld      b, 0                        ; Set the
                 ld      c, (hl)
                 add     hl, bc
@@ -373,6 +373,8 @@ _lvlDsplyWtng   halt                                ; Wait for the scan line to 
                 ld      (gmeStte), a
                 jp      mnLp
 
+;****************************************************************************************************************
+; PLAYER DEAD
 _chckGmeSttePlyrDead
                 cp      GMESTTE_DEAD
                 jp      nz, mnLp
@@ -412,20 +414,20 @@ _chckGmeSttePlyrDead
 ;   NONE
 ;****************************************************************************************************************
 updtBtAnmtnFrm
-                ld      a, (objctBat + 3)           ; Point DE at the animation delay counter
+                ld      a, (objctBat + BTANMTONDLY) ; Point DE at the animation delay counter
                 inc     a                           ; Increment the frame count
-                ld      (objctBat + 3), a           ; Save the new delay amount    
+                ld      (objctBat + BTANMTONDLY), a ; Save the new delay amount    
                 cp      6                           ; Check the delay (1/50 * n)
                 ret     nz                          ; and return if we've not reached the delay value
                 ld      a, 0                        ; Delay has been reached so reset the delay...
-                ld      (objctBat + 3), a           ; ...and save it
-                ld      a, (objctBat + 4)           ; Load A with the current frame count
+                ld      (objctBat + BTANMTONDLY), a ; ...and save it
+                ld      a, (objctBat + BTANMTONFRM) ; Load A with the current frame count
                 inc     a                           ; Increment the counter
                 cp      4                           ; Compare it against the max value allowed...
                 jp      nz, _svBtFrm                ; ...and save the new frame count if the max has not been reached
-                ld      a, 0
+                ld      a, 0                        ; Reset the animation frame to 0
 _svBtFrm
-                ld      (objctBat + 4), a           ; Save the new frame number
+                ld      (objctBat + BTANMTONFRM), a ; Save the new frame number
                 ret                                 ; Return
 
 ;****************************************************************************************************************
