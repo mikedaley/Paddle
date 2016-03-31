@@ -2,6 +2,8 @@
 ; Block sprite
 ;*******************************************************************************************
 SpriteBlockData:
+                    db 3                          ; Width in bytes
+                    db 8                          ; Height in pixels
                     dw SpriteBlock0, SpriteBlock0 + 24 * 1, SpriteBlock0 + 24 * 2, SpriteBlock0 + 24 * 3
                     dw SpriteBlock0 + 24 * 4, SpriteBlock0 + 24 * 5, SpriteBlock0 + 24 * 6, SpriteBlock0 + 24 * 7
 
@@ -20,6 +22,8 @@ SpriteBlock0:       db %11111111, %11111110, %00000000
 ; Ball Sprite
 ;*******************************************************************************************
 SpriteBallData:
+                    db 2                          ; Width in bytes
+                    db 8                          ; Height in pixels
                     dw SpriteBall0, SpriteBall0 + 16 * 1, SpriteBall0 + 16 * 2, SpriteBall0 + 16 * 3
                     dw SpriteBall0 + 16 * 4, SpriteBall0 + 16 * 5, SpriteBall0 + 16 * 7, SpriteBall0 + 16 * 7
 
@@ -37,6 +41,8 @@ SpriteBall0:        db %00111100, %00000000
 ; Small Ball Data
 ;*******************************************************************************************
 SmallBallData
+                    db 2                          ; Width in bytes
+                    db 5                          ; Height in pixels
                     dw SmallBallData0, SmallBallData0 + 10 * 1, SmallBallData0 + 10 * 2, SmallBallData0 + 10 * 3
                     dw SmallBallData0 + 10 * 4, SmallBallData0 + 10 * 5, SmallBallData0 + 10 * 6, SmallBallData0 + 10 * 7
 
@@ -51,24 +57,17 @@ SmallBallData0
 
 ;*******************************************************************************************
 ; Bat Sprite
-;*******************************************************************************************
-SpriteBatData:  
-                    ; Lookup table that is used to point to the correct sprite graphic based on the X offset
-                    ; Shifted versions of the sprite are created automatically when the game starts using the
-                    ; prShft routine. This sprite data does each memory with all the frames of the bat sprite
-                    ; and its shifted versions taking up 672 bytes.
+;*******************************************************************************************    
+SpriteBatFrameTable:
+                    dw SpriteBatDataFrame0, SpriteBatDataFrame1, SpriteBatDataFrame2, SpriteBatDataFrame1
+
+SpriteBatDataFrame0:  
+                    db 4                          ; Width in bytes
+                    db 8                          ; Height in pixels
                     dw SpriteBatData0, SpriteBatData0 + 32 * 1, SpriteBatData0 + 32 * 2, SpriteBatData0 + 32 * 3
                     dw SpriteBatData0 + 32 * 4, SpriteBatData0 + 32 * 5, SpriteBatData0 + 32 * 6, SpriteBatData0 + 32 * 7
 
-                    ; The bat is animated so there is a lookup table for each frame of animation
-                    dw SpriteBatData1, SpriteBatData1 + 32 * 1, SpriteBatData1 + 32 * 2, SpriteBatData1 + 32 * 3
-                    dw SpriteBatData1 + 32 * 4, SpriteBatData1 + 32 * 5, SpriteBatData1 + 32 * 6, SpriteBatData1 + 32 * 7
-
-                    dw SpriteBatData2, SpriteBatData2 + 32 * 1, SpriteBatData2 + 32 * 2, SpriteBatData2 + 32 * 3
-                    dw SpriteBatData2 + 32 * 4, SpriteBatData2 + 32 * 5, SpriteBatData2 + 32 * 6, SpriteBatData2 + 32 * 7
-    
-                    ; Frame one of the bat animation
-SpriteBatData0:     db %00010101, %01010101, %01010000, %00000000
+SpriteBatData0:     db %00000101, %01010101, %01010000, %00000000
                     db %01111000, %00000000, %00011110, %00000000
                     db %11110000, %00111100, %00001111, %00000000
                     db %10111111, %11100111, %11111101, %00000000
@@ -79,7 +78,14 @@ SpriteBatData0:     db %00010101, %01010101, %01010000, %00000000
 
                     ds 32 * 71     ; Create enough space for the shifted versions of this sprite frame
     
-SpriteBatData1:     db %00010101, %01010101, %01010000, %00000000
+SpriteBatDataFrame1:  
+                    ; The bat is animated so there is a lookup table for each frame of animation
+                    db 4                          ; Width in bytes
+                    db 8                          ; Height in pixels
+                    dw SpriteBatData1, SpriteBatData1 + 32 * 1, SpriteBatData1 + 32 * 2, SpriteBatData1 + 32 * 3
+                    dw SpriteBatData1 + 32 * 4, SpriteBatData1 + 32 * 5, SpriteBatData1 + 32 * 6, SpriteBatData1 + 32 * 7
+
+SpriteBatData1:     db %00000101, %01010101, %01010000, %00000000
                     db %01111000, %00000000, %00011110, %00000000
                     db %11110000, %11000011, %00001111, %00000000
                     db %10111111, %10011001, %11111101, %00000000
@@ -90,7 +96,13 @@ SpriteBatData1:     db %00010101, %01010101, %01010000, %00000000
 
                     ds 32 * 71
 
-SpriteBatData2:     db %00010101, %01010101, %01010000, %00000000
+SpriteBatDataFrame2:  
+                    db 4                          ; Width in bytes
+                    db 8                          ; Height in pixels
+                    dw SpriteBatData2, SpriteBatData2 + 32 * 1, SpriteBatData2 + 32 * 2, SpriteBatData2 + 32 * 3
+                    dw SpriteBatData2 + 32 * 4, SpriteBatData2 + 32 * 5, SpriteBatData2 + 32 * 6, SpriteBatData2 + 32 * 7
+
+SpriteBatData2:     db %00000101, %01010101, %01010000, %00000000
                     db %01111000, %00000000, %00011110, %00000000
                     db %11110011, %00000000, %11001111, %00000000
                     db %10111110, %01111110, %01111101, %00000000
@@ -109,8 +121,8 @@ Score115
                     dw Score115_0 + 48 * 4, Score115_0 + 48 * 5, Score115_0 + 48 * 6, Score115_0 + 48 * 7
 
 Score115_0
-                    db %00111011, %11111110
-                    db %00111011, %11111110
+                    db %00111011, %11111110       ; Mask 
+                    db %00111011, %11111110       ; Sprite
 
                     db %01111111, %11111110
                     db %01101110, %11000010
@@ -140,6 +152,8 @@ Score115_0
 ; Horizontal block graphic
 ;*******************************************************************************************
 HorizBlockData
+                    db 1                          ; Width in bytes
+                    db 8                          ; Height in pixels
                     dw HorizBlockData0, HorizBlockData0, HorizBlockData0, HorizBlockData0
                     dw HorizBlockData0, HorizBlockData0, HorizBlockData0, HorizBlockData0
 
@@ -157,6 +171,8 @@ HorizBlockData0
 ; Vertical block graphic right edge
 ;*******************************************************************************************
 VertRBlockData
+                    db 1                          ; Width in bytes
+                    db 8                          ; Height in pixels
                     dw VertRBlockData0, VertRBlockData0, VertRBlockData0, VertRBlockData0
                     dw VertRBlockData0, VertRBlockData0, VertRBlockData0, VertRBlockData0
 
@@ -174,6 +190,8 @@ VertRBlockData0
 ; Vertical block graphic left edge
 ;*******************************************************************************************
 VertLBlockData
+                    db 1                          ; Width in bytes
+                    db 8                          ; Height in pixels
                     dw VertLBlockData0, VertLBlockData0, VertLBlockData0, VertLBlockData0
                     dw VertLBlockData0, VertLBlockData0, VertLBlockData0, VertLBlockData0
 
