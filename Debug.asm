@@ -59,34 +59,3 @@ BinLoop:
             rrca                                        ; Rotate A right ready to process the LSB
             djnz    BinLoop                             ; Loop while B > 0
             ret
-
-;****************************************************************************************************************
-; Return the screen address in HL for the pixel location provided in DE
-;****************************************************************************************************************
-Pixaddr:
-            ld      a,e
-            srl     a
-            srl     a
-            srl     a
-            and     24
-            or      64
-
-            ld      h,a
-            ld      a,e
-            and     7
-            or      h
-            ld      h,a
-
-            ld      a,e
-            add     a,a
-            add     a,a
-            and     224
-            ld      l,a
-
-            ld      a,d
-            srl     a
-            srl     a
-            srl     a
-            or      l
-            ld      l,a                 ; HL now contains the screen address
-            ret
