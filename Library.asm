@@ -114,8 +114,7 @@ _prShftX
                 ret                                 ; ...otherwise we are done
 
 ;****************************************************************************************************************
-; Draw 8x8 pixel sprite
-; Draws a sprite that is 8x8 pixels
+; Draws a sprite on screen
 ;
 ; Entry Registers:
 ;   DE = Pointer to the sprite data to be drawn
@@ -125,7 +124,14 @@ _prShftX
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
-Draw_8x8_Sprite      
+drwSprt
+                ld      a, (de)                     ; Grab the sprite width...
+                ld      (_sprtWdth + 1), a          ; ...and save it for use later in the routine
+                inc     de                          ; Move DE to the sprite height
+                ld      a, (de)                     ; Grab the sprite height...
+                ld      (_sprtHght + 1), a          ; ...and save it for use later in the routine
+                inc     de                          ; Move DE to the sprite lookup table
+
                 ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
                 and     7   
         
@@ -144,300 +150,38 @@ Draw_8x8_Sprite
                 rra
                 rra
                 and     31
-                ld      b, a                        ; Store the X Byte Offset
-                push    bc
+                ld      (_xOffst + 1), a            ; Save the x Offset for use later in the routine
 
                 ; Load IX with the first address of the y-axis lookup table
                 ld      b, 0                        ; Clear B
                 ld      ix, scrnLnLkup              ; Load IY with the lookup table address
                 add     ix, bc                      ; Increment IX by the Y pixel position
                 add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
 
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
+_sprtHght       ld      b, 0                        ; The value is overwritten by values at the start of this routine
+
+_drwRw
                 ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
+_xOffst         or      0                           ; Merge in our X Offset set earlier in the routine
                 ld      l, a                        ; Load the merged low byte in L
                 ld      h, (ix + 1)                 ; Get the high byte from the lookup table
                 inc     ix  
                 inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
+
+                push    bc                          ; Save B as we will load it into the sprite width
+_sprtWdth       ld      b, 0                        ; Load B with the width (bytes) of the sprite set earlier in the routine
+
+_drwClmn    
+                ld      a, (de)                     ; Load A with a byte of sprite data
                 inc     de                          ; Move to the next byte of sprite data
                 xor     (hl)                        ; Merge the screen contents with the sprite data
                 ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                          
+                inc     l                           ; Move to the next screen location
+                djnz    _drwClmn                    ; Draw another column if needed
+                pop     bc                          ; Restore the number of rows left to draw
+                djnz    _drwRw                      ; Draw another row if needed
 
-;****************************************************************************************************************
-; Draw 16x4 pixel sprite
-; Draws a sprite that is 16x4 pixels
-;
-; Entry Registers:
-;   DE = Pointer to the sprite data to be drawn
-;   BC = Pixel location B = X, C = Y
-; Used Registers:
-;   A, B, C, D, E, H, L, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-Draw_16x5_Sprite
-                ld      a, b                        ; Load A with the X pixel position
-                and     7                           ; Get the Bit rotate count (lower 3 bits of X position)
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory as
-                ; we are using pre-shifted sprites
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset of the screen memory address based on the X pixel position
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     %00011111                   ; 31
-                ld      b, a                        ; Store the X pixel byte offset into the screen buffer
-                push    bc                          ; Save B as we will be using it to merge the X offset into the 
-                                                    ; buffer address
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 5                                          ; Repeat this code 5 times for the 5 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                                 ; All done!  
-
-;****************************************************************************************************************
-; Draw 16x8 pixel sprite
-; Draws a sprite that is 16x8 pixels
-;
-; Entry Registers:
-;   DE = Pointer to the sprite data to be drawn
-;   BC = Pixel location B = X, C = Y
-; Used Registers:
-;   A, B, C, D, E, H, L, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-Draw_16x8_Sprite
-                ld      a, b                        ; Load A with the X pixel position
-                and     7                           ; Get the Bit rotate count (lower 3 bits of X position)
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory as
-                ; we are using pre-shifted sprites
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset of the screen memory address based on the X pixel position
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     %00011111                   ; 31
-                ld      b, a                        ; Store the X pixel byte offset into the screen buffer
-                push    bc                          ; Save B as we will be using it to merge the X offset into the 
-                                                    ; buffer address
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                                 ; All done!  
-
-;****************************************************************************************************************
-; Draw 24x8 pixel sprite
-; Draws a sprite that is 24x8 pixels
-;
-; Entry Registers:
-;   DE = Pointer to the sprite data to be drawn
-;   BC = Pixel location B = X, C = Y
-; Used Registers:
-;   A, B, C, D, E, H, L, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-Draw_24x8_Sprite      
-                ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
-                and     7   
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-
-                ; Work out the X offset for the screen memory address
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     31
-                ld      b, a                        ; Store the X Byte Offset
-                push    bc
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM               
-                ret                                 ; All done! 
-
-;****************************************************************************************************************
-; Draw 32x8 pixel sprite
-; Draws a sprite that is 32x8 pixels
-;
-; Entry Registers:
-;   DE = Pointer to the sprite data to be drawn
-;   BC = Pixel location B = X, C = Y
-; Used Registers:
-;   A, B, C, D, E, H, L, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-Draw_32x8_Sprite      
-                ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
-                and     7   
-        
-                ; Load DE with the address of the sprite we need to use based on the x location offset in memory
-                ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the lookup table entries are words
-                add     hl, de                      ; Add base address of sprite table which is held in DE
-                ld      e, (hl)                     ; Load E with the contents of (HL)
-                inc     hl                          ; Move HL to the next byte of address in the table
-                ld      d, (hl)                     ; Load D with the high byte
-        
-                ; Work out the X offset for the screen memory address
-                ld      a, b                        ; Work out the X Offset using the shift value
-                rra
-                rra
-                rra
-                and     31
-                ld      b, a                        ; Store the X Byte Offset
-                push    bc
-
-                ; Load IX with the first address of the y-axis lookup table
-                ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
-                add     ix, bc                      ; twice as the table contains word values
-                pop     bc                          ; Restore B which holds the X byte offset
-
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-                ld      a, (ix + 0)                 ; Get the current line
-                or      b                           ; Merge in our X Offset
-                ld      l, a                        ; Load the merged low byte in L
-                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-                inc     ix  
-                inc     ix                          ; Move to the next line which is a word away
-    
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
-
-                ld      a, (de)                     ; Grab the second byte of sprite data into A             
-                inc     de                          ; Move to the next row of sprite data
-                xor     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-    ENDM                
-                ret                                 ; All done! 
+                ret                                 ; All done
 
 ;****************************************************************************************************************
 ; Draw 24x8 pixel sprite using interleaved mask data. The first row of sprite data is the mask, the next row is
