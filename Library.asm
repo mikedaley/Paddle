@@ -257,7 +257,6 @@ drwMskd24x8Sprt
     ENDM               
                 ret                                 ; All done! 
 
-
 ;****************************************************************************************************************
 ; Save the 16x8 screen data at the pixel location in BC and save the data to the location in DE
 ;
@@ -270,7 +269,7 @@ drwMskd24x8Sprt
 ;   NONE
 ;****************************************************************************************************************
 sve16x8
-                push    de
+                push    de                          
                 ld      d, b
                 ld      e, c
                 call    getPixelAddr
@@ -290,6 +289,17 @@ sve16x8
     ENDM               
                 ret                                 ; All done! 
 
+;****************************************************************************************************************
+; Draw 16x8 screen data at the pixel location in BC and from the address DE
+;
+; Entry Registers:
+;   BC = Pixel location B = X, C = Y
+;   DE = Pointer to where the data should be read from
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
 rstr16x8
                 push    de
                 ld      d, b
