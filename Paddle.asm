@@ -1038,7 +1038,7 @@ _mvY
                 cp      0                           ; Is the ball moving down the screen?
                 jp      m, _chkTp                   ; If not then check the balls position with the top of the screen
                 call    chkBtCllsn                  ; Otherwise ball is moving down the screen so check if its hit the bat
-                call    _updtBllChrPs               ; Finally update the balls character x, y position 
+                call    updtBllChrPs                ; Finally update the balls character x, y position 
                 ret
 
 _chkTp
@@ -1046,7 +1046,7 @@ _chkTp
                 ld      a, (hl)                     ; Put the Y pos into A
                 cp      SCRNTP                      ; Has the ball reached the top of the screen?
                 jr      c, _bncDwn                  ; Yes, then bounce down the screen
-                call    _updtBllChrPs               ; Finally update the balls character x, y position 
+                call    updtBllChrPs                ; Finally update the balls character x, y position 
                 ret 
 
 _bncDwn
@@ -1056,13 +1056,13 @@ _bncDwn
                 ld      a, (hl)                     ; Load the Y Speed into A...
                 neg                                 ; ...so it can be reversed...
                 ld      (hl), a                     ; ...and saved back into the data table
-                call    _updtBllChrPs
+                call    updtBllChrPs
                 ret
 
 _htBttm
                 ld      a, GMESTTE_LSTLFE
                 ld      (gmeStte), a
-                jp      _updtBllChrPs
+                jp      updtBllChrPs
                 ret
 
 _bncLft
@@ -1268,7 +1268,10 @@ chckBlckCllsn
                 ld      a, (objctBall + BLLYSPD)    ; Load A with the ball.ySpeed
                 neg                                 ; Reverse the ball.ySpeed...
                 ld      (objctBall + BLLYSPD), a    ; ...and save it back with the ball data
-                call    rmvBlck                     ; Remove the block that has just been hit
+                call    rmvBlck
+                ld      hl, 1234
+                call    incScr
+                call    prntScr
 
 _mddlBttm
                 ld      de, (ballMB)
@@ -1281,6 +1284,9 @@ _mddlBttm
                 neg
                 ld      (objctBall + BLLYSPD), a   
                 call    rmvBlck
+                ld      hl, 1234
+                call    incScr
+                call    prntScr
 
 _mddlRght 
                 ld      de, (ballMR)
@@ -1293,6 +1299,9 @@ _mddlRght
                 neg
                 ld      (objctBall + BLLXSPD), a
                 call    rmvBlck
+                ld      hl, 1234
+                call    incScr
+                call    prntScr
 
 _mddlLft 
                 ld      de, (ballML)
@@ -1548,7 +1557,7 @@ _lvlRwLp
                 jp      nz, _lvlRwLp                ; ...and loop if there are more rows to copy
 
                 ; Draw the blocks based on the levels block lookup table
-_nxtBlckRw      ld      a, 0
+_nxtBlckRw      xor     a                           ; Clear A
                 ld      (currntBlckCl), a
                 ld      (currntBlckRw), a
                 ld      (currntBlckX), a
@@ -1579,12 +1588,12 @@ _skpBlck        ld      a, (currntBlckX)
                 cp      15
                 jr      nz, _drwNxtBlck
 
-                ld      a, 0
+                xor     a
                 ld      (currntBlckX), a
                 ld      a, (currntBlckY)
                 add     a, 8
                 ld      (currntBlckY), a
-                ld      a, 0
+                xor     a
                 ld      (currntBlckCl), a
 
                 ld      a, (currntBlckRw)
@@ -1596,37 +1605,17 @@ _skpBlck        ld      a, (currntBlckX)
                 ret
 
 ;****************************************************************************************************************
-; Update the score
-;****************************************************************************************************************
-updtScr         ld      a, (hl)                     ; current value of digit.
-                add     a, b                        ; add points to this digit.
-                ld      (hl), a                     ; place new digit back in string.
-                cp      58                          ; more than ASCII value '9'?
-                ret     c                           ; no - relax.
-                sub     10                          ; subtract 10.
-                ld      (hl), a                     ; put new character back in string.
-_updtScr0        dec     hl                         ; previous character in string.
-                inc     (hl)                        ; up this by one.
-                ld      a, (hl)                     ; what's the new value?
-                cp      58                          ; gone past ASCII nine?
-                ret     c                           ; no, scoring done.
-                sub     10                          ; down by ten.
-                ld      (hl), a                     ; put it back
-                jp      _updtScr0                   ; go round again.
-
-;****************************************************************************************************************
 ; Reset score to 0000000
 ;****************************************************************************************************************
 rstScr
-                ld      de, scrTxt + 5
-                ld      b, 7
-                ld      a, '0'
-_mkZero         ld      (de), a
-                inc     de
-                djnz    _mkZero
-                ld      de, scrTxt                  ; Print the score on the screen
-                ld      bc, scrTxtEnd - scrTxt
-                call    8252
+                ld      hl, scrTxt                  ; Point HL at the score string address
+                ld      de, scrTxt + 1              ; Point DE at the score string address + 1
+                ld      bc, 6                       ; Load BC with the length of the string
+                ld      (hl), '0'                   ; Load (HL) with a 0 which will be copied using...
+                ldir                                ; ...LDIR
+                ld      de, 0x3800                  ; Set the coordinates for printing the score
+                ld      bc, scrTxt                  ; Point BC to the score text string address
+                call    prntStrng                   ; Print the string
                 ret
 
 ;****************************************************************************************************************
@@ -1637,7 +1626,7 @@ plyClck
                 and     248
                 out     (254), a
 _clickLp0       djnz    _clickLp0
-                ld      a, 0
+                xor     a
                 and     248
                 out     (254), a
 
@@ -1645,7 +1634,7 @@ _clickLp0       djnz    _clickLp0
                 and     248
                 out     (254), a
 _clickLp1       djnz    _clickLp1
-                ld      a, 0
+                xor     a
                 and     248
                 out     (254), a
                 ret
@@ -1654,7 +1643,7 @@ _clickLp1       djnz    _clickLp1
 ; Play death sound with b = length of the loop
 ;****************************************************************************************************************
 plyDthSnd
-                ld      a, 0
+                xor     a
                 ld      (23624), a                  ; Set the Border colour BASIC variable to black
                 ld      hl,500                      ; starting pitch.
                 ld      b,150                       ; length of pitch bend.
@@ -1701,14 +1690,13 @@ crrntScrCnt     db      0                           ; How many scores are visibl
 scrLblTxt       db      16, 6, 22, 0, 1, 'SCORE'
 scrLblTxtEnd
 
-scrTxt          db      16, 6, 22, 0, 8, '0000000'
+scrTxt          db      '0000000', 0x00
 scrTxtEnd
 
 lvsLblTxt       db      16, 6, 22, 0, 24, 'LIVES'
 lvsLblTxtEnd
 
-lvsTxt          db      16, 6, 22, 0, 30, '5'
-lvsTxtEnd
+lvsTxt          db      '5', 0x00
 
 gmeOvrTxt       db      16, 7, 17, 2, 22, 15, 11, ' GAME OVER '
 gmeOvrTxtEnd
@@ -1735,7 +1723,6 @@ objctMvngBlck2          ; XPos, XSpeed, YPos, YSpeed
 objctScore              ; Timer 1 byte, Ypos 1 byte, Xpos 1 byte, Screen Background 16 bytes
                 ds      5 * 19                       ; Make space for five score banners
 
-
 ;****************************************************************************************************************
 ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
 ;****************************************************************************************************************
@@ -1746,6 +1733,7 @@ lvlData
 ; Includes
 ;****************************************************************************************************************
                 include     Library.asm
+                include     Maths.asm
                 include     Levels.asm
         IF .debug
                 include     Debug.asm               ; Only need the debug routines during development
