@@ -322,4 +322,63 @@ rstr16x8
     ENDM               
                 ret                                 ; All done! 
 
+;****************************************************************************************************************
+; Print a string to the screen at pixel coordinates held in DE. This routine does not deal with crossing of
+; screen segments
+;
+; Entry Registers:
+;   BC = Pointer to the string to be printed. String to be terminated with 0x00
+;   DE = X, Y pixel location to print the string
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+prntStrng
+                call    getPixelAddr                ; Get the screen address of the pixel location into HL                
+_chrLp1          
+                ld      a, (bc)                     ; Read character from string
+                or      a                           ; Check to see if the character is 0x00...
+                ret     z                           ; ...and if so return as we're finished
+                inc     bc                          ; Move to the next character in the string
+                cp      0x20                        ; Compare the character to the space character
+                jr      nz, _ntSpc                  ; If not a space then process the character
+                inc     l                           ; Move one character space to the right on screen...
+                jr      _chrLp1                     ; Deal with the next character
+_ntSpc
+                push    bc                          ; Save BC as it holds the string pointer
+                push    hl
+                sub     48                          ; Sub the ASCII value for 0...
+                cp      10                          ; ...and compare against 10
+                jr      c, _ntAlph                  ; If Carry then this is a number
+                sub     65-48-10                    ; Otherwise adjust the index for an alpha
+_ntAlph
+                sla     a                           ; Multiply A by 8...
+                sla     a                           ; ... to get the index...
+                sla     a                           ; ...into the font data
+                ld      l, a                        ; Place A into L...
+                ld      h, 0                        ; ...and reset H
+                ld      bc, NumberFont              ; Point BC to the start of our font data
+                add     hl, bc                      ; Add in the index we calculated to the character we want 
+                ex      de, hl                      ; Exchange DE, HL as we want DE to contain the font pointer
+
+                pop     hl                          ; Restore HL which is our screen address
+                push    hl
+                ld      b, 8                        ; The font is 8 pixels high
+_chrLp2
+                ld      a, (de)                     ; Load A with a byte of font data
+                ld      (hl), a                     ; Place that Font data on screen
+                inc     de                          ; Move to the next byte of font data
+                inc     h                           ; Move to the next screen row
+                djnz    _chrLp2                     ; Draw the next row of the character
+                pop     hl                          ; Restore HL which holds the screen address
+                inc     l                           ; Move to the next character position along the screen
+                pop     bc                          ; Restore BC which holds the string pointer
+                jr      _chrLp1                     ; Go back to check for the next character
+
+
+
+
+
+
                 
