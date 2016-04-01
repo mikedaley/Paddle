@@ -511,6 +511,96 @@ _updtBckgrnd
                 djnz    _nxtBckgrnd                     ; Loop if there are score objects letf
                 ret
 
+;************************************************************************************************************************
+; Update Moving Block
+; Updates the position of the moving block based on the blocks current +/- speed
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C, D, E
+; Returned Registers:
+;   NONE
+;************************************************************************************************************************   
+updtMvngBlck
+                ld      a, (ix + BLLXPS)
+                add     a, (ix + BLLXSPD)
+                ld      (ix + BLLXPS), a
+                cp      SCRNRGHT - BLCKWDTH
+                jp      nc, _blckHtEdg
+                cp      SCRNLFT
+                jp      c, _blckHtEdg
+                ret
+
+_blckHtEdg
+                ld      a, (ix + BLLXSPD)
+                neg
+                ld      (ix + BLLXSPD), a
+                ret
+
+;****************************************************************************************************************
+; Update Balls collision points
+; Four variables store collision points on the ball, these are middle top, middle right, middle bottom and middle left.
+; 
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+updtBllChrPs                                       ; Update the balls character position used in block collision detection
+                ld      hl, objctBall               ; Load HL with the address of the ball object data
+                ld      a, (hl)                     ; Load A with the X position of the ball
+                add     a, BLLPXLWIDTH / 2          ; Increment A by half the width of the ball sprite 
+                ld      d, a                        ; Store A in D 
+                inc     hl                          ; Point HL at the...
+                inc     hl                          ; ...Y position of the ball
+                ld      e, (hl)                     ; Load the Y position into E
+                call    getChrLctn                  ; Get the character location based on D = X and Y = E
+                ld      (ballMT), bc                ; The character location is returned in BC so we save that
+
+                dec     hl                          ; Point HL at...
+                dec     hl                          ; X position of the ball object
+                ld      a, (hl)                     ; Load A with the balls X position...
+                add     a, BLLPXLWIDTH              ; ...and add the width of the ball to find the right hand edge
+                ld      d, a                        ; Save A to D
+                inc     hl                          ; Point HL at...
+                inc     hl                          ; ...balls Y position
+                ld      a, (hl)                     ; Load A with the Y position
+                add     a, BLLPXLHGHT / 2           ; Add half the height of the ball sprite to Y
+                ld      e, a                        ; Save A in E
+                call    getChrLctn                  ; Get the character location based on D = X and E = Y
+                ld      (ballMR), bc                ; The character locatiojn is returned in BC so we save that
+
+                dec     hl
+                dec     hl
+                ld      a, (hl)                     ; Middle Bottom
+                add     a, BLLPXLWIDTH / 2
+                ld      d, a
+                inc     hl
+                inc     hl
+                ld      a, (hl)
+                add     a, BLLPXLHGHT     
+                ld      e, a
+                call    getChrLctn
+                ld      (ballMB), bc
+
+                dec     hl
+                dec     hl
+                ld      d, (hl)                     ; Middle Left
+                inc     hl
+                inc     hl
+                ld      a, (hl)
+                add     a, BLLPXLHGHT / 2
+                ld      e, a
+                call    getChrLctn
+                ld      (ballML), bc
+
+                call    chckBlckCllsn               ; Now go see if the ball has hit something :)
+
+                ret
+
 ;****************************************************************************************************************
 ; Find Inactive Score Sprite
 ; Returns the address of an inactive score sprite that can be used to display the score for the tile just hit
@@ -812,33 +902,6 @@ _btHtRghtEdg
                 ld      (hl), BTMXRGHT              ; Hit the edge so set the X pos to the BTMXRGHT value
                 ret
 
-;************************************************************************************************************************
-; Update Moving Block
-; Updates the position of the moving block based on the blocks current +/- speed
-;
-; Entry Registers:
-;   NONE
-; Used Registers:
-;   A, B, C, D, E
-; Returned Registers:
-;   NONE
-;************************************************************************************************************************   
-updtMvngBlck
-                ld      a, (ix + BLLXPS)
-                add     a, (ix + BLLXSPD)
-                ld      (ix + BLLXPS), a
-                cp      SCRNRGHT - BLCKWDTH
-                jp      nc, _blckHtEdg
-                cp      SCRNLFT
-                jp      c, _blckHtEdg
-                ret
-
-_blckHtEdg
-                ld      a, (ix + BLLXSPD)
-                neg
-                ld      (ix + BLLXSPD), a
-                ret
-
 ;****************************************************************************************************************
 ; Get Character Location 
 ; Convert a pixel location into a char x, y location
@@ -863,6 +926,71 @@ getChrLctn
                 srl     a
                 srl     a
                 ld      b, a
+                ret
+
+;****************************************************************************************************************
+; Set the attribute at the given X, Y character location to the attribute value held in A
+;
+; Entry Registers:
+;   DE = D = pixel X, E = pixel Y
+;   A = Attribute to load
+; Used Registers:
+;   A, B, C
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+setChrctrAttr 
+                ld      h, 0                        ; Get the Y pos from the corner
+                ld      l, d
+
+                add     hl, hl                      ; Multiply the Y position by 32
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+
+                ld      b, 0                        ; Get the X position
+                ld      c, e
+                add     hl, bc                      ; Add it to the Y position 
+
+                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
+                add     hl, de
+
+                ld      (hl), a                     ; Load the attribute at HL
+                ret
+
+;****************************************************************************************************************
+; Get the attribute at the given X, Y
+; D = X, E = Y, returns A = given attribute
+;****************************************************************************************************************
+;****************************************************************************************************************
+; Get the attribute for the character position provided in DE and return the attribute found in A
+;
+; Entry Registers:
+;   DE = D = pixel X, E = pixel Y
+; Used Registers:
+;   A, B, C
+; Returned Registers:
+;   A = Attribute to load
+;****************************************************************************************************************
+getChrctrAttr 
+                ld      h, 0                        ; Get the Y pos from the corner
+                ld      l, d
+
+                add     hl, hl                      ; Multiply the Y position by 32
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+
+                ld      b, 0                        ; Get the X position
+                ld      c, e
+                add     hl, bc                      ; Add it to the Y position 
+
+                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
+                add     hl, de
+
+                ld      a, (hl)                     ; Load the attribute at HL
                 ret
 
 ;****************************************************************************************************************
@@ -956,70 +1084,6 @@ _bncRght
                 ld      a, SCRNLFT                  ; Make sure the ball sits right up against the left edge of the screen
                 ld      (hl), a                     ; Save the balls new X position
                 jp      _mvY                        ; Check for a bounce in the y-axis
-
-;****************************************************************************************************************
-; Update Balls collision points
-; Four variables store collision points on the ball, these are middle top, middle right, middle bottom and middle left.
-; 
-;
-; Entry Registers:
-;   NONE
-; Used Registers:
-;   A, B, C, D, E, H, L
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-_updtBllChrPs                                       ; Update the balls character position used in block collision detection
-                ld      hl, objctBall               ; Load HL with the address of the ball object data
-                ld      a, (hl)                     ; Load A with the X position of the ball
-                add     a, BLLPXLWIDTH / 2          ; Increment A by half the width of the ball sprite 
-                ld      d, a                        ; Store A in D 
-                inc     hl                          ; Point HL at the...
-                inc     hl                          ; ...Y position of the ball
-                ld      e, (hl)                     ; Load the Y position into E
-                call    getChrLctn                  ; Get the character location based on D = X and Y = E
-                ld      (ballMT), bc                ; The character location is returned in BC so we save that
-
-                dec     hl                          ; Point HL at...
-                dec     hl                          ; X position of the ball object
-                ld      a, (hl)                     ; Load A with the balls X position...
-                add     a, BLLPXLWIDTH              ; ...and add the width of the ball to find the right hand edge
-                ld      d, a                        ; Save A to D
-                inc     hl                          ; Point HL at...
-                inc     hl                          ; ...balls Y position
-                ld      a, (hl)                     ; Load A with the Y position
-                add     a, BLLPXLHGHT / 2           ; Add half the height of the ball sprite to Y
-                ld      e, a                        ; Save A in E
-                call    getChrLctn                  ; Get the character location based on D = X and E = Y
-                ld      (ballMR), bc                ; The character locatiojn is returned in BC so we save that
-
-                dec     hl
-                dec     hl
-                ld      a, (hl)                     ; Middle Bottom
-                add     a, BLLPXLWIDTH / 2
-                ld      d, a
-                inc     hl
-                inc     hl
-                ld      a, (hl)
-                add     a, BLLPXLHGHT     
-                ld      e, a
-                call    getChrLctn
-                ld      (ballMB), bc
-
-                dec     hl
-                dec     hl
-                ld      d, (hl)                     ; Middle Left
-                inc     hl
-                inc     hl
-                ld      a, (hl)
-                add     a, BLLPXLHGHT / 2
-                ld      e, a
-                call    getChrLctn
-                ld      (ballML), bc
-
-                call    chckBlckCllsn               ; Now go see if the ball has hit something :)
-
-                ret
 
 ;****************************************************************************************************************
 ; Check Bat Collision
@@ -1241,29 +1305,86 @@ _mddlLft
                 neg
                 ld      (objctBall + BLLXSPD), a   
                 call    rmvBlck
+                ld      hl, 1234
+                call    incScr
+                call    prntScr
+                ret
+
+;****************************************************************************************************************
+; Increment the players score by the value in the B register
+;
+; Entry Registers:
+;   HL = Value to be added to the current score
+; Used Registers:
+;   NONE
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+incScr
+                ld b, 6                             ; Number of digits in score - 1 
+_scrLp
+                ld c, 10                            ; Load C with the devisor we want to use
+                call dvd_HL_C                       ; Divide HL by C
+                ld c, a                             ; Load C with the remainder
+                push bc 
+                push hl
+                call _addToScr                      ; Add the digit to the score
+                pop hl
+                pop bc
+                djnz _scrLp
+                ret
+_addToScr
+                ld hl, scrTxt                       ; Point HL at the score string address
+                ld e, b                             ; Load E with B which holds the digit count
+                ld d, 0                             ; Reset D so DE holds just the digit count
+                add hl, de                          ; Add the digit count to HL (string address)
+_cryOneLp
+                ld a, (hl)                          ; Load A with the digit al HL    
+                add a, c                            ; Add A with C (the remainder)
+                cp 0x3a                             ; Is the new digit > 9
+                jr c, _incScrDn                     ; If yes then we are done with this digit
+                
+                ; Move on
+                sub 10                              ; If not then sub 10 from A
+                ld (hl), a                          ; and load the digit back into the string
+                ld c, 1                             ; Set C to 1
+                dec hl                              ; Move along the score string
+                djnz _cryOneLp                      ; Loop if digits left
+                ret
+_incScrDn
+                ld (hl), a                          ; Save the digit in A
+                ret
+
+;****************************************************************************************************************
+; Print the current score onto the screen
+;
+; Entry Registers:
+;   DE = Address of the score text
+;   BC = Length of the score text
+; Used Registers:
+;   DE, BC
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+prntScr
+                ld      de, 0x3800                                      
+                ld      bc, scrTxt
+                call    prntStrng
                 ret
 
 ;****************************************************************************************************************
 ; Remove the block that contains the x,y provided D = Y and E = X
+;
+; Entry Registers:
+;   DE = X, Y
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
 ;****************************************************************************************************************
 rmvBlck
                 ld      b, 100
                 call    plyClck
-
-                ld      hl, scrTxt + 10      
-                ld      b, 6                
-                call    updtScr                 
-                ld      hl, scrTxt + 11          
-                ld      b, 5                        
-                call    updtScr    
-
-                push    de
-                push    bc
-                ld      de, scrTxt                  ; Print the score on the screen
-                ld      bc, scrTxtEnd - scrTxt
-                call    8252
-                pop     bc
-                pop     de
 
                 ld      a, (lvlBlckCnt) 
                 dec     a                           ; Decrement the number of blocks 
@@ -1377,55 +1498,6 @@ chkBlckState
                 add     hl, de
 
                 ld      (hl), a                     ; Load the attribute at HL
-                ret
-
-
-;****************************************************************************************************************
-; Set the attribute at the given X, Y
-; D = X, E = Y, A = value to set
-;****************************************************************************************************************
-setChrctrAttr 
-                ld      h, 0                        ; Get the Y pos from the corner
-                ld      l, d
-
-                add     hl, hl                      ; Multiply the Y position by 32
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-
-                ld      b, 0                        ; Get the X position
-                ld      c, e
-                add     hl, bc                      ; Add it to the Y position 
-
-                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
-                add     hl, de
-
-                ld      (hl), a                     ; Load the attribute at HL
-                ret
-
-;****************************************************************************************************************
-; Get the attribute at the given X, Y
-; D = X, E = Y, returns A = given attribute
-;****************************************************************************************************************
-getChrctrAttr 
-                ld      h, 0                        ; Get the Y pos from the corner
-                ld      l, d
-
-                add     hl, hl                      ; Multiply the Y position by 32
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-
-                ld      b, 0                        ; Get the X position
-                ld      c, e
-                add     hl, bc                      ; Add it to the Y position 
-
-                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
-                add     hl, de
-
-                ld      a, (hl)                     ; Load the attribute at HL
                 ret
 
 ;****************************************************************************************************************
