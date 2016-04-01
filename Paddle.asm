@@ -88,7 +88,6 @@ GMESTTE_LSTLFE          equ                 32
 
 .debug          equ     1
 
-
 init 
                 ld      a, 0                        ; Set the border colour
                 out     (0xFE), a                    
@@ -416,8 +415,8 @@ _chckGmeSttePlyrDead
 updtBtAnmtnFrm
                 ld      a, (objctBat + BTANMTONDLY) ; Point DE at the animation delay counter
                 inc     a                           ; Increment the frame count
-                ld      (objctBat + BTANMTONDLY), a ; Save the new delay amount    
-                cp      6                           ; Check the delay (1/50 * n)
+                ld      (objctBat + BTANMTONDLY), a ; Save the new delay amount
+                cp      5                           ; Check the delay (1/50 * n)
                 ret     nz                          ; and return if we've not reached the delay value
                 ld      a, 0                        ; Delay has been reached so reset the delay...
                 ld      (objctBat + BTANMTONDLY), a ; ...and save it
@@ -1644,13 +1643,14 @@ gmeOvrTxtEnd
 ;****************************************************************************************************************
 ; Object data
 ;****************************************************************************************************************
-                        ; Xpos, XSpeed, Ypos, YSpeed, Delay, Frame
-objctBall       db      0, 1, 0, -2, 0, 0
+                        ; Xpos, XSpeed, Ypos, YSpeed
+objctBall       db      0, 1, 0, -2
     
                         ; Xpos, XSpeed, Ypos
 objctBat        db      112, 4, 150         
                 db      0 ; Delay counter used to time how long each frame should be visible
                 db      0 ; Animation Frame
+                db      0 ; Frame delay
 
 objctMvngBlck1          ; XPos, XSpeed, YPos, YSpeed
                 db      76, 2, 115, 0  
