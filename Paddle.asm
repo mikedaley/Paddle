@@ -89,7 +89,7 @@ GMESTTE_LSTLFE          equ                 32
 .debug          equ     1
 
 init 
-                ld      a, 0                        ; Set the border colour
+                xor     a                        ; Set the border colour
                 out     (0xFE), a                    
                         
                 ld      a, 5                        ; Set the ink colour
@@ -418,13 +418,13 @@ updtBtAnmtnFrm
                 ld      (objctBat + BTANMTONDLY), a ; Save the new delay amount
                 cp      5                           ; Check the delay (1/50 * n)
                 ret     nz                          ; and return if we've not reached the delay value
-                ld      a, 0                        ; Delay has been reached so reset the delay...
+                xor     a                        ; Delay has been reached so reset the delay...
                 ld      (objctBat + BTANMTONDLY), a ; ...and save it
                 ld      a, (objctBat + BTANMTONFRM) ; Load A with the current frame count
                 inc     a                           ; Increment the counter
                 cp      4                           ; Compare it against the max value allowed...
                 jp      nz, _svBtFrm                ; ...and save the new frame count if the max has not been reached
-                ld      a, 0                        ; Reset the animation frame to 0
+                xor     a                        ; Reset the animation frame to 0
 _svBtFrm
                 ld      (objctBat + BTANMTONFRM), a ; Save the new frame number
                 ret                                 ; Return
@@ -476,7 +476,7 @@ _updtScr
                 djnz    _nxtScr                     ; Loop if there are score objects letf
                 ret
 _rstScrTmr
-                ld      a, 0                        ; Load A with 0 so that it can...
+                xor     a                        ; Load A with 0 so that it can...
                 ld      (hl), a                     ; ...be saved in the score object marked it inactive
                 ld      de, 19                      ; Move to the next...
                 add     hl, de                      ; ...object score
