@@ -117,11 +117,11 @@ init
                 call    clrScrn                     ; ...and once pressed clear the screen
                 call    drwBrdrs                    ; Draw the screen borders
 
-                ld      de, lvsTxt                  ; Load DE with the address of the Lives Text
-                ld      bc, lvsTxtEnd - lvsTxt      ; Set the length of the string
-                call    0x203C                      ; ROM print the string
+                ld      de, 0xF000
+                ld      bc, lvsTxt                  ; Load DE with the address of the Lives Text
+                call    prntStrng
 
-                ld      a, 0                        ; Load A with 0 for the initial level
+                xor     a                        ; Load A with 0 for the initial level
                 ld      (crrntLvl), a               ; Save the level 
                 call    ldLvl                       ; Load the current level
 
@@ -137,9 +137,7 @@ clrScrn
                 ld      bc, 10                      ; Set the length of the string
                 call    8252                        ; ROM print
 
-                ld      de, scrTxt                  ; Point DE to the score text
-                ld      bc, scrTxtEnd - scrTxt      ; Set the length of the string
-                call    8252                        ; ROM print
+                call    rstScr
 
                 ld      de, lvsLblTxt               ; Point DE to lives label text
                 ld      bc, lvsLblTxtEnd - lvsLblTxt; Set the length of the string
@@ -300,11 +298,12 @@ _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
                 push    af                          ; Save AF
                 ld      (lives), a                  ; Save the new number of lives
                 add     a, 48                       ; Add 48 to the number of lives to get the character code for the lives number
-                ld      (lvsTxt + 5), a             ; Update the lives text with the new lives character at position 5 in the string
+                ld      (lvsTxt), a                 ; Update the lives text with the new lives character at position 5 in the string
 
-                ld      de, lvsTxt                  ; Load DE with the levels text
-                ld      bc, lvsTxtEnd - lvsTxt      ; Set attribute to yellow ink on black background
-                call    8252                        ; ROM Print
+                ld      de, 0xF000
+                ld      bc, lvsTxt                  ; Load DE with the lives text
+                call    prntStrng
+
                 pop     af                          ; Restore AF
                 cp      0                           ; Check if the players lives have reached 0 
                 jp      z, _setGmeStteDead          ; Jump to set the game state to DEAD
@@ -386,14 +385,15 @@ _chckGmeSttePlyrDead
                 ld      a, 5 
                 ld      (lives), a
                 ld      a, 53                       ; The number five in the character set
-                ld      (lvsTxt + 5), a
-                ld      de, lvsTxt
-                ld      bc, lvsTxtEnd - lvsTxt
-                call    8252
+                ld      (lvsTxt), a
+                
+                ld      de, 0xF000
+                ld      bc, lvsTxt
+                call    prntStrng
                 call    rstScr
-                ld      a, 0                        ; Reset the level...
+                xor     a                        ; Reset the level...
                 ld      (lvlBlckCnt), a             ; ...block count
-                ld      a, 0
+                xor     a
                 ld      (crrntLvl), a
                 call    ldLvl
                 ld      a, GMESTTE_DSPLYLVL
