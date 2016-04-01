@@ -17,11 +17,11 @@
 ;   HL = screen address
 ;****************************************************************************************************************
 getPixelAddr:
-            ld      a,e
+            ld      a,e                                 ; Load A with the Y pixel location
+            srl     a                                   ; Rotate A three time to the left
             srl     a
             srl     a
-            srl     a
-            and     24
+            and     24                                  ; 
             or      64
 
             ld      h,a
@@ -114,7 +114,8 @@ _prShftX
                 ret                                 ; ...otherwise we are done
 
 ;****************************************************************************************************************
-; Draws a sprite on screen
+; Draws a sprite on screen. The sprite can be any size as defined in the first two bytes of sprite data which holds
+; the sprite width in bytes and height in pixels.
 ;
 ; Entry Registers:
 ;   DE = Pointer to the sprite data to be drawn
