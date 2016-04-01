@@ -777,14 +777,15 @@ watFrSpc
 ;   NONE
 ;************************************************************************************************************************
 rdCntrlKys 
-                ; Check if keys one 1 or 2 have been pressed which move the bat
+                ; Check if keys O or P
                 ld      hl, objctBat                ; HL = X Position
-                ld      bc, 63486                   ; Load BC with the port to read 5, 4, 3, 2, 1
+
+                ld      bc, 0xDFFE                  ; B = 0xDF (QUIOP), C = port 0xFE
                 in      a, (c)                      ; Load A with the keys that have been pressed
                 rra                                 ; Outermost bit = key 1
-                jp      nc, _mvBtLft                ; Move the bat left
+                jp      nc, _mvBtRght               ; Move the bat left
                 rra                                 ; Next bit is key 2
-                jp      nc, _mvBtRght               ; Move the bat right
+                jp      nc, _mvBtLft                ; Move the bat right
                 ret
 _mvBtLft     
                 ld      a, (hl)                     ; Put X pos into A
