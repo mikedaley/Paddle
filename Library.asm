@@ -204,6 +204,8 @@ _drwClmn
 ;   NONE
 ;****************************************************************************************************************
 drwMskd24x8Sprt      
+                inc     de
+                inc     de
                 ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
                 and     7   
         
@@ -232,7 +234,7 @@ drwMskd24x8Sprt
                 add     ix, bc                      ; twice as the table contains word values
                 pop     bc                          ; Restore B which holds the X byte offset
 
-    REPT 8                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
+    REPT 5                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
                 ld      a, (ix + 0)                 ; Get the current line
                 or      b                           ; Merge in our X Offset
                 ld      l, a                        ; Load the merged low byte in L
@@ -242,92 +244,157 @@ drwMskd24x8Sprt
     
                 ld      a, (de)
                 inc     de
-                or     (hl)
+                or      (hl)
                 ld      (hl), a
                 inc     l
 
                 ld      a, (de)
                 inc     de
-                or     (hl)
+                or      (hl)
                 ld      (hl), a
                 dec     l
 
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                and     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
-                inc     l                           ; Move to the next byte of screen memory
+                ld      a, (de)
+                inc     de
+                and     (hl)
+                ld      (hl), a
+                inc     l
 
-                ld      a, (de)                     ; Grab the first byte of sprite data into A             
-                inc     de                          ; Move to the next byte of sprite data
-                and     (hl)                        ; Merge the screen contents with the sprite data
-                ld      (hl), a                     ; Load the merged data back into the screen
+                ld      a, (de)
+                inc     de
+                and     (hl)
+                ld      (hl), a
     ENDM               
                 ret                                 ; All done! 
 
 ;****************************************************************************************************************
-; Save the 16x8 screen data at the pixel location in BC and save the data to the location in DE
+; Save screen data at the pixel location in BC to the location in DE. The width and height of pixels to copy is
+; provided in HL
 ;
 ; Entry Registers:
 ;   BC = Pixel location B = X, C = Y
 ;   DE = Pointer to where the data should be copied
+;   HL = H = width in bytes, L = height in pixels
 ; Used Registers:
 ;   A, B, C, D, E, H, L
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
-sve16x8
-                push    de                          
-                ld      d, b
-                ld      e, c
-                call    getPixelAddr
-                pop     de
+sveScrnBlck
+                ld      a, h
+                ld      (_sveWidth + 1), a
+                ld      a, l
+                ld      (_sveHght + 1), a 
 
-    REPT 8                                         
-                ld      a, (hl)
-                ld      (de), a
-                inc     de    
-                inc     l
+                ld      a, b                        ; Work out the X Offset using the shift value
+                rra
+                rra
+                rra
+                and     31
+                ld      (_sveXOffst + 1), a         ; Save the x Offset for use later in the routine
 
+                ld      b, 0                        ; Clear B
+                ld      ix, bffrLkup                ; Point to the screen buffer lookup table
+                add     ix, bc                      ; Increment IX by the Y pixel position
+                add     ix, bc                      ; twice as the table contains word values
+_sveHght        ld      b, 0
+_nxtSveRw
+                ld      a, (ix + 0)                 ; Get the current line
+_sveXOffst      or      0                           ; Merge in our X Offset set earlier in the routine
+                ld      l, a                        ; Load the merged low byte in L
+                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
+                inc     ix
+                inc     ix
+                push    bc
+_sveWidth       ld      b, 0
+_nxtSveClmn
                 ld      a, (hl)
                 ld      (de), a
                 inc     de
-                dec     l
-                call    moveLineDown
-    ENDM               
-                ret                                 ; All done! 
+                inc     l
+
+                djnz    _nxtSveClmn
+                pop     bc
+                djnz    _nxtSveRw
+                ret
 
 ;****************************************************************************************************************
-; Draw 16x8 screen data at the pixel location in BC and from the address DE
+; Draw screen data at the pixel location in BC and from the address DE
 ;
 ; Entry Registers:
 ;   BC = Pixel location B = X, C = Y
 ;   DE = Pointer to where the data should be read from
+;   HL = H = width in bytes, L = height in pixels
 ; Used Registers:
 ;   A, B, C, D, E, H, L
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
-rstr16x8
-                push    de
-                ld      d, b
-                ld      e, c
-                call    getPixelAddr
-                pop     de
+rstrScrnBlck
+                ld      a, h
+                ld      (_rstrWidth + 1), a
+                ld      a, l
+                ld      (_rstrHght + 1), a 
 
-    REPT 8                                          
-                ld      a, (de)
-                ld      (hl), a
-                inc     de    
-                inc     l
+                ld      a, b                        ; Work out the X Offset using the shift value
+                rra
+                rra
+                rra
+                and     31
+                ld      (_rstrXOffst + 1), a        ; Save the x Offset for use later in the routine
 
+                ld      b, 0                        ; Clear B
+                ld      ix, scrnLnLkup              ; Point to the screen buffer lookup table
+                add     ix, bc                      ; Increment IX by the Y pixel position
+                add     ix, bc                      ; twice as the table contains word values
+
+_rstrHght       ld      b, 0
+
+_nxtRstrRw
+                ld      a, (ix + 0)                 ; Get the current line
+_rstrXOffst     or      0                           ; Merge in our X Offset set earlier in the routine
+                ld      l, a                        ; Load the merged low byte in L
+                ld      h, (ix + 1)                 ; Get the high byte from the lookup table
+                inc     ix
+                inc     ix
+                push    bc
+_rstrWidth      ld      b, 0
+
+_nxtRstrClmn
                 ld      a, (de)
                 ld      (hl), a
                 inc     de
-                dec     l
-                call    moveLineDown
-    ENDM               
-                ret                                 ; All done! 
+                inc     l
+
+                djnz    _nxtRstrClmn
+                pop     bc
+                djnz    _nxtRstrRw
+                ret
+
+
+
+
+;                 push    de
+;                 ld      d, b
+;                 ld      e, c
+;                 call    getPixelAddr
+;                 pop     de
+
+; _rstrNxtRw
+;                 push bc
+;                 push hl
+;                 ld      a, (de)
+;                 ld      (hl), a
+;                 inc     de    
+;                 inc     l
+
+;                 ld      a, (de)
+;                 ld      (hl), a
+;                 inc     de
+;                 dec     l
+;                 call    moveLineDown
+    
+;                 ret                                 ; All done! 
 
 ;****************************************************************************************************************
 ; Print a string to the screen at pixel coordinates held in DE. This routine does not deal with crossing of
