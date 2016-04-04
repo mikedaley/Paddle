@@ -848,7 +848,29 @@ drwMvngBlck
                 ld      b, a
                 ld      a, (ix + BLLYPS)
                 ld      c, a
+                xor     a
                 call    drwSprt
+                ret
+
+;****************************************************************************************************************
+; Clear defined number of bytes 
+;
+; Entry Registers:
+;   HL = Location to start clearing
+;   BC = Number of bytes to clear
+; Registers Used:
+;   A, B, C
+; Returned Registers:
+;   NONE
+;******************************************************1**********************************************************
+clrMem
+                ld      e, 0
+clrByte         ld      (hl), e
+                inc     hl
+                dec     bc
+                ld      a, b
+                or      c
+                jr      nz, clrByte
                 ret
 
 ;************************************************************************************************************************
