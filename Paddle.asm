@@ -89,7 +89,22 @@ GMESTTE_LSTLFE          equ                 32
 .debug          equ     1
 
 init 
-                xor     a                        ; Set the border colour
+                ld      hl, bffrLkup
+                ld      de, SCRNBFFR
+                ld      b, 192
+_yLkupLp
+                ld      (hl), e
+                inc     hl
+                ld      (hl), d
+                inc     hl
+                push    hl
+                ld      hl, 32
+                add     hl, de
+                ex      de, hl
+                pop     hl
+                djnz    _yLkupLp
+
+                xor     a                           ; Set the border colour
                 out     (0xFE), a                    
                         
                 ld      a, 5                        ; Set the ink colour
