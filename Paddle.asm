@@ -109,25 +109,26 @@ _yLkupLp
                         
                 ld      a, 5                        ; Set the ink colour
                 ld      (0x5C8D), a  
-                
-                ld      hl, 0x3D00                  ; Copy the ROM standard font
-                ld      de, Font                    ; ...to the font table in game
-                ld      bc, 0x300                     
-                ldir
-                ld      hl, NumberFont              ; Copy the custom numbers...
-                ld      de, Font + (8 * 16)         ; ...over the standard font we copied
+
+;                 ld      hl, 0x3D00                  ; Copy the ROM standard font
+;                 ld      de, Font                    ; ...to the font table in game
+;                 ld      bc, 0x300                     
+;                 ldir
+                ld      hl, NumberFont              ; Copy the custom numbers font data
+                ld      de, Font + (8 * 16)         ;
                 ld      bc, 0x50
                 ldir
-                ld      hl, CharFont                ; Copy the custom Characters...
-                ld      de, Font + (8 * 33)         ; ...over the standard font we copied
+                ld      hl, CharFont                ; Copy the custom Characters font data...
+                ld      de, Font + (8 * 33)         ; ...making sure it is position in memory like the ROM font
                 ld      bc, 0xD0
                 ldir
 
-                ld      hl, Font - 0x100            ; Point HL to our new font data and...
+                ld      hl, Font - 0x100            ; Point HL to our new font data - 256 and...
                 ld      (0x5C36), hl                ; ...update the CHARS sysvar with the new location 
 
                 call    drwTtlScrn                  ; Draw the title screen
                 call    shftSprts                   ; Create shifted versions of the sprites being used
+                call    stupPrtcls
                 call    watFrSpc                    ; Wait for the space key to be pressed...
                 call    clrScrn                     ; ...and once pressed clear the screen
                 call    drwBrdrs                    ; Draw the screen borders
@@ -422,6 +423,22 @@ _chckGmeSttePlyrDead
                 ld      (gmeStte), a
                 call    rstBt
                 jp      mnLp
+
+;****************************************************************************************************************
+; Setup the particle objects by clearing out all the values
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   A, B, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+stupPrtcls
+                ld      hl, objctPrtcls             ; Point HL at the screen buffer
+                ld      bc, 14 * 10                 ; Load BC with the number of bytes to clear
+                call    clrMem                      ; Call the clear mem routine
+                ret
 
 ;****************************************************************************************************************
 ; Update bate animation
@@ -781,13 +798,14 @@ _drwCrrntScr
                 push    hl                          ; Save HL so it can be placed...
                 pop     de                          ; ...into DE
                 push    bc                          ; Save BC e.g. the X, Y position of the score
-                ld      hl, 0x0205
+                ld      hl, 0x0205                  ; Set the width and height of screen to save
                 call    sveScrnBlck                 ; Save the background behind the score
                 pop     bc                          ; Restore X, Y in BC
                 pop     hl                          ; Restore the score pointer in HL
 
+                xor     a                           ; Reset A so we draw to the screen file
                 ld      de, DiamondSpriteData       ; Point DE to the score sprite data
-                call    drwMskd24x8Sprt             ; Draw the score sprite
+                call    drwMskdSprt                 ; Draw the score sprite
 
                 pop     hl                          ; Restore HL
                 pop     bc                          ; Restore BC
@@ -803,7 +821,7 @@ _drwCrrntScr
 ; Entry Registers:
 ;   NONE
 ; Used Registers:
-;   A, B, C, D, E
+;   A, B, C, DE
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
@@ -824,7 +842,7 @@ drwBll
 ; Entry Registers:
 ;   NONE
 ; Used Registers:
-;   A, B, C, D, E
+;   A, B, C, DE, HL
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
@@ -853,7 +871,7 @@ drwBt
 ; Entry Registers:
 ;   IX = Points to moving block object data
 ; Registers Used:
-;   A, B, C
+;   A, B, C, DE, IX
 ; Returned Registers:
 ;   NONE
 ;******************************************************1**********************************************************
@@ -868,13 +886,13 @@ drwMvngBlck
                 ret
 
 ;****************************************************************************************************************
-; Clear defined number of bytes 
+; Clear defined number of bytes in BC at location HL
 ;
 ; Entry Registers:
 ;   HL = Location to start clearing
 ;   BC = Number of bytes to clear
 ; Registers Used:
-;   A, B, C
+;   A, B, C, E, HL
 ; Returned Registers:
 ;   NONE
 ;******************************************************1**********************************************************
@@ -1382,38 +1400,38 @@ _mddlLft
 ;   NONE
 ;****************************************************************************************************************
 incScr
-                ld b, 6                             ; Number of digits in score - 1 
+                ld      b, 6                        ; Number of digits in score - 1 
 _scrLp
-                ld c, 10                            ; Load C with the devisor we want to use
-                call dvd_HL_C                       ; Divide HL by C
-                ld c, a                             ; Load C with the remainder
-                push bc 
-                push hl
-                call _addToScr                      ; Add the digit to the score
-                pop hl
-                pop bc
-                djnz _scrLp
+                ld      c, 10                       ; Load C with the devisor we want to use
+                call    dvd_HL_C                    ; Divide HL by C
+                ld      c, a                        ; Load C with the remainder
+                push    bc 
+                push    hl
+                call    _addToScr                   ; Add the digit to the score
+                pop     hl
+                pop     bc
+                djnz    _scrLp
                 ret
 _addToScr
-                ld hl, scrTxt                       ; Point HL at the score string address
-                ld e, b                             ; Load E with B which holds the digit count
-                ld d, 0                             ; Reset D so DE holds just the digit count
-                add hl, de                          ; Add the digit count to HL (string address)
+                ld      hl, scrTxt                  ; Point HL at the score string address
+                ld      e, b                        ; Load E with B which holds the digit count
+                ld      d, 0                        ; Reset D so DE holds just the digit count
+                add         hl, de                  ; Add the digit count to HL (string address)
 _cryOneLp
-                ld a, (hl)                          ; Load A with the digit al HL    
-                add a, c                            ; Add A with C (the remainder)
-                cp 0x3a                             ; Is the new digit > 9
-                jr c, _incScrDn                     ; If yes then we are done with this digit
+                ld      a, (hl)                     ; Load A with the digit al HL    
+                add     a, c                        ; Add A with C (the remainder)
+                cp      0x3a                        ; Is the new digit > 9
+                jr      c, _incScrDn                ; If yes then we are done with this digit
                 
                 ; Move on
-                sub 10                              ; If not then sub 10 from A
-                ld (hl), a                          ; and load the digit back into the string
-                ld c, 1                             ; Set C to 1
-                dec hl                              ; Move along the score string
-                djnz _cryOneLp                      ; Loop if digits left
+                sub     10                          ; If not then sub 10 from A
+                ld      (hl), a                     ; and load the digit back into the string
+                ld      c, 1                        ; Set C to 1
+                dec     hl                          ; Move along the score string
+                djnz    _cryOneLp                   ; Loop if digits left
                 ret
 _incScrDn
-                ld (hl), a                          ; Save the digit in A
+                ld      (hl), a                     ; Save the digit in A
                 ret
 
 ;****************************************************************************************************************
@@ -1796,6 +1814,13 @@ objctMvngBlck2          ; XPos, XSpeed, YPos, YSpeed
                         
 objctScore              ; Timer 1 byte, Ypos 1 byte, Xpos 1 byte, Screen Background 16 bytes
                 ds      7 * 23                       ; Make space for five score banners
+
+objctPrtcls             
+                db      0, 0                        ; Timer, Lifespan (50ths Second)
+                dw      0, 0                        ; Xpos, Ypos as words so we can increment in fractions
+                ds      10                          ; Space needed to store the background of the particle sprite
+objctPrtclsEnd
+                ds      (objctPrtclsEnd - objctPrtcls) * 14    ; Reserve the space for 9 more particles givin 15 in total 
 
 ;****************************************************************************************************************
 ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
