@@ -1561,6 +1561,10 @@ rstBt
 ; A = Level to load 
 ;****************************************************************************************************************
 ldLvl 
+                ld      hl, SCRNBFFR                ; Point HL at the screen buffer
+                ld      bc, 6144                    ; Load BC with the number of bytes to clear
+                call    clrMem                      ; Call the clear mem routine
+
                 ld      de, lvlLkup                 ; Load DE with the address of the Level Loopup Table
                 ld      a, (crrntLvl)               ; Load A with the level number to load
                 ld      l, a
