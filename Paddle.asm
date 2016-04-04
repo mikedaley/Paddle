@@ -219,6 +219,7 @@ dbgPrnt
                 call    HexByte
 
                 ret
+
 ENDIF
 
 ;****************************************************************************************************************
@@ -233,6 +234,7 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 cp      GMESTTE_PLYNG               ; Is the game state PLAYING
                 jr      nz, _chckGmeStteWtng        ; If not then check if the state is WAITING
                 call    rdCntrlKys                  ; Read the keyboard
+               
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
 
@@ -277,11 +279,17 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 
                 call    updtBtAnmtnFrm              ; Update the animation frame of the bat
                 call    drwBll                      ; Draw the ball first as it could be the closest sprite to the top of the screen
-
-                call    updtScrSprts                ; Update the position of any active score sprites
-                call    drwScr                      ; Draw score sprites
-
                 call    drwBt                       ; Draw the bat last as its at the bottom of the screen
+
+;                 ld      bc, 0x6020
+;                 ld      de, scratch
+;                 ld      hl, 0x0208
+;                 call    sveScrnBlck
+
+;                 ld      bc, 0x1010
+;                 ld      de, scratch
+;                 ld      hl, 0x0208
+;                 call    rstrScrnBlck
 
         IF .debug
                 call    dbgPrnt                     ; Print debug output during development
@@ -462,37 +470,38 @@ updtScrSprts
 _nxtScr         ld      a, (hl)                     ; Load A with the timer value for the score
                 cp      0                           ; Is the timer 0?
                 jp      nz, _updtScr                ; If not then update it as its active...
-                ld      de, 19                      ; Move to the...
+                ld      de, 23                      ; Move to the...
                 add     hl, de                      ; ...score object
                 djnz    _nxtScr                     ; Loop if there are score objects left
                 ret
 _updtScr
                 inc     a                           ; Increment the timer
-                cp      25                          ; Has the timer reached 0.5 seconds (1/50 * 25)
+                cp      75                          ; Has the timer reached 0.5 seconds (1/50 * 25)
                 jp      z, _rstScrTmr               ; If the timer has reached its max then reset it... 
                 push    bc
                 ld      (hl), a                     ; ...otherwise save the new timer value
                 inc     hl                          ; Point HL at the Ypos of the score... 
-                dec     (hl)                        ; ...and decrement it so the score moves up the screen
+                inc     (hl)                        ; ...and decrement it so the score moves up the screen
                 
-                ld      c, (hl)
-                inc     hl                          
-                ld      b, (hl)
-                inc     hl
-                push    hl
-                ex      de, hl
-                call    sve16x8
-                pop     hl
-                pop     bc
+                ld      c, (hl)                     ; Save the Y position into C
+                inc     hl                          ; Move HL to the X position 
+                ld      b, (hl)                     ; Save X into B
+                inc     hl                          ; Move HL to the background data
+                push    hl                          ; Save HL
+                ex      de, hl                      ; Exchange DE and HL as saving the background uses DE for the scratch area
+                ld      hl, 0x0205
+                call    sveScrnBlck                 ; Save the background at the position of the score sprite
+                pop     hl                          ; Restore HL
+                pop     bc                          ; Restore BC
 
-                ld      de, 16                      ; Already moved 1 byte into the structure so add 18
+                ld      de, 20                      ; Already moved 3 bytes into the structure so add 16 to get to the next score
                 add     hl, de                      ; to get to the next score object
                 djnz    _nxtScr                     ; Loop if there are score objects letf
                 ret
 _rstScrTmr
-                xor     a                        ; Load A with 0 so that it can...
+                xor     a                           ; Load A with 0 so that it can...
                 ld      (hl), a                     ; ...be saved in the score object marked it inactive
-                ld      de, 19                      ; Move to the next...
+                ld      de, 23                      ; Move to the next...
                 add     hl, de                      ; ...object score
                 djnz    _nxtScr                     ; Loop if there are score objects left
                 ret
@@ -503,7 +512,7 @@ rstrScrBckgrnd
 _nxtBckgrnd     ld      a, (hl)                     ; Load A with the timer value for the score
                 cp      0                           ; Is the timer 0?
                 jp      nz, _updtBckgrnd                ; If not then update it as its active...
-                ld      de, 19                      ; Move to the...
+                ld      de, 23                      ; Move to the...
                 add     hl, de                      ; ...score object
                 djnz    _nxtBckgrnd                     ; Loop if there are score objects left
                 ret
@@ -511,18 +520,19 @@ _updtBckgrnd
                 push    bc
                 inc     hl                          ; Point HL at the Ypos of the score... 
                 ld      c, (hl)
-                inc     hl                          
+                inc     hl                          ; Point HL at the Xpos                       
                 ld      b, (hl)
-                inc     hl
+                inc     hl                          ; Point HL at background data
                 push    hl
-                ex      de, hl
-                call    rstr16x8
+                ex      de, hl                      ; Put HL into DE
+                ld      hl, 0x0205                  ; Load HL with the size of sprite to restore
+                call    rstrScrnBlck
                 pop     hl
                 pop     bc
 
-                ld      de, 16            
+                ld      de, 20            
                 add     hl, de                      ; to get to the next score object
-                djnz    _nxtBckgrnd                     ; Loop if there are score objects letf
+                djnz    _nxtBckgrnd                 ; Loop if there are score objects letf
                 ret
 
 ;************************************************************************************************************************
@@ -633,7 +643,7 @@ fndInctvScrSprt
 _chkNxtScr      ld      a, (hl)                     ; Load A with the timer of the first score object
                 cp      0                           ; If it is 0 then...
                 jp      z, _fndScrSprt              ; ...its available so return the address in HL
-                ld      de, 19
+                ld      de, 23
                 add     hl, de
                 djnz    _chkNxtScr                  ; Loop if B > 0
                 xor     a                        ; Nothing found so set A = 0...
@@ -753,7 +763,7 @@ _chkScrActv
                 ld      a, (hl)                     ; Get the timer for the score object
                 cp      0                           ; Check it against 0
                 jp      nz, _drwCrrntScr            ; If its not zero then its active so draw it
-                ld      de, 19
+                ld      de, 23
                 add     hl, de
                 djnz    _chkScrActv                 ; Loop if there are more scores to check
                 ret                                 ; Finished
@@ -762,25 +772,26 @@ _drwCrrntScr
                 push    bc                          ; Save BC as its holding our score loop count in B
                 push    hl                          ; Save HL as this is our pointer into the object table
                 inc     hl                          ; Point HL at the Y position of the score
-                ld      a, (hl)                     ; Load A with the balls Y position
-                ld      c, a                        ; Load A into C
+                ld      c, (hl)                     ; Load C with the balls Y position
                 inc     hl                          ; Point HL at the X position of the score
-                ld      a, (hl)                     ; Load A with the balls X position
-                ld      b, a                        ; Load A into B
+                ld      b, (hl)                     ; Load B with the balls X position
 
                 inc     hl                          ; Point HL at the background temp store
-                push    hl
-                push    hl
-                pop     de
-                call    sve16x8
-                pop     hl
+                push    hl                          ; Save HL
+                push    hl                          ; Save HL so it can be placed...
+                pop     de                          ; ...into DE
+                push    bc                          ; Save BC e.g. the X, Y position of the score
+                ld      hl, 0x0205
+                call    sveScrnBlck                 ; Save the background behind the score
+                pop     bc                          ; Restore X, Y in BC
+                pop     hl                          ; Restore the score pointer in HL
 
-                ld      de, Score115                ; Point DE to the score sprite data
+                ld      de, DiamondSpriteData       ; Point DE to the score sprite data
                 call    drwMskd24x8Sprt             ; Draw the score sprite
 
                 pop     hl                          ; Restore HL
                 pop     bc                          ; Restore BC
-                ld      de, 19
+                ld      de, 23
                 add     hl, de
                 djnz    _chkScrActv                 ; Loop if there are more scores to check
                 ret                                 ; Finished
@@ -1784,13 +1795,15 @@ objctMvngBlck2          ; XPos, XSpeed, YPos, YSpeed
 
                         
 objctScore              ; Timer 1 byte, Ypos 1 byte, Xpos 1 byte, Screen Background 16 bytes
-                ds      5 * 19                       ; Make space for five score banners
+                ds      7 * 23                       ; Make space for five score banners
 
 ;****************************************************************************************************************
 ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
 ;****************************************************************************************************************
 lvlData
                 ds      15 * 7
+
+scratch         ds      20
 
 ;****************************************************************************************************************
 ; Includes
