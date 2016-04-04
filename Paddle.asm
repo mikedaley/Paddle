@@ -682,6 +682,7 @@ _hrzntlLp
                 push    hl
                 push    bc
                 ld      de, HorizBlockData
+                xor     a
                 call    drwSprt
                 pop     bc
                 pop     hl
@@ -701,6 +702,7 @@ _vrtclLp1
                 push    hl
                 push    bc
                 ld      de, VertLBlockData
+                xor     a
                 call    drwSprt
                 pop     bc
                 pop     hl
@@ -720,6 +722,7 @@ _vrtclLp2
                 push    hl
                 push    bc
                 ld      de, VertRBlockData
+                xor     a
                 call    drwSprt
                 pop     bc
                 pop     hl
@@ -800,6 +803,7 @@ drwBll
                 ld      b, a                        ; Put A into B
                 ld      a, (objctBall + BLLYPS)     ; Load A with the balls Y position
                 ld      c, a                        ; Load C with A so B = X, C = Y
+                xor     a
                 call    drwSprt                     ; Draw sprite
                 ret
 
@@ -828,6 +832,7 @@ drwBt
                 ld      b, a                        ; Put A into B
                 ld      a, (objctBat + BTYPS)       ; Load A with the bats Y position
                 ld      c, a                        ; Load A with A so B = X, C = Y
+                xor     a
                 call    drwSprt                     ; Draw sprite
                 ret
 
@@ -1467,8 +1472,14 @@ _odd
                 add     a, a
                 ld      c, a
                 push    bc                          ; Save BC
+                push    bc
                 ld      de, SpriteBlockData         ; Point to the block sprite data
+                xor     a
                 call    drwSprt                     ; Draw the block (XOR) to remove block
+                pop     bc 
+                ld      de, SpriteBlockData
+                ld      a, 1
+                call    drwSprt
 
                 call    fndInctvScrSprt             ; Find an available score sprite
                 cp      0                           ; Check if A is equal to 0 and...
@@ -1506,6 +1517,12 @@ _even
                 add     a, a
                 ld      c, a
                 push    bc
+                push    bc
+                xor     a
+                ld      de, SpriteBlockData
+                call    drwSprt
+                pop     bc
+                ld      a, 1
                 ld      de, SpriteBlockData
                 call    drwSprt
 
@@ -1616,7 +1633,13 @@ _drwNxtBlck     ld      bc, (currntBlckY)
                 ld      (lvlBlckCnt), a
 
                 push    hl
+                push    bc
                 ld      de, SpriteBlockData
+                xor     a
+                call    drwSprt
+                pop     bc
+                ld      de, SpriteBlockData
+                ld      a, 1
                 call    drwSprt
                 pop     hl
 
