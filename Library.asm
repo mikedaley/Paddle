@@ -120,12 +120,14 @@ _prShftX
 ; Entry Registers:
 ;   DE = Pointer to the sprite data to be drawn
 ;   BC = Pixel location B = X, C = Y
+;   A = screen location 0 = screen file, 1 = back buffer
 ; Used Registers:
 ;   A, B, C, D, E, H, L, IX
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
 drwSprt
+                ld      (_scrnLoc + 1), a           ; Save the screen locaion param for use later
                 ld      a, (de)                     ; Grab the sprite width...
                 ld      (_sprtWdth + 1), a          ; ...and save it for use later in the routine
                 inc     de                          ; Move DE to the sprite height
@@ -155,8 +157,13 @@ drwSprt
 
                 ; Load IX with the first address of the y-axis lookup table
                 ld      b, 0                        ; Clear B
-                ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-                add     ix, bc                      ; Increment IX by the Y pixel position
+_scrnLoc        ld      a, 0                        ; Updated to load A with the value passed in (self modding)
+                or      a                           ; Check to see if A is zero or not
+                jr      nz, _bffrLkup               ; != 0 means we are drawind to the buffered screen
+                ld      ix, scrnLnLkup              ; Otherwise point to the screen file lookup table
+                jr      _addYPos                    
+_bffrLkup       ld      ix, bffrLkup                ; Point to the screen buffer lookup table
+_addYPos        add     ix, bc                      ; Increment IX by the Y pixel position
                 add     ix, bc                      ; twice as the table contains word values
 
 _sprtHght       ld      b, 0                        ; The value is overwritten by values at the start of this routine
