@@ -212,7 +212,7 @@ VertLBlockData0
 ; Diamond Particle
 ;*******************************************************************************************
 DiamondSpriteData
-                    db 2                          ; Width in bytes
+                    db 1                          ; Width in bytes
                     db 5                          ; Height in pixels
                     dw DiamondSpriteData0, DiamondSpriteData0 + 20 * 1, DiamondSpriteData0 + 20 * 2, DiamondSpriteData0 + 20 * 3
                     dw DiamondSpriteData0 + 20 * 4, DiamondSpriteData0 + 20 * 5, DiamondSpriteData0 + 20 * 6, DiamondSpriteData0 + 20 * 7
