@@ -21,3 +21,17 @@ dvd_HL_C
                 inc l
     ENDM             
                 ret
+
+;                 ld      a, c
+;                 ld      d, a
+;                 ld      e, 0
+;                 ld      b, 8
+; _div            xor     a
+;                 sbc     hl, de
+;                 inc     hl
+;                 jp      p, _noAdd
+;                 add     hl, de
+;                 dec     hl
+; _noAdd          add     hl, hl
+;                 djnz    _div
+;                 ret
