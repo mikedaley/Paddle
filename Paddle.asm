@@ -193,11 +193,10 @@ shftSprts
                 ld      c, 8
                 call    prShft
 
-                ; Score 115 Sprite
-;                 ld      hl, Score115_0
-;                 ld      de, Score115_0 + 3 * 8
-;                 ld      b, 3
-;                 ld      c, 8
+;                 ld      hl, DiamondSpriteData0
+;                 ld      de, DiamondSpriteData0 + 2 * 5
+;                 ld      b, 2
+;                 ld      c, 5
 ;                 call    prShft
 
                 ret
