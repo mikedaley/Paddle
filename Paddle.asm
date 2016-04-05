@@ -72,6 +72,18 @@ GMESTTE_DSPLYLVL        equ                 8
 GMESTTE_NXTLVL          equ                 16
 GMESTTE_LSTLFE          equ                 32
 
+; Colours 
+BLACK                   equ                 0
+BLUE                    equ                 1
+RED                     equ                 2
+MAGENTA                 equ                 3
+GREEN                   equ                 4
+CYAN                    equ                 5
+YELLOW                  equ                 6
+WHITE                   equ                 7
+PAPER                   equ                 8       ; Multiply with INK to get paper colour            
+BRIGHT                  equ                 64
+FLASH                   equ                 128
 ;****************************************************************************************************************
 ; Start Code
 ;****************************************************************************************************************           
@@ -110,22 +122,25 @@ _yLkupLp
                 ld      a, 5                        ; Set the ink colour
                 ld      (0x5C8D), a  
 
-;                 ld      hl, 0x3D00                  ; Copy the ROM standard font
-;                 ld      de, Font                    ; ...to the font table in game
-;                 ld      bc, 0x300                     
+                ld      hl, 0x3D00                  ; Copy the ROM standard font
+                ld      de, Font                    ; ...to the font table in game
+                ld      bc, 0x300                     
+                ldir
+
+;                 ld      hl, NumberFont              ; Copy the custom numbers font data
+;                 ld      de, Font + (8 * 16)         ;
+;                 ld      bc, 0x50
 ;                 ldir
-                ld      hl, NumberFont              ; Copy the custom numbers font data
-                ld      de, Font + (8 * 16)         ;
-                ld      bc, 0x50
-                ldir
-                ld      hl, CharFont                ; Copy the custom Characters font data...
-                ld      de, Font + (8 * 33)         ; ...making sure it is position in memory like the ROM font
-                ld      bc, 0xD0
-                ldir
+
+;                 ld      hl, CharFont                ; Copy the custom Characters font data...
+;                 ld      de, Font + (8 * 33)         ; ...making sure it is position in memory like the ROM font
+;                 ld      bc, 0xD0
+;                 ldir
 
                 ld      hl, Font - 0x100            ; Point HL to our new font data - 256 and...
                 ld      (0x5C36), hl                ; ...update the CHARS sysvar with the new location 
 
+                call    mnuLp
                 call    drwTtlScrn                  ; Draw the title screen
                 call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    stupPrtcls
@@ -137,7 +152,7 @@ _yLkupLp
                 ld      bc, lvsTxt                  ; Load DE with the address of the Lives Text
                 call    prntStrng
 
-                xor     a                        ; Load A with 0 for the initial level
+                xor     a                           ; Load A with 0 for the initial level
                 ld      (crrntLvl), a               ; Save the level 
                 call    ldLvl                       ; Load the current level
 
@@ -193,12 +208,6 @@ shftSprts
                 ld      b, 4
                 ld      c, 8
                 call    prShft
-
-;                 ld      hl, DiamondSpriteData0
-;                 ld      de, DiamondSpriteData0 + 2 * 5
-;                 ld      b, 2
-;                 ld      c, 5
-;                 call    prShft
 
                 ret
 
@@ -804,7 +813,7 @@ _drwCrrntScr
                 pop     hl                          ; Restore the score pointer in HL
 
                 xor     a                           ; Reset A so we draw to the screen file
-                ld      de, DiamondSpriteData       ; Point DE to the score sprite data
+                ld      de, ParticleSpriteData      ; Point DE to the score sprite data
                 call    drwMskdSprt                 ; Draw the score sprite
 
                 pop     hl                          ; Restore HL
@@ -1833,6 +1842,7 @@ scratch         ds      20
 ;****************************************************************************************************************
 ; Includes
 ;****************************************************************************************************************
+                include     Menu.asm
                 include     Library.asm
                 include     Maths.asm
                 include     Levels.asm
