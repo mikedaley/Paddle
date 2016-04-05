@@ -178,6 +178,7 @@ _sprtXOffst     or      0                           ; Merge in the XOffset saved
                 ld      h, (hl)                     ; Load the high byte of H with (HL)
                 ld      l, a                        ; Load the low byte in A into L
 _sprtWdth       ld      b, 0                        ; Load BC with the width in bytes to copy as set earlier
+
 _nxtSprtClmn
                 ld      a, (de)                     ; Load A with the sprite Data
                 inc     de                          ; Move DE to the next byte of sprite data
@@ -185,6 +186,7 @@ _nxtSprtClmn
                 ld      (hl), a                     ; Write A to the screen
                 inc     l                           ; Move to the next screen locatiojn 
                 djnz    _nxtSprtClmn                ; Loop of there are more sprite columns to draw
+
                 ex      af, af'                     ; Switch back to primary register AF
                 dec     a                           ; Reduce A which is tracking the height of the sprite...
                 jp nz, _nxtSprtRw                   ; ...and loop if necessary
