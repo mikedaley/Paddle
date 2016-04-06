@@ -50,6 +50,15 @@ mnuLp
                 ld      bc, cpyrghtEnd - cpyrght
                 call    8252
 
+                ;*************************************
+                ; Debug
+                ld      e, 176
+                ld      d, 8*2
+                call    getPixelAddr
+                ld      a, 256 - PAGE0E               ; Space left in Page 0                
+                call    HexByte
+                ;*************************************
+
                 ld      a, 6
                 ld      bc, 0x0000
 

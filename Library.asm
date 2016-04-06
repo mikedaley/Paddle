@@ -423,9 +423,35 @@ _chrLp2
                 pop     bc                          ; Restore BC which holds the string pointer
                 jr      _chrLp1                     ; Go back to check for the next character
 
-
-
-
-
+;****************************************************************************************************************
+; Generate a random number
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+genRndmNmbr     ld      hl, rndmNmbr1
+                ld      e, (hl)
+                inc     l
+                ld      d, (hl)
+                inc     l
+                ld      a, r
+                xor     (hl)
+                xor     e
+                xor     d
+                rlca
+                rlca
+                rlca
+                srl     e
+                srl     d
+                ld      (hl), d
+                dec     l
+                ld      (hl), e
+                dec     l
+                ld      (hl), a
+                ret
 
                 

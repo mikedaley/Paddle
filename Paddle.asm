@@ -24,23 +24,27 @@
 ;*******************************************************************************************
 ;Constants
 ;*******************************************************************************************
-SCRNBFFR                equ                 57856
-BTMPSCRNSDDR            equ                 16384   ; Location in memory of the bitmap screen data
-BTMPSCRSZ               equ                 6144    ; Size of the bitmap screen data
-ATTRSCRNADDR            equ                 22528   ; Location in memory of the screen attribute data
+CONTENDEDADDR           equ                 24064   ; Address to load contended memory contents
+CODESTART               equ                 32768   ; Address to load fast code
+
+SCRNBFFR                equ                 57856   ; Address of screen back buffer    
+BTMPSCRNSDDR            equ                 16384   ; Address of bitmap screen file
+BTMPSCRSZ               equ                 6144    ; Size of the bitmap screen
+ATTRSCRNADDR            equ                 22528   ; Address of screen attribute data
 ATTRSCRNSZ              equ                 768     ; Size of the screen attribute data
-SCRNSZ                  equ                 6911    ; Full size of both bitmap and attribute screen data
+SCRNSZ                  equ                 6911    ; Size of bitmap screen file + screen attributes
+
+; Bat constants
 BTMXRGHT                equ                 224     ; Furthest pixel to the right the paddle can be drawn
 BTMXLFT                 equ                 8       ; Furthes pixel to the left the bat can be drawn
+
+; Screen boundaries in pixels used when bouncing the ball
 SCRNLFT                 equ                 8
 SCRNRGHT                equ                 248
 SCRNTP                  equ                 10
 SCRNBTTM                equ                 180
-SCRNEDGSZ               equ                 4
             
-NUM_BLOCKS              equ                 3
-            
-; Offsets into the B    ALL structure       
+; Offsets into the BALL structure       
 BLLXPS                  equ                 0
 BLLXSPD                 equ                 1
 BLLYPS                  equ                 2
@@ -50,7 +54,7 @@ BLLYSPD                 equ                 3
 BLLPXLHGHT              equ                 5
 BLLPXLWIDTH             equ                 5
             
-; Offsets into the B    AT structure        
+; Offsets into the BAT structure        
 BTXPS                   equ                 0
 BTSPD                   equ                 1
 BTYPS                   equ                 2
@@ -84,18 +88,104 @@ WHITE                   equ                 7
 PAPER                   equ                 8       ; Multiply with INK to get paper colour            
 BRIGHT                  equ                 64
 FLASH                   equ                 128
+
 ;****************************************************************************************************************
-; Start Code
+; Start of Contended Memory
 ;****************************************************************************************************************           
 
-                org     0x5E00                      ; Set origin just above the system variables in contended memory
+                org     CONTENDEDADDR               ; Set origin just above the system variables in contended memory
 
                 include Contended.asm               ; Load data and code that can sit in contended memory
 
-                org     0x8000                      ; Set the origin to uncontended memory for fast routines 
+CONTENDEDEND
+CONTENDE        equ     CONTENDEDEND - CONTENDEDADDR
+                ds      CODESTART-CONTENDEDADDR - CONTENDE      ; Fill memory from the end of contended code to the
+                                                                ; start of fast memory
 
 ;****************************************************************************************************************
-; Init
+; PAGE 0: Page boundary for tables and variables
+;****************************************************************************************************************
+PAGE0           jp      init                        ; Jump to the init code
+
+;****************************************************************************************************************
+; Variables
+gmeStte         db      0                           ; 1 = GMESTTE_PLYNG, 2 = GMESTTE_WTNG to Start, 4 = GMESTTE_DEAD
+lvlBlckCnt      db      0                           ; Number of blocks in this level
+crrntLvl        db      0                           ; Stores the current level index
+currntBlckRw    db      0                           ; Variables used to store detalis of the blocks when rendering...
+currntBlckCl    db      0                           ; ...a level
+currntBlckY     db      0
+currntBlckX     db      0
+crrntLvlAddr    dw      0                           ; Address of the currently loaded level
+
+; Stores the x, y attr position of the balls collision points
+ballMT          dw      0                           ; Middle Top
+ballMR          dw      0                           ; Middle Right
+ballMB          dw      0                           ; Middle Bottom
+ballML          dw      0                           ; Middle Left
+
+lives           db      5                           ; Number of lives each player has at the start of the game
+
+prShftWdth      db      0                           ; Holds the width of the sprite to be shifted
+prShftHght      db      0                           ; Holds the height of the sprite to be shifted
+prShftSize      dw      0                           ; Holds the size of a sprite to shift in bytes
+
+crrntScrCnt     db      0                           ; How many scores are visible on screen
+
+rndmNmbr1       db      0xaa                        ; Holds a random number calculated each frame
+rndmNmbr2       db      0x55                        ; Holds a random number calculated each frame
+rndmNmbr3       db      0xf0                        ; Holds a random number calculated each frame
+
+;****************************************************************************************************************
+; Text
+                        ; Colour, Yellow, Position, X, Y, Text
+scrLblTxt       db      16, 6, 22, 0, 1, 'SCORE'
+scrLblTxtEnd
+
+scrTxt          db      '0000000', 0x00
+scrTxtEnd
+
+lvsLblTxt       db      16, 6, 22, 0, 24, 'LIVES'
+lvsLblTxtEnd
+
+lvsTxt          db      '5', 0x00
+
+gmeOvrTxt       db      16, 7, 17, 2, 22, 15, 11, ' GAME OVER '
+gmeOvrTxtEnd
+
+;****************************************************************************************************************
+; Object data
+                        ; Xpos, XSpeed, Ypos, YSpeed
+objctBall       db      0, 1, 0, -2
+    
+                        ; Xpos, XSpeed, Ypos
+objctBat        db      112, 4, 150         
+                db      0 ; Delay counter used to time how long each frame should be visible
+                db      0 ; Animation Frame
+                db      0 ; Frame delay
+                        
+objctScore              ; Timer 1 byte, Ypos 1 byte, Xpos 1 byte, Screen Background 16 bytes
+                ds      7 * 23                       ; Make space for five score banners
+
+objctPrtcls             
+                db      0, 0                        ; Timer, Lifespan (50ths Second)
+                dw      0, 0                        ; Xpos, Ypos as words so we can increment in fractions
+                ds      10                          ; Space needed to store the background of the particle sprite
+objctPrtclsEnd
+                ds      (objctPrtclsEnd - objctPrtcls) * 14    ; Reserve the space for 9 more particles givin 15 in total 
+
+lvlData         ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
+                ds      15 * 7
+
+;****************************************************************************************************************
+; PAGE0 END
+PAGE0END
+PAGE0E          equ     PAGE0END - PAGE0                ; Pad to the next 256 page boundary
+                defm    256 - PAGE0E
+;****************************************************************************************************************
+
+;****************************************************************************************************************
+; Main code
 ;****************************************************************************************************************           
 
 .debug          equ     1
@@ -122,10 +212,10 @@ _yLkupLp
                 ld      a, 5                        ; Set the ink colour
                 ld      (0x5C8D), a  
 
-                ld      hl, 0x3D00                  ; Copy the ROM standard font
-                ld      de, Font                    ; ...to the font table in game
-                ld      bc, 0x300                     
-                ldir
+;                 ld      hl, 0x3D00                  ; Copy the ROM standard font
+;                 ld      de, Font                    ; ...to the font table in game
+;                 ld      bc, 0x300                     
+;                 ldir
 
 ;                 ld      hl, NumberFont              ; Copy the custom numbers font data
 ;                 ld      de, Font + (8 * 16)         ;
@@ -137,8 +227,8 @@ _yLkupLp
 ;                 ld      bc, 0xD0
 ;                 ldir
 
-                ld      hl, Font - 0x100            ; Point HL to our new font data - 256 and...
-                ld      (0x5C36), hl                ; ...update the CHARS sysvar with the new location 
+;                 ld      hl, Font - 0x100            ; Point HL to our new font data - 256 and...
+;                 ld      (0x5C36), hl                ; ...update the CHARS sysvar with the new location 
 
                 call    mnuLp
                 call    drwTtlScrn                  ; Draw the title screen
@@ -228,6 +318,24 @@ dbgPrnt
                 ld      a, (objctBat + 4)           ; Bat animation frame
                 call    HexByte
 
+                ld      e, 176
+                ld      d, 8*9
+                call    getPixelAddr
+                ld      a, (rndmNmbr1)              ; Current random number 1
+                call    HexByte
+
+                ld      e, 176
+                ld      d, 8*12
+                call    getPixelAddr
+                ld      a, (rndmNmbr2)              ; Current random number 2
+                call    HexByte
+
+                ld      e, 176
+                ld      d, 8*15
+                call    getPixelAddr
+                ld      a, (rndmNmbr3)              ; Current random number 3
+                call    HexByte
+
                 ret
 
 ENDIF
@@ -264,6 +372,8 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
 
                 call    drwBt                       ; Erase the bat (XOR)
 
+                call    genRndmNmbr
+
                 ld      a, (lvlBlckCnt)             ; Load A with the number of blocks that are still visible
                 cp      0                           ; Check the number of blocks against 0
                 jr      nz, mnLp                    ; If not yet 0 then loop
@@ -291,16 +401,6 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 call    drwBll                      ; Draw the ball first as it could be the closest sprite to the top of the screen
                 call    drwBt                       ; Draw the bat last as its at the bottom of the screen
 
-;                 ld      bc, 0x6020
-;                 ld      de, scratch
-;                 ld      hl, 0x0208
-;                 call    sveScrnBlck
-
-;                 ld      bc, 0x1010
-;                 ld      de, scratch
-;                 ld      hl, 0x0208
-;                 call    rstrScrnBlck
-
         IF .debug
                 call    dbgPrnt                     ; Print debug output during development
         ENDIF
@@ -309,6 +409,7 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
 
                 call    drwBll                      ; Erase the ball (XOR)
                 call    drwBt                       ; Erase the bat (XOR)
+                call    genRndmNmbr
                 
                 ld      bc, 32766                   ; Want to see if SPACE has been pressed
                 in      a, (c)                      ; Read the port
@@ -361,7 +462,8 @@ _gmeStteNxtLvl                                      ; *** Game state NEXT LEVEL
                 jr      nz, _incLvl                 ; If not then increment the level
                 ld      a, 1                        ; Otherwise set the level back to 1
                 ld      (crrntLvl), a               ; and save it.
-_incLvl         ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISPLAY LEVEL
+_incLvl         
+                ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISPLAY LEVEL
                 ld      (gmeStte), a                ; Save the game state
                 call    ldLvl                       ; Load the new level
                 jp      mnLp                        ; Loop
@@ -381,7 +483,8 @@ _chckGmeStteDsplyLvl                                ; *** Game state DISPLAY LEV
                 inc     de                          ; + 1 DE which is the start of the actual string
                 call    8252                        ; ROM print the title
                 ld      de, 100                     ; Load DE with 100 for a delay loop
-_lvlDsplyWtng   halt                                ; Wait for the scan line to reach the top of the screen (50hz)
+_lvlDsplyWtng   
+                halt                                ; Wait for the scan line to reach the top of the screen (50hz)
                 dec     de                          ; -1 from DE
                 ld      a, d                        ; Check to see if...
                 or      e                           ; ...the timer has run down
@@ -466,13 +569,13 @@ updtBtAnmtnFrm
                 ld      (objctBat + BTANMTONDLY), a ; Save the new delay amount
                 cp      5                           ; Check the delay (1/50 * n)
                 ret     nz                          ; and return if we've not reached the delay value
-                xor     a                        ; Delay has been reached so reset the delay...
+                xor     a                           ; Delay has been reached so reset the delay...
                 ld      (objctBat + BTANMTONDLY), a ; ...and save it
                 ld      a, (objctBat + BTANMTONFRM) ; Load A with the current frame count
                 inc     a                           ; Increment the counter
                 cp      4                           ; Compare it against the max value allowed...
                 jp      nz, _svBtFrm                ; ...and save the new frame count if the max has not been reached
-                xor     a                        ; Reset the animation frame to 0
+                xor     a                           ; Reset the animation frame to 0
 _svBtFrm
                 ld      (objctBat + BTANMTONFRM), a ; Save the new frame number
                 ret                                 ; Return
@@ -559,33 +662,6 @@ _updtBckgrnd
                 ld      de, 20            
                 add     hl, de                      ; to get to the next score object
                 djnz    _nxtBckgrnd                 ; Loop if there are score objects letf
-                ret
-
-;************************************************************************************************************************
-; Update Moving Block
-; Updates the position of the moving block based on the blocks current +/- speed
-;
-; Entry Registers:
-;   NONE
-; Used Registers:
-;   A, B, C, D, E
-; Returned Registers:
-;   NONE
-;************************************************************************************************************************   
-updtMvngBlck
-                ld      a, (ix + BLLXPS)
-                add     a, (ix + BLLXSPD)
-                ld      (ix + BLLXPS), a
-                cp      SCRNRGHT - BLCKWDTH
-                jp      nc, _blckHtEdg
-                cp      SCRNLFT
-                jp      c, _blckHtEdg
-                ret
-
-_blckHtEdg
-                ld      a, (ix + BLLXSPD)
-                neg
-                ld      (ix + BLLXSPD), a
                 ret
 
 ;****************************************************************************************************************
@@ -1757,87 +1833,6 @@ _dthSndLp       push    bc
                 pop     bc
                 djnz    _dthSndLp                   ; repeat.
                 ret
-
-;****************************************************************************************************************
-; Variables
-;****************************************************************************************************************
-gmeStte         db      0                           ; 1 = GMESTTE_PLYNG, 2 = GMESTTE_WTNG to Start, 4 = GMESTTE_DEAD
-lvlBlckCnt      db      0                           ; Number of blocks in this level
-crrntLvl        db      0                           ; Stores the current level
-currntBlckRw    db      0                           ; Variables used to store detalis of the blocks when rendering...
-currntBlckCl    db      0                           ; ...a level
-currntBlckY     db      0
-currntBlckX     db      0
-crrntLvlAddr    dw      0
-
-; Stores the x, y attr position of the balls collision points
-ballMT          dw      0                           ; Middle Top
-ballMR          dw      0                           ; Middle Right
-ballMB          dw      0                           ; Middle Bottom
-ballML          dw      0                           ; Middle Left
-
-lives           db      5                           ; Number of lives each player has at the start of the game
-
-prShftWdth      db      0                           ; Holds the width of the sprite to be shifted
-prShftHght      db      0                           ; Holds the height of the sprite to be shifted
-prShftSize      dw      0                           ; Holds the size of a sprite to shift in bytes
-
-crrntScrCnt     db      0                           ; How many scores are visible on screen
-
-;****************************************************************************************************************
-; Text
-;****************************************************************************************************************
-                        ; Colour, Yellow, Position, X, Y, Text
-scrLblTxt       db      16, 6, 22, 0, 1, 'SCORE'
-scrLblTxtEnd
-
-scrTxt          db      '0000000', 0x00
-scrTxtEnd
-
-lvsLblTxt       db      16, 6, 22, 0, 24, 'LIVES'
-lvsLblTxtEnd
-
-lvsTxt          db      '5', 0x00
-
-gmeOvrTxt       db      16, 7, 17, 2, 22, 15, 11, ' GAME OVER '
-gmeOvrTxtEnd
-
-;****************************************************************************************************************
-; Object data
-;****************************************************************************************************************
-                        ; Xpos, XSpeed, Ypos, YSpeed
-objctBall       db      0, 1, 0, -2
-    
-                        ; Xpos, XSpeed, Ypos
-objctBat        db      112, 4, 150         
-                db      0 ; Delay counter used to time how long each frame should be visible
-                db      0 ; Animation Frame
-                db      0 ; Frame delay
-
-objctMvngBlck1          ; XPos, XSpeed, YPos, YSpeed
-                db      76, 2, 115, 0  
-
-objctMvngBlck2          ; XPos, XSpeed, YPos, YSpeed
-                db      16, -1, 16, 0
-
-                        
-objctScore              ; Timer 1 byte, Ypos 1 byte, Xpos 1 byte, Screen Background 16 bytes
-                ds      7 * 23                       ; Make space for five score banners
-
-objctPrtcls             
-                db      0, 0                        ; Timer, Lifespan (50ths Second)
-                dw      0, 0                        ; Xpos, Ypos as words so we can increment in fractions
-                ds      10                          ; Space needed to store the background of the particle sprite
-objctPrtclsEnd
-                ds      (objctPrtclsEnd - objctPrtcls) * 14    ; Reserve the space for 9 more particles givin 15 in total 
-
-;****************************************************************************************************************
-; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
-;****************************************************************************************************************
-lvlData
-                ds      15 * 7
-
-scratch         ds      20
 
 ;****************************************************************************************************************
 ; Includes
