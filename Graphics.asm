@@ -212,28 +212,24 @@ VertLBlockData0
 ; Diamond Particle
 ;*******************************************************************************************
 ParticleSpriteData
-                    db 1                          ; Width in bytes
+                    db 2                          ; Width in bytes
                     db 5                          ; Height in pixels
-                    dw ParticleSpriteData0, ParticleSpriteData1 + 20 * 1, ParticleSpriteData2 + 20 * 2, ParticleSpriteData3 + 20 * 3
-                    dw ParticleSpriteData4 + 20 * 4, ParticleSpriteData5 + 20 * 5, ParticleSpriteData6 + 20 * 6, ParticleSpriteData7 + 20 * 7
+                    dw ParticleSpriteData0, ParticleSpriteData0 + 20 * 1, ParticleSpriteData0 + 20 * 2, ParticleSpriteData0 + 20 * 3
+                    dw ParticleSpriteData0 + 20 * 4, ParticleSpriteData0 + 20 * 5, ParticleSpriteData0 + 20 * 6, ParticleSpriteData0 + 20 * 7
 
 ParticleSpriteData0
                     db %00010000, %00000000                  ; Mask
                     db %11111111, %11111111                  ; Sprite
-
                     db %00111000, %00000000                  ; Mask 
                     db %11101111, %11111111                  ; Sprite
-
                     db %01111100, %00000000
                     db %11000111, %11111111
-
                     db %00111000, %00000000
                     db %11101111, %11111111
-
                     db %00010000, %00000000
                     db %11111111, %11111111
-
-ParticleSpriteData1
+;
+ParticleSpriteData1;
                     db %00001000, %00000000                  ; Mask
                     db %11111111, %11111111                  ; Sprite
                     db %00011100, %00000000                  ; Mask 
@@ -244,8 +240,8 @@ ParticleSpriteData1
                     db %11110111, %11111111
                     db %00001000, %00000000
                     db %11111111, %11111111
-
-ParticleSpriteData2
+;
+ParticleSpriteData2;
                     db %00000100, %00000000                  ; Mask
                     db %11111111, %11111111                  ; Sprite
                     db %00001110, %00000000                  ; Mask 
@@ -256,8 +252,8 @@ ParticleSpriteData2
                     db %11111011, %11111111
                     db %00000100, %00000000
                     db %11111111, %11111111
-
-ParticleSpriteData3
+;
+ParticleSpriteData3;
                     db %00000010, %00000000                  ; Mask
                     db %11111111, %11111111                  ; Sprite
                     db %00000111, %00000000                  ; Mask 
@@ -268,8 +264,8 @@ ParticleSpriteData3
                     db %11111101, %11111111
                     db %00000010, %00000000
                     db %11111111, %11111111
-
-ParticleSpriteData4
+;
+ParticleSpriteData4;
                     db %00000001, %00000000                  ; Mask
                     db %11111111, %11111111                  ; Sprite
                     db %00000011, %10000000                  ; Mask 
@@ -280,8 +276,8 @@ ParticleSpriteData4
                     db %11111110, %11111111
                     db %00000001, %00000000
                     db %11111111, %11111111
-
-ParticleSpriteData5
+;
+ParticleSpriteData5;
                     db %00000000, %10000000                  ; Mask
                     db %11111111, %11111111                  ; Sprite
                     db %00000001, %11000000                  ; Mask 
@@ -292,8 +288,8 @@ ParticleSpriteData5
                     db %11111111, %01111111
                     db %00000000, %10000000
                     db %11111111, %11111111
-
-ParticleSpriteData6
+;
+ParticleSpriteData6;
                     db %00000000, %01000000                  ; Mask
                     db %11111111, %11111111                  ; Sprite
                     db %00000000, %11100000                  ; Mask 
@@ -304,13 +300,13 @@ ParticleSpriteData6
                     db %11111111, %10111111
                     db %00000000, %01000000
                     db %11111111, %11111111
-
-ParticleSpriteData7
+;
+ParticleSpriteData7;
                     db %00000000, %01000000                  ; Mask
                     db %11111111, %11111111                  ; Sprite
                     db %00000000, %11100000                  ; Mask 
                     db %11111111, %10111111                  ; Sprite
-                    db %00000000, %11110000
+                    db %00000001, %11110000
                     db %11111111, %00011111
                     db %00000000, %11100000
                     db %11111111, %10111111
