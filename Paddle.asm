@@ -5,7 +5,7 @@
 ; Paddle is a Break Out clone used to learn Z80 Assembly on the ZX Spectrum
 ;
 ; Notes
-; * Using IM1 so IY can't be used as the IM1 interrupt doesn't prtect it. 
+; * Using IM1 so IY can't be used as the IM1 interrupt doesn't protect it. 
 ; 
 ; TODO
 ; * Implement IM2 to see what can be done with that
@@ -89,6 +89,8 @@ PAPER                   equ                 8       ; Multiply with INK to get p
 BRIGHT                  equ                 64
 FLASH                   equ                 128
 
+NUMPRTCLS               equ                 15
+
 ;****************************************************************************************************************
 ; Start of Contended Memory
 ;****************************************************************************************************************           
@@ -107,7 +109,6 @@ CONTENDE        equ     CONTENDEDEND - CONTENDEDADDR
 ;****************************************************************************************************************
 PAGE0           jp      init                        ; Jump to the init code
 
-;****************************************************************************************************************
 ; Variables
 gmeStte         db      0                           ; 1 = GMESTTE_PLYNG, 2 = GMESTTE_WTNG to Start, 4 = GMESTTE_DEAD
 lvlBlckCnt      db      0                           ; Number of blocks in this level
@@ -136,7 +137,8 @@ rndmNmbr1       db      0xaa                        ; Holds a random number calc
 rndmNmbr2       db      0x55                        ; Holds a random number calculated each frame
 rndmNmbr3       db      0xf0                        ; Holds a random number calculated each frame
 
-;****************************************************************************************************************
+grvty           dw      0x00032                      ; Gravity to be applied to particles each frame
+
 ; Text
                         ; Colour, Yellow, Position, X, Y, Text
 scrLblTxt       db      16, 6, 22, 0, 1, 'SCORE'
@@ -153,7 +155,6 @@ lvsTxt          db      '5', 0x00
 gmeOvrTxt       db      16, 7, 17, 2, 22, 15, 11, ' GAME OVER '
 gmeOvrTxtEnd
 
-;****************************************************************************************************************
 ; Object data
                         ; Xpos, XSpeed, Ypos, YSpeed
 objctBall       db      0, 1, 0, -2
@@ -168,16 +169,17 @@ objctScore              ; Timer 1 byte, Ypos 1 byte, Xpos 1 byte, Screen Backgro
                 ds      7 * 23                       ; Make space for five score banners
 
 objctPrtcls             
-                db      0, 0                        ; Timer, Lifespan (50ths Second)
-                dw      0, 0                        ; Xpos, Ypos as words so we can increment in fractions
+                db      50, 0                        ; Lifespan (50ths Second), Timer  
+                dw      0x0050, 100                        ; Xvector, Xpos
+                dw      0x0050, 100                        ; YVector, Ypos
                 ds      10                          ; Space needed to store the background of the particle sprite
 objctPrtclsEnd
                 ds      (objctPrtclsEnd - objctPrtcls) * 14    ; Reserve the space for 9 more particles givin 15 in total 
+PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls    ; Calculate the size of a particle
 
 lvlData         ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
                 ds      15 * 7
 
-;****************************************************************************************************************
 ; PAGE0 END
 PAGE0END
 PAGE0E          equ     PAGE0END - PAGE0                ; Pad to the next 256 page boundary
@@ -185,10 +187,21 @@ PAGE0E          equ     PAGE0END - PAGE0                ; Pad to the next 256 pa
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
+; PAGE 1: Page boundary for SIN tables
+PAGE1
+                db      0
+
+; PAGE1 END
+PAGE1END
+PAGE1E          equ     PAGE1END - PAGE1                ; Pad to the next 256 page boundary
+                defm    256 - PAGE1E
+;****************************************************************************************************************
+
+;****************************************************************************************************************
 ; Main code
 ;****************************************************************************************************************           
 
-.debug          equ     1
+.debug          equ     0
 
 init 
                 ld      hl, bffrLkup
@@ -230,42 +243,18 @@ _yLkupLp
 ;                 ld      hl, Font - 0x100            ; Point HL to our new font data - 256 and...
 ;                 ld      (0x5C36), hl                ; ...update the CHARS sysvar with the new location 
 
-                call    mnuLp
-                call    drwTtlScrn                  ; Draw the title screen
                 call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    stupPrtcls
-                call    watFrSpc                    ; Wait for the space key to be pressed...
-                call    clrScrn                     ; ...and once pressed clear the screen
-                call    drwBrdrs                    ; Draw the screen borders
+                call    menu
 
-                ld      de, 0xF000
-                ld      bc, lvsTxt                  ; Load DE with the address of the Lives Text
-                call    prntStrng
-
-                xor     a                           ; Load A with 0 for the initial level
-                ld      (crrntLvl), a               ; Save the level 
-                call    ldLvl                       ; Load the current level
-
-                ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISPLAY LEVEL
-                ld      (gmeStte), a                ; Save the game state
-
-                jp      mnLp                        ; Jump tp the main loop
-
+;****************************************************************************************************************
+; Clear the screen
 clrScrn     
                 call    0x0DAF                      ; ROM clear screen
-
-                ld      de, scrLblTxt               ; Point DE to the score label text
-                ld      bc, 10                      ; Set the length of the string
-                call    8252                        ; ROM print
-
-                call    rstScr
-
-                ld      de, lvsLblTxt               ; Point DE to lives label text
-                ld      bc, lvsLblTxtEnd - lvsLblTxt; Set the length of the string
-                call    8252                        ; ROM print
-
                 ret
 
+;****************************************************************************************************************
+; Pre-shift the sprites
 shftSprts
                 ld      hl, SpriteBlock0
                 ld      de, SpriteBlock0 + 3 * 8
@@ -306,39 +295,54 @@ shftSprts
 ;****************************************************************************************************************
 IF .debug
 dbgPrnt
-                ld      e, 176
+                ld      e, 168
                 ld      d, 8*3
                 call    getPixelAddr
-                ld      a, (objctBat)               ; Bat X Position
+                ld      a, (objctPrtcls + 1)               ; Bat X Position
                 call    HexByte
 
-                ld      e, 176
+                ld      e, 168
                 ld      d, 8*6
                 call    getPixelAddr
-                ld      a, (objctBat + 4)           ; Bat animation frame
+                ld      a, (objctPrtcls + 1 + PRTCLSZ * 1)               ; Bat X Position
                 call    HexByte
 
-                ld      e, 176
+                ld      e, 168
                 ld      d, 8*9
                 call    getPixelAddr
-                ld      a, (rndmNmbr1)              ; Current random number 1
-                call    HexByte
-
-                ld      e, 176
-                ld      d, 8*12
-                call    getPixelAddr
-                ld      a, (rndmNmbr2)              ; Current random number 2
-                call    HexByte
-
-                ld      e, 176
-                ld      d, 8*15
-                call    getPixelAddr
-                ld      a, (rndmNmbr3)              ; Current random number 3
+                ld      a, (objctPrtcls + 1 + (PRTCLSZ * 2))               ; Bat X Position
                 call    HexByte
 
                 ret
 
 ENDIF
+
+;****************************************************************************************************************
+; Start new game
+;****************************************************************************************************************
+strtNewGame
+                call    clrScrn
+                call    rstScr                      ; Reset the score
+                call    rstBt
+                call    rstScrSprt
+                call    drwUI 
+
+                ld      a, 5 
+                ld      (lives), a
+                ld      a, 53                       ; The number five in the character set
+                ld      (lvsTxt), a
+                
+                ld      de, 0xF000
+                ld      bc, lvsTxt                  ; Load DE with the address of the Lives Text
+                call    prntStrng
+
+                xor     a                           ; Reset the level...
+                ld      (lvlBlckCnt), a             ; ...block count
+                ld      (crrntLvl), a               ; Save the level 
+                call    ldLvl                       ; Load the current level
+
+                ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISPLAY LEVEL
+                ld      (gmeStte), a                ; Save the game state
 
 ;****************************************************************************************************************
 ; Main loop
@@ -356,8 +360,8 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
 
-                call    updtScrSprts
-                call    drwScr
+                call    updtPrtcls
+                call    drwPrtcls
 
                 call    updtBtAnmtnFrm
                 call    drwBt                       ; Draw the bat
@@ -368,6 +372,7 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
+
                 call    rstrScrBckgrnd
 
                 call    drwBt                       ; Erase the bat (XOR)
@@ -397,6 +402,8 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 add     a, b                        ; Calc the new X pos for the ball so its in the middle of the bat
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
                 
+                call    updtPrtcls
+                call    drwPrtcls
                 call    updtBtAnmtnFrm              ; Update the animation frame of the bat
                 call    drwBll                      ; Draw the ball first as it could be the closest sprite to the top of the screen
                 call    drwBt                       ; Draw the bat last as its at the bottom of the screen
@@ -407,6 +414,7 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
+                call    rstrScrBckgrnd
                 call    drwBll                      ; Erase the ball (XOR)
                 call    drwBt                       ; Erase the bat (XOR)
                 call    genRndmNmbr
@@ -515,26 +523,7 @@ _chckGmeSttePlyrDead
                 ld      bc, gmeOvrTxtEnd - gmeOvrTxt
                 call    8252
                 call    watFrSpc
-                call    clrScrn
-                call    drwBrdrs
-                ld      a, 5 
-                ld      (lives), a
-                ld      a, 53                       ; The number five in the character set
-                ld      (lvsTxt), a
-                
-                ld      de, 0xF000
-                ld      bc, lvsTxt
-                call    prntStrng
-                call    rstScr
-                xor     a                        ; Reset the level...
-                ld      (lvlBlckCnt), a             ; ...block count
-                xor     a
-                ld      (crrntLvl), a
-                call    ldLvl
-                ld      a, GMESTTE_DSPLYLVL
-                ld      (gmeStte), a
-                call    rstBt
-                jp      mnLp
+                jp      menu
 
 ;****************************************************************************************************************
 ; Setup the particle objects by clearing out all the values
@@ -547,9 +536,9 @@ _chckGmeSttePlyrDead
 ;   NONE
 ;****************************************************************************************************************
 stupPrtcls
-                ld      hl, objctPrtcls             ; Point HL at the screen buffer
-                ld      bc, 14 * 10                 ; Load BC with the number of bytes to clear
-                call    clrMem                      ; Call the clear mem routine
+;                 ld      hl, objctPrtcls             ; Point HL at the screen buffer
+;                 ld      bc, 14 * 10                 ; Load BC with the number of bytes to clear
+;                 call    clrMem                      ; Call the clear mem routine
                 ret
 
 ;****************************************************************************************************************
@@ -581,10 +570,8 @@ _svBtFrm
                 ret                                 ; Return
 
 ;****************************************************************************************************************
-; Update Score Sprites
-; Updates the score sprites that are displayed on screen when a block has been destroyed. A table is stored at
-; objectScore which is used to store the x, y, yspeed and timer for each score sprite that is visible. A score
-; is deemed to be visible if the timer is not visible.
+; Updates active particles by adjusting their current position using their current vector. A particle is active
+; if it has a timer value > 0
 ;
 ; Entry Registers:
 ;   NONE
@@ -593,73 +580,146 @@ _svBtFrm
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
-updtScrSprts
-                ld      b, 5                        ; Upto to five scores can be alive at the same time
-                ld      hl, objctScore              ; Point HL at the score sprite table
-_nxtScr         ld      a, (hl)                     ; Load A with the timer value for the score
-                cp      0                           ; Is the timer 0?
-                jp      nz, _updtScr                ; If not then update it as its active...
-                ld      de, 23                      ; Move to the...
-                add     hl, de                      ; ...score object
-                djnz    _nxtScr                     ; Loop if there are score objects left
-                ret
-_updtScr
-                inc     a                           ; Increment the timer
-                cp      75                          ; Has the timer reached 0.5 seconds (1/50 * 25)
-                jp      z, _rstScrTmr               ; If the timer has reached its max then reset it... 
-                push    bc
-                ld      (hl), a                     ; ...otherwise save the new timer value
-                inc     hl                          ; Point HL at the Ypos of the score... 
-                inc     (hl)                        ; ...and decrement it so the score moves up the screen
-                
-                ld      c, (hl)                     ; Save the Y position into C
-                inc     hl                          ; Move HL to the X position 
-                ld      b, (hl)                     ; Save X into B
-                inc     hl                          ; Move HL to the background data
-                push    hl                          ; Save HL
-                ex      de, hl                      ; Exchange DE and HL as saving the background uses DE for the scratch area
-                ld      hl, 0x0205
-                call    sveScrnBlck                 ; Save the background at the position of the score sprite
-                pop     hl                          ; Restore HL
-                pop     bc                          ; Restore BC
+updtPrtcls
+                ld      b, NUMPRTCLS                ; Load B with the total number of particles available
+                ld      hl, objctPrtcls             ; Point HL at the particle objects object pool
 
-                ld      de, 20                      ; Already moved 3 bytes into the structure so add 16 to get to the next score
-                add     hl, de                      ; to get to the next score object
-                djnz    _nxtScr                     ; Loop if there are score objects letf
-                ret
-_rstScrTmr
-                xor     a                           ; Load A with 0 so that it can...
-                ld      (hl), a                     ; ...be saved in the score object marked it inactive
-                ld      de, 23                      ; Move to the next...
-                add     hl, de                      ; ...object score
-                djnz    _nxtScr                     ; Loop if there are score objects left
+_nxtPrtcl 
+                ld      c, (hl)                     ; Save lifespan
+                inc     hl                          ; Move to timer
+                ld      a, (hl)                     ; Load timer
+                cp      0                           ; Is it active > 0           
+                jr      nz, _updtPrtcl              ; Yes then update
+                ld      de, PRTCLSZ - 1             ; Move to next particle     
+                add     hl, de                      ; Increase HL
+                djnz    _nxtPrtcl                   ; Loop
                 ret
 
+_updtPrtcl
+                push    bc                          ; Save the counter in B
+
+                inc     a                           ; Increment timer
+                cp      c                           ; Compare with lifespan
+                jr      z, _rstPrtclTmr             ; If 0 then reset the timer
+                push    hl
+                ld      (hl), a                     ; Save new timer value
+                inc     hl                          ; Move to the x vector address
+
+                ; Update X Position
+                ld      c, (hl)                     ; Load the low byte of the xVector into C
+                inc     hl                          ; Move to the hight byte
+                ld      b, (hl)                     ; Load the hight byte of the xVector into B
+                ld      a, (grvty)
+                ld      e, a
+                ld      a, (grvty + 1)
+                ld      d, a
+                ex      de, hl
+;                 add     hl, bc
+                ex      de, hl
+                ld      c, e
+                ld      b, d
+                dec     hl
+                ld      (hl), e
+                inc     hl
+                ld      (hl), d
+                inc     hl
+                ld      e, (hl)                     ; Load low byte of xpos into E
+                inc     hl                          ; Move to the high byte
+                ld      d, (hl)                     ; Load the high byte of xpos into D
+                ex      de, hl                      ; Exchange DE and HL 
+                add     hl, bc                      ; Add the xvector to the xpos
+                ex      de, hl                      ; Exchange DE and HL again to get the particle address back into HL
+                ld      (hl), d                     ; Save high byte of xpos
+                dec     hl                          ; Move to the low byte
+                ld      (hl), e                     ; Save the low byte of xpos
+                inc     hl                          ; Move to the YVector
+                inc     hl                          ; ...which is a word away    
+
+                ; Update Y Position 
+                ld      c, (hl)                     ; Load the low byte of the xVector into C
+                inc     hl                          ; Move to the hight byte
+                ld      b, (hl)                     ; Load the hight byte of the xVector into B
+                ld      a, (grvty)
+                ld      e, a
+                ld      a, (grvty + 1)
+                ld      d, a
+                ex      de, hl  
+                add     hl, bc
+                ex      de, hl
+                ld      c, e
+                ld      b, d
+                dec     hl
+                ld      (hl), e
+                inc     hl
+                ld      (hl), d
+                inc     hl
+                ld      e, (hl)                     ; Load low byte of xpos into E
+                inc     hl                          ; Move to the high byte
+                ld      d, (hl)                     ; Load the high byte of xpos into D
+                ex      de, hl                      ; Exchange DE and HL 
+                add     hl, bc                      ; Add the xvector to the xpos
+                ex      de, hl                      ; Exchange DE and HL again to get the particle address back into HL
+                ld      (hl), d                     ; Save high byte of xpos
+                dec     hl                          ; Move to the low byte
+                ld      (hl), e                     ; Save the low byte of xpos
+                inc     hl                          ; Move to the YVector
+                inc     hl                          ; ...which is a word away 
+
+                pop     hl                          ; Resotore HL before we started moving around
+                pop     bc                          ; Restore our particle counter in B
+                ld      de, PRTCLSZ - 1             ; Load DE with the size of a particle struct - 1
+                add     hl, de                      ; Move HL to the next particle address
+                djnz    _nxtPrtcl                   ; Loop
+_rstPrtclTmr      
+                pop     bc                          ; Restore the particle counter in B
+                xor     a                           ; Clear A
+                ld      (hl), a                     ; Save A to the timer basically resetting it
+                ld      de, PRTCLSZ - 1             ; Load DE with the size of a particle struct - 1
+                add     hl, de                      ; Move HL to the next particle address
+                djnz    _nxtPrtcl                   ; Loop
+                ret
+
+;****************************************************************************************************************
+; Restores the backgroun behind each active particle
+; 
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
 rstrScrBckgrnd
-                ld      b, 5                        ; Upto to five scores can be alive at the same time
-                ld      hl, objctScore              ; Point HL at the score sprite table
+                ld      b, NUMPRTCLS                        ; Upto to five scores can be alive at the same time
+                ld      hl, objctPrtcls + 1              ; Point HL at the score sprite table
 _nxtBckgrnd     ld      a, (hl)                     ; Load A with the timer value for the score
                 cp      0                           ; Is the timer 0?
                 jp      nz, _updtBckgrnd                ; If not then update it as its active...
-                ld      de, 23                      ; Move to the...
+                ld      de, PRTCLSZ                        ; Move to the...
                 add     hl, de                      ; ...score object
                 djnz    _nxtBckgrnd                     ; Loop if there are score objects left
                 ret
 _updtBckgrnd
+                push    hl
                 push    bc
                 inc     hl                          ; Point HL at the Ypos of the score... 
-                ld      c, (hl)
-                inc     hl                          ; Point HL at the Xpos                       
+                inc     hl                          ; Point HL at the Ypos of the score... 
+                inc     hl                          ; Point HL at the Ypos of the score... 
+                inc     hl                          ; Point HL at the Ypos of the score... 
                 ld      b, (hl)
+                inc     hl                          ; Point HL at the Xpos                       
+                inc     hl                          ; Point HL at the Xpos                       
+                inc     hl                          ; Point HL at the Xpos                       
+                inc     hl                          ; Point HL at the Xpos                       
+                ld      c, (hl)
                 inc     hl                          ; Point HL at background data
-                push    hl
                 ex      de, hl                      ; Put HL into DE
                 ld      hl, 0x0205                  ; Load HL with the size of sprite to restore
                 call    rstrScrnBlck
-                pop     hl
                 pop     bc
+                pop     hl
 
-                ld      de, 20            
+                ld      de, PRTCLSZ
                 add     hl, de                      ; to get to the next score object
                 djnz    _nxtBckgrnd                 ; Loop if there are score objects letf
                 ret
@@ -728,36 +788,56 @@ updtBllChrPs                                       ; Update the balls character 
                 ret
 
 ;****************************************************************************************************************
-; Find Inactive Score Sprite
-; Returns the address of an inactive score sprite that can be used to display the score for the tile just hit
+; Find the address of a particle that is not currently active
 ;
 ; Entry Registers:
 ;   NONE
 ; Registers Used:
 ;   A, B, D, E, H, L
 ; Returned Registers:
-;   A = 0 for none found or 
+;   A = > 0 means a particle was found
 ;   HL = Address of available score sprite
 ;****************************************************************************************************************
-fndInctvScrSprt
-                ld      b, 5                        ; Five scores available
-                ld      hl, objctScore              ; Point HL at score object table
-_chkNxtScr      ld      a, (hl)                     ; Load A with the timer of the first score object
-                cp      0                           ; If it is 0 then...
-                jp      z, _fndScrSprt              ; ...its available so return the address in HL
-                ld      de, 23
-                add     hl, de
-                djnz    _chkNxtScr                  ; Loop if B > 0
-                xor     a                        ; Nothing found so set A = 0...
-                ret
-_fndScrSprt
-                inc     a                           ; Found a free score so set its timer to 1...
-                ld      (hl), a                     ; ...and save it back into the table
-                ret                                 ; HL is already pointing at the current object so return
+fndInctvPrtcl
+                ld      b, NUMPRTCLS                ; Load B with the total number of available particles 
+                ld      hl, objctPrtcls + 1         ; Load HL with the address of the first particles timer value
+_chkNxtPrtcl     
+                ld      a, (hl)                     ; Load A with the time value from the particle
+                cp      0                           ; If its zero...
+                jr      z, _foundPrtcl              ; ...then its available and we can finish...
+                ld      de, PRTCLSZ                 ; ...otherwise we load DE with the size of a particle...
+                add     hl, de                      ; ... and increment HL to get to the next particle
+                djnz    _chkNxtPrtcl                ; Loop if necessary
+                xor     a                           ; Getting here means no available particles, so reset A
+                ret                                 ; Return
+_foundPrtcl
+                inc     a                           ; We found a particle so increment the timer to mark is used
+                ld      (hl), a
+                dec     l                           ; Move to the start of the particle struct
+                ret                                 ; Return
 
 ;****************************************************************************************************************
-; Draw Title screen
-; Loads the title screen bitmap and attribute data into the screen file
+; Reset all the score sprites to inactive
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   A, B, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+rstScrSprt
+                ld      b, 5                        ; Five scores available
+                ld      hl, objctScore              ; Point HL at score object table
+                xor     a
+_rstNxtScr      ld      (hl), a
+                ld      de, 23
+                add     hl, de
+                djnz    _rstNxtScr                  ; Loop if B > 0
+                ret
+
+;****************************************************************************************************************
+; Draw the UI elements of the game e.g. labels and borders
 ;
 ; Entry Registers:
 ;   NONE
@@ -766,11 +846,16 @@ _fndScrSprt
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
-drwTtlScrn
-                ld      de, BTMPSCRNSDDR
-                ld      hl, ttleScrn
-                ld      bc, BTMPSCRSZ + ATTRSCRNSZ
-                ldir
+drwUI
+                ld      de, scrLblTxt               ; Point DE to the score label text
+                ld      bc, 10                      ; Set the length of the string
+                call    8252                        ; ROM print
+
+                ld      de, lvsLblTxt               ; Point DE to lives label text
+                ld      bc, lvsLblTxtEnd - lvsLblTxt; Set the length of the string
+                call    8252                        ; ROM print
+
+                call    drwBrdrs
                 ret
 
 ;****************************************************************************************************************
@@ -848,9 +933,8 @@ _vrtclLp2
                 ret
 
 ;****************************************************************************************************************
-; Draw Scores
-; Loop through the score sprite table and draw any sprites that have a timer value > 0
-
+; Loop through all particles and draw active ones on the screen
+;
 ; Entry Registers:
 ;   NONE
 ; Used Registers:
@@ -858,46 +942,75 @@ _vrtclLp2
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
-drwScr 
-                ld      b, 5                        ; There are a maximum of five scores that can be drawn
-                ld      hl, objctScore              ; Point HL at the start of the score object table
-_chkScrActv
+drwPrtcls 
+                ld      b, NUMPRTCLS                ; There are a maximum of five scores that can be drawn
+                ld      hl, objctPrtcls + 1         ; Point HL at the start of the score object table
+_chkPrtclActv
                 ld      a, (hl)                     ; Get the timer for the score object
                 cp      0                           ; Check it against 0
-                jp      nz, _drwCrrntScr            ; If its not zero then its active so draw it
-                ld      de, 23
+                jp      nz, _drwCrrntPrtcl          ; If its not zero then its active so draw it
+                ld      de, PRTCLSZ
                 add     hl, de
-                djnz    _chkScrActv                 ; Loop if there are more scores to check
+                djnz    _chkPrtclActv                 ; Loop if there are more scores to check
                 ret                                 ; Finished
 
-_drwCrrntScr
+_drwCrrntPrtcl
                 push    bc                          ; Save BC as its holding our score loop count in B
                 push    hl                          ; Save HL as this is our pointer into the object table
-                inc     hl                          ; Point HL at the Y position of the score
-                ld      c, (hl)                     ; Load C with the balls Y position
-                inc     hl                          ; Point HL at the X position of the score
-                ld      b, (hl)                     ; Load B with the balls X position
+                inc     hl                          ; XVector Low
+                inc     hl                          ; XVector high
+                inc     hl                          ; Xpos low
+                inc     hl                          ; Xpos high
+                ld      b, (hl)
+                inc     hl
+                inc     hl
+                inc     hl
+                inc     hl
+                ld      c, (hl)
+                inc     hl
+                ex      de, hl
+                push    bc
+                ld      hl, 0x0205
+                call    sveScrnBlck
+                pop     bc
 
-                inc     hl                          ; Point HL at the background temp store
-                push    hl                          ; Save HL
-                push    hl                          ; Save HL so it can be placed...
-                pop     de                          ; ...into DE
-                push    bc                          ; Save BC e.g. the X, Y position of the score
-                ld      hl, 0x0205                  ; Set the width and height of screen to save
-                call    sveScrnBlck                 ; Save the background behind the score
-                pop     bc                          ; Restore X, Y in BC
-                pop     hl                          ; Restore the score pointer in HL
+                xor     a
+                ld      de, ParticleSpriteData
+                call    drwMskdSprt
 
-                xor     a                           ; Reset A so we draw to the screen file
-                ld      de, ParticleSpriteData      ; Point DE to the score sprite data
-                call    drwMskdSprt                 ; Draw the score sprite
-
-                pop     hl                          ; Restore HL
-                pop     bc                          ; Restore BC
-                ld      de, 23
+                pop     hl
+                pop     bc
+                ld      de, PRTCLSZ
                 add     hl, de
-                djnz    _chkScrActv                 ; Loop if there are more scores to check
-                ret                                 ; Finished
+                djnz    _chkPrtclActv
+                ret
+
+
+
+;                 ld      c, (hl)                     ; Load C with the balls Y position
+;                 inc     hl                          ; Point HL at the X position of the score
+;                 ld      b, (hl)                     ; Load B with the balls X position
+
+;                 inc     hl                          ; Point HL at the background temp store
+;                 push    hl                          ; Save HL
+;                 push    hl                          ; Save HL so it can be placed...
+;                 pop     de                          ; ...into DE
+;                 push    bc                          ; Save BC e.g. the X, Y position of the score
+;                 ld      hl, 0x0205                  ; Set the width and height of screen to save
+;                 call    sveScrnBlck                 ; Save the background behind the score
+;                 pop     bc                          ; Restore X, Y in BC
+;                 pop     hl                          ; Restore the score pointer in HL
+
+;                 xor     a                           ; Reset A so we draw to the screen file
+;                 ld      de, ParticleSpriteData      ; Point DE to the score sprite data
+;                 call    drwMskdSprt                 ; Draw the score sprite
+
+;                 pop     hl                          ; Restore HL
+;                 pop     bc                          ; Restore BC
+;                 ld      de, 23
+;                 add     hl, de
+;                 djnz    _chkScrActv                 ; Loop if there are more scores to check
+;                 ret                                 ; Finished
 
 ;****************************************************************************************************************
 ; Draw Ball Sprite
@@ -959,7 +1072,7 @@ drwBt
 ;   A, B, C, DE, IX
 ; Returned Registers:
 ;   NONE
-;******************************************************1**********************************************************
+;****************************************************************************************************************
 drwMvngBlck 
                 ld      de, SpriteBlockData         ; Point DE to the ball sprite data
                 ld      a, (ix + BLLXPS)            ; Load BC with the ball sprite objects location
@@ -980,7 +1093,7 @@ drwMvngBlck
 ;   A, B, C, E, HL
 ; Returned Registers:
 ;   NONE
-;******************************************************1**********************************************************
+;****************************************************************************************************************
 clrMem
                 ld      e, 0
 clrByte         ld      (hl), e
@@ -991,7 +1104,7 @@ clrByte         ld      (hl), e
                 jr      nz, clrByte
                 ret
 
-;************************************************************************************************************************
+;****************************************************************************************************************
 ; Wait For Space
 ; Loops until the space key is pressed
 ;
@@ -1003,11 +1116,11 @@ clrByte         ld      (hl), e
 ;   NONE
 ;************************************************************************************************************************
 watFrSpc
-                ld      bc, 32766
-                in      a, (c)
-                rra 
-                ret     nc
-                jp      watFrSpc
+                ld      bc, 0x7FFE                  ; B = 0x7F (BNM SymShift Space), Port = 0xFE
+                in      a, (c)                      ; Read the port
+                rra                                 ; Rotate the byte right 
+                ret     nc                          ; If there is a carry then bit 0 was set which was the SPACE key...
+                jp      watFrSpc                    ; ...otherwise keep on waiting
 
 ;************************************************************************************************************************
 ; Read Control Keys
@@ -1594,17 +1707,8 @@ _odd
                 ld      a, 1
                 call    drwSprt
 
-                call    fndInctvScrSprt             ; Find an available score sprite
-                cp      0                           ; Check if A is equal to 0 and...
-                ret     z                           ; ...return if it is
-                pop     bc                          ; Save BC which holds the pixel location of the block
-                inc     hl                          ; Point HL at the Y position of the score object
-                ld      a, c                        ; Load B into A...
-                ld      (hl), a                     ; ...and then save into the object 
-                inc     hl                          ; Move HL to the X pos...
-                ld      a, b                        ; ...and save the X pos...
-                ld      (hl), a                     ; ...into the score object
-
+                pop     bc                          ; Restore BC which holds the pixel location of the block
+                call    genPrtcl
                 ret
 
 _even           
@@ -1639,16 +1743,45 @@ _even
                 ld      de, SpriteBlockData
                 call    drwSprt
 
-                call    fndInctvScrSprt             ; Find an available score sprite
+                pop     bc                          ; Restore BC with the blocks position 
+                call    genPrtcl
+                ret
+
+;****************************************************************************************************************
+; Start a particle effect at the pixel location in BC
+;****************************************************************************************************************
+genPrtcl
+                push    bc
+                call    fndInctvPrtcl
+                pop     bc
                 cp      0                           ; Check if A is zero...
-                ret     z                           ; ...and return if it is
-                pop     bc                          ; Save BC which holds the pixel location of the block
-                inc     hl                          ; Point HL at the Y position of the score object
-                ld      a, c                        ; Load B into A...
-                ld      (hl), a                     ; ...and then save into the object 
-                inc     hl                          ; Move HL to the X pos...
-                ld      a, b                        ; ...and save the X pos...
-                ld      (hl), a                     ; ...into the score object
+                ret     z                           ; ...and return if it is 
+
+                inc     b
+                inc     b
+                inc     b
+                inc     b
+                inc     b
+
+                ld      a, 35                       ; Set lifespan of particle
+                ld      (hl), a                     ; save it
+                inc     hl                          ; Move HL to...
+                inc     hl                          ; ...the XVector
+                ld      (hl), 0x00                  ; Load 0 into the XVector
+                inc     hl                          ; Move HL to...
+                ld      (hl), 0x00                  ; Load 0 into the XVector
+                inc     hl                          ; ...the Xpos
+                ld      (hl), 0                     ; Set the low byte to 0
+                inc     hl                          ; Move to high byte
+                ld      (hl), b                     ; Set high byte to B
+                inc     hl                          ; Move to the YVector
+                ld      (hl), 0xff                  ; Load YVextor high byte
+                inc     hl                          ; Move HL to...
+                ld      (hl), 0xfd                  ; Load YVextor high byte
+                inc     hl                          ; ...the ypos
+                ld      (hl), 0                     ; Set the low byte to 0
+                inc     hl                          ; Move to high byte
+                ld      (hl), c                     ; Set high byte to C
 
                 ret
 
@@ -1682,6 +1815,8 @@ chkBlckState
 rstBt    
                 ld      a, 112
                 ld      (objctBat + BTXPS), a
+                ld      a, 175
+                ld      (objctBat + BTYPS), a
                 ld      a, -2
                 ld      (objctBall + BLLYSPD), a
                 ret
