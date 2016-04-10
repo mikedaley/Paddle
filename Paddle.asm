@@ -137,7 +137,7 @@ rndmNmbr1       db      0xaa                        ; Holds a random number calc
 rndmNmbr2       db      0x55                        ; Holds a random number calculated each frame
 rndmNmbr3       db      0xf0                        ; Holds a random number calculated each frame
 
-grvty           dw      0x00032                      ; Gravity to be applied to particles each frame
+grvty           dw      0x00025                      ; Gravity to be applied to particles each frame
 
 ; Text
                         ; Colour, Yellow, Position, X, Y, Text
@@ -357,24 +357,38 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 jr      nz, _chckGmeStteWtng        ; If not then check if the state is WAITING
                 call    rdCntrlKys                  ; Read the keyboard
                
+                ld      a, 6
+                out     (0xfe), a
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
-
+                ld      a, 1
+                out     (0xfe), a
                 call    updtPrtcls
+                ld      a, 2
+                out     (0xfe), a
                 call    drwPrtcls
-
+                ld      a, 3
+                out     (0xfe), a
                 call    updtBtAnmtnFrm
+                ld      a, 4
+                out     (0xfe), a
                 call    drwBt                       ; Draw the bat
+                ld      a, 0
+                out     (0xfe), a
 
         IF .debug
                 call    dbgPrnt                     ; Print debug output during development
         ENDIF
                 halt                                ; Wait for the scan line to reach the top of the screen
 
+                ld      a, 6
+                out     (0xfe), a
                 call    drwBll                      ; Erase the ball (XOR)
-
+                ld      a, 2
+                out     (0xfe), a
                 call    rstrScrBckgrnd
-
+                ld      a, 4
+                out     (0xfe), a
                 call    drwBt                       ; Erase the bat (XOR)
 
                 call    genRndmNmbr
@@ -536,9 +550,9 @@ _chckGmeSttePlyrDead
 ;   NONE
 ;****************************************************************************************************************
 stupPrtcls
-;                 ld      hl, objctPrtcls             ; Point HL at the screen buffer
-;                 ld      bc, 14 * 10                 ; Load BC with the number of bytes to clear
-;                 call    clrMem                      ; Call the clear mem routine
+                ld      hl, objctPrtcls             ; Point HL at the screen buffer
+                ld      bc, 14 * 10                 ; Load BC with the number of bytes to clear
+                call    clrMem                      ; Call the clear mem routine
                 ret
 
 ;****************************************************************************************************************
@@ -984,33 +998,6 @@ _drwCrrntPrtcl
                 add     hl, de
                 djnz    _chkPrtclActv
                 ret
-
-
-
-;                 ld      c, (hl)                     ; Load C with the balls Y position
-;                 inc     hl                          ; Point HL at the X position of the score
-;                 ld      b, (hl)                     ; Load B with the balls X position
-
-;                 inc     hl                          ; Point HL at the background temp store
-;                 push    hl                          ; Save HL
-;                 push    hl                          ; Save HL so it can be placed...
-;                 pop     de                          ; ...into DE
-;                 push    bc                          ; Save BC e.g. the X, Y position of the score
-;                 ld      hl, 0x0205                  ; Set the width and height of screen to save
-;                 call    sveScrnBlck                 ; Save the background behind the score
-;                 pop     bc                          ; Restore X, Y in BC
-;                 pop     hl                          ; Restore the score pointer in HL
-
-;                 xor     a                           ; Reset A so we draw to the screen file
-;                 ld      de, ParticleSpriteData      ; Point DE to the score sprite data
-;                 call    drwMskdSprt                 ; Draw the score sprite
-
-;                 pop     hl                          ; Restore HL
-;                 pop     bc                          ; Restore BC
-;                 ld      de, 23
-;                 add     hl, de
-;                 djnz    _chkScrActv                 ; Loop if there are more scores to check
-;                 ret                                 ; Finished
 
 ;****************************************************************************************************************
 ; Draw Ball Sprite
@@ -1761,9 +1748,8 @@ genPrtcl
                 inc     b
                 inc     b
                 inc     b
-                inc     b
 
-                ld      a, 35                       ; Set lifespan of particle
+                ld      a, 45                       ; Set lifespan of particle
                 ld      (hl), a                     ; save it
                 inc     hl                          ; Move HL to...
                 inc     hl                          ; ...the XVector
