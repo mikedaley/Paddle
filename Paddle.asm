@@ -12,8 +12,8 @@
 ; * Implement reading IO Port 0x40FF for the colour attribute currently being read by the ULA. This can cause
 ;   compatibility issues, but I want to see what can be done by using that rather than HALT to get more time
 ;   to draw to the screen directly
-; * Make table data sit in 256 boundaries so you only need to increment the LSB and not the whole word for
-;   address access
+; * Improve sound so that it does not use the ROM routine. This should allow part of a given sound FX to be
+;   generated each frame. The ROM routine blocks until its complete which causes everything to pause...not good
 ; * Power ups/downs:
 ;       - Beer Bottle which makes paddle controls work backwards
 ;       - Clock which slows down time
@@ -53,6 +53,7 @@ BLLYSPD                 equ                 3
 ; BALL constants            
 BLLPXLHGHT              equ                 5
 BLLPXLWIDTH             equ                 5
+BLLHLFWIDTH             equ                 BLLPXLWIDTH / 2
             
 ; Offsets into the BAT structure        
 BTXPS                   equ                 0
@@ -64,6 +65,7 @@ BTANMTONFRM             equ                 4
 ; BAT constants         
 BTPXLHGHT               equ                 8
 BTPXLWDTH               equ                 24
+BTHLFWDTH               equ                 BTPXLWDTH / 2
             
 ; Block constants           
 BLCKWDTH                equ                 16
@@ -137,7 +139,7 @@ rndmNmbr1       db      0xaa                        ; Holds a random number calc
 rndmNmbr2       db      0x55                        ; Holds a random number calculated each frame
 rndmNmbr3       db      0xf0                        ; Holds a random number calculated each frame
 
-grvty           dw      0x00025                      ; Gravity to be applied to particles each frame
+grvty           dw      0x0035                      ; Gravity to be applied to particles each frame
 
 ; Text
                         ; Colour, Yellow, Position, X, Y, Text
@@ -188,18 +190,30 @@ objctPrtcls
                 dw      0x0000, 0x0000              ; YVector, Ypos
                 ds      10                          ; Space needed to store the background of the particle sprite
 objctPrtclsEnd
-                ds      (objctPrtclsEnd - objctPrtcls) * 12    ; Reserve the space for particles
-PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls    ; Calculate the size of a particle
+                ds      (objctPrtclsEnd - objctPrtcls) * 12     ; Reserve the space for particles
+PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls            ; Calculate the size of a particle
 
 ; PAGE1 END
 PAGE1END
-PAGE1E          equ     PAGE1END - PAGE1                ; Pad to the next 256 page boundary
+PAGE1E          equ     PAGE1END - PAGE1            ; Pad to the next 256 page boundary
                 defm    256 - PAGE1E
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
-; PAGE 1: Page boundary Particle Storage
+; PAGE 2: Page boundary Particle Storage
 PAGE2
+
+intJmpTbl
+                ds      256
+; PAGE2 END
+PAGE2END
+PAGE2E          equ     PAGE2END - PAGE2                ; Pad to the next 256 page boundary
+                defm    256 - PAGE2E
+;****************************************************************************************************************
+
+;****************************************************************************************************************
+; PAGE 3: Page boundary Particle Storage
+PAGE3
 
 pxlData
                 db      %10000000, %01111111
@@ -211,10 +225,10 @@ pxlData
                 db      %00000010, %11111101
                 db      %00000001, %11111110
 
-; PAGE2 END
-PAGE2END
-PAGE2E          equ     PAGE2END - PAGE2                ; Pad to the next 256 page boundary
-                defm    256 - PAGE2E
+; PAGE3 END
+PAGE3END
+PAGE3E          equ     PAGE3END - PAGE3                ; Pad to the next 256 page boundary
+                defm    256 - PAGE3E
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
@@ -224,20 +238,7 @@ PAGE2E          equ     PAGE2END - PAGE2                ; Pad to the next 256 pa
 .debug          equ     0
 
 init 
-                ld      hl, bffrLkup
-                ld      de, SCRNBFFR
-                ld      b, 192
-_yLkupLp
-                ld      (hl), e
-                inc     hl
-                ld      (hl), d
-                inc     hl
-                push    hl
-                ld      hl, 32
-                add     hl, de
-                ex      de, hl
-                pop     hl
-                djnz    _yLkupLp
+                call    genLnrYLkupTbl              ; Generate linear YAxis lookup table
 
                 xor     a                           ; Set the border colour
                 out     (0xFE), a                    
@@ -266,12 +267,37 @@ _yLkupLp
                 call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    stupPrtcls
                 call    menu
+                call    stupInt
+
+                ret
 
 ;****************************************************************************************************************
-; Clear the screen
-clrScrn     
-                call    0x0DAF                      ; ROM clear screen
+; Setup a blank interrupt routine
+stupInt                    
+                di                                  ; 
+
+                ld      hl, intJmpTbl
+                ld      de, vbInt
+                ld      b, 128
+
+                ld      a, h
+                ld      i, a
+
+_intTblStup         
+                ld      (hl), e
+                inc     hl
+                ld      (hl), d
+                inc     hl
+                djnz    _intTblStup
+
+                im      2
+                ei
+
                 ret
+ 
+vbInt
+                ei
+                reti
 
 ;****************************************************************************************************************
 ; Pre-shift the sprites
@@ -375,41 +401,20 @@ mnLp
 _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 cp      GMESTTE_PLYNG               ; Is the game state PLAYING
                 jr      nz, _chckGmeStteWtng        ; If not then check if the state is WAITING
+
                 call    rdCntrlKys                  ; Read the keyboard
-               
-                ld      a, 6
-                out     (0xfe), a
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
-                ld      a, 1
-                out     (0xfe), a
-                call    updtPrtcls
-                ld      a, 5
-                out     (0xfe), a
                 call    drwPrtcls
-                ld      a, 0
-                out     (0xfe), a
                 call    updtBtAnmtnFrm
-                ld      a, 4
-                out     (0xfe), a
                 call    drwBt                       ; Draw the bat
-                ld      a, 0
-                out     (0xfe), a
 
-        IF .debug
-                call    dbgPrnt                     ; Print debug output during development
-        ENDIF
                 halt                                ; Wait for the scan line to reach the top of the screen
 
-                ld      a, 6
-                out     (0xfe), a
                 call    drwBll                      ; Erase the ball (XOR)
-                ld      a, 3
-                out     (0xfe), a
                 call    rstrScrBckgrnd
-                ld      a, 2
-                out     (0xfe), a
                 call    drwBt                       ; Erase the bat (XOR)
+                call    updtPrtcls
 
                 call    genRndmNmbr
 
@@ -425,32 +430,31 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
 _chckGmeStteWtng                                    ; *** Game state WAITING
                 cp      GMESTTE_WTNG                ; Is the game state WAITING    
                 jp      nz, _chckGmeStteLstLfe      ; If not then check if the state is PLAYER DEAD
+
                 call    rdCntrlKys                  ; Read the keyboard
 
                 ld      a, (objctBat + BTYPS)       ; Get the bats Y position
-                ld      b, BLLPXLHGHT               ; Get the pixel height of the ball
+                ld      b, BLLPXLHGHT - 3           ; Get the pixel height of the ball
                 sub     b                           ; Calulcate the bats Y pos minus the balls height putting the ball ontop of the bat
                 ld      (objctBall + BLLYPS), a     ; Update the balls Y Position with the bats Y position 
                 ld      a, (objctBat + BTXPS)       ; Load the bats X pos
-                ld      b, BTPXLWDTH / 2 - BLLPXLWIDTH / 2  ; Calc the X pos middle of the bat
+                ld      b, BTHLFWDTH - BLLHLFWIDTH  ; Calc the X pos middle of the bat
                 add     a, b                        ; Calc the new X pos for the ball so its in the middle of the bat
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
                 
-                call    updtPrtcls
+                call    mvBll                       ; Move the ball
+                call    drwBll                      ; Draw the ball
                 call    drwPrtcls
-                call    updtBtAnmtnFrm              ; Update the animation frame of the bat
-                call    drwBll                      ; Draw the ball first as it could be the closest sprite to the top of the screen
-                call    drwBt                       ; Draw the bat last as its at the bottom of the screen
-
-        IF .debug
-                call    dbgPrnt                     ; Print debug output during development
-        ENDIF
+                call    updtBtAnmtnFrm
+                call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
-                call    rstrScrBckgrnd
                 call    drwBll                      ; Erase the ball (XOR)
+                call    rstrScrBckgrnd
                 call    drwBt                       ; Erase the bat (XOR)
+                call    updtPrtcls
+
                 call    genRndmNmbr
                 
                 ld      bc, 32766                   ; Want to see if SPACE has been pressed
@@ -507,6 +511,7 @@ _gmeStteNxtLvl                                      ; *** Game state NEXT LEVEL
 _incLvl         
                 ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISPLAY LEVEL
                 ld      (gmeStte), a                ; Save the game state
+                call    stupPrtcls                  ; Clear any current particles
                 call    ldLvl                       ; Load the new level
                 jp      mnLp                        ; Loop
 
@@ -546,6 +551,7 @@ _lvlDsplyWtng
                 call    8252
                 ld      a, GMESTTE_WTNG             ; Set the game state to WAITING
                 ld      (gmeStte), a
+
                 jp      mnLp
 
 ;****************************************************************************************************************
@@ -818,24 +824,24 @@ _vrtclLp2
 ;   NONE
 ;****************************************************************************************************************
 drwPrtcls 
-                ld      b, NUMPRTCLS                ; There are a maximum of five scores that can be drawn
+                ld      b, NUMPRTCLS
                 ld      hl, objctPrtcls + 1         ; Point HL at the first particles timer data
 _chkPrtclActv
-                ld      a, (hl)                     ; Get the timer for the score object
-                cp      0                           ; Check it against 0
+                ld      a, (hl)                     ; Get the timer for the particle
+                or      a                           
                 jp      nz, _drwCrrntPrtcl          ; If its not zero then its active so draw it
-                ld      de, PRTCLSZ
+                ld      de, PRTCLSZ                 ; Move to the next particle
                 add     hl, de
-                djnz    _chkPrtclActv                 ; Loop if there are more scores to check
+                djnz    _chkPrtclActv               ; Loop if there are more particles
                 ret                                 ; Finished
 
 _drwCrrntPrtcl
                 push    bc                          ; Save BC as its holding our score loop count in B
                 push    hl                          ; Save HL as this is our pointer into the object table
-                inc     l                          ; XVector Low
-                inc     l                          ; XVector high
-                inc     l                          ; Xpos low
-                inc     l                          ; Xpos high
+                inc     l                           ; XVector Low
+                inc     l                           ; XVector high
+                inc     l                           ; Xpos low
+                inc     l                           ; Xpos high
                 ld      b, (hl)
                 inc     l
                 inc     l
@@ -855,9 +861,10 @@ _drwCrrntPrtcl
 
                 pop     hl
                 pop     bc
-                ld      de, PRTCLSZ
+                ld      de, PRTCLSZ                 ; Move to the next particle
                 add     hl, de
-                djnz    _chkPrtclActv
+                djnz    _chkPrtclActv               ; Loop if there are more particles 
+
                 ret
 
 ;****************************************************************************************************************
@@ -908,27 +915,6 @@ drwBt
                 ld      c, a                        ; Load A with A so B = X, C = Y
                 xor     a
                 call    drwSprt                     ; Draw sprite
-                ret
-
-;****************************************************************************************************************
-; Draw Moving Block
-; Draws a moving block at its current location
-;
-; Entry Registers:
-;   IX = Points to moving block object data
-; Registers Used:
-;   A, B, C, DE, IX
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-drwMvngBlck 
-                ld      de, SpriteBlockData         ; Point DE to the ball sprite data
-                ld      a, (ix + BLLXPS)            ; Load BC with the ball sprite objects location
-                ld      b, a
-                ld      a, (ix + BLLYPS)
-                ld      c, a
-                xor     a
-                call    drwSprt
                 ret
 
 ;************************************************************************************************************************
@@ -1276,7 +1262,7 @@ _mddlBttm
 _mddlRght 
                 ld      a, (objctBall + BLLXSPD)
                 cp      0
-                jp      m, _mddlLft 
+                jp      m, _mddlLft                 ; Only check the right edge of moving right
                 ld      de, (ballMR)
                 push    de
                 call    getChrctrAttr
@@ -1294,7 +1280,7 @@ _mddlRght
 _mddlLft 
                 ld      a, (objctBall + BLLXSPD)
                 cp      0
-                ret     p
+                ret     p                           ; Only check the left edge if moving left
                 ld      de, (ballML)
                 push    de
                 call    getChrctrAttr
@@ -1471,8 +1457,7 @@ _even
                 ret
 
 ;****************************************************************************************************************
-; Set the attribute at the given X, Y
-; D = X, E = Y, A = value to set
+; Checks the state of a block e.g. how many hits has it had so that a block can servive more than one hit
 ;****************************************************************************************************************
 chkBlckState
                 ld      h, 0                        ; Get the Y pos from the corner
@@ -1538,7 +1523,7 @@ ldLvl
 
                 ; Load the block colours from the level data into the attribute buffer starting at the 4th row
                 ld      a, 7                        ; Number of rows to load
-                ld      de, ATTRSCRNADDR + (32 * 4) ; Load into the 4th row of attributes
+                ld      de, ATTRSCRNADDR + (32 * 7) ; Load into the 4th row of attributes
 _lvlRwLp
                 ld      bc, ROW_CLR_BYTES           ; Set how many bytes to copy
                 ldir                                ; Perform the copy
@@ -1552,7 +1537,7 @@ _nxtBlckRw      xor     a                           ; Clear A
                 ld      (currntBlckCl), a
                 ld      (currntBlckRw), a
                 ld      (currntBlckX), a
-                ld      a, 32
+                ld      a, 8 * 7
                 ld      (currntBlckY), a
 
 _drwNxtBlck     ld      bc, (currntBlckY)
