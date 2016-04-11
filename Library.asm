@@ -42,6 +42,13 @@ clrByte         ld      (hl), e
                 ret
 
 ;****************************************************************************************************************
+; Clear the screen
+;****************************************************************************************************************
+clrScrn     
+                call    0x0DAF                      ; ROM clear screen
+                ret
+
+;****************************************************************************************************************
 ; Wait For Space
 ; Loops until the space key is pressed
 ;
@@ -58,6 +65,33 @@ watFrSpc
                 rra                                 ; Rotate the byte right 
                 ret     nc                          ; If there is a carry then bit 0 was set which was the SPACE key...
                 jp      watFrSpc                    ; ...otherwise keep on waiting
+
+;****************************************************************************************************************
+; Calculate the screen address of a pixel location
+;
+; Entry Registers:
+;   D = X pixel location
+;   E = Y pixel location
+; Used Registers:
+;   A, D, E, H, L
+; Returned Registers:
+;   HL = screen address
+;****************************************************************************************************************
+genLnrYLkupTbl
+                ld      hl, bffrLkup
+                ld      de, SCRNBFFR
+                ld      b, 192
+_yLkupLp
+                ld      (hl), e
+                inc     hl
+                ld      (hl), d
+                inc     hl
+                push    hl
+                ld      hl, 32
+                add     hl, de
+                ex      de, hl
+                pop     hl
+                djnz    _yLkupLp
 
 ;****************************************************************************************************************
 ; Calculate the screen address of a pixel location
