@@ -279,76 +279,33 @@ _nxtMskdSprtClmn
                 jp nz, _nxtMskdSprtRw               ; ...and loop if necessary
                 ret
 
-
-
-
-
-
-
-
-
-;                 inc     de
-;                 inc     de
-;                 ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
-;                 and     7   
-        
-;                 ; Load DE with the address of the sprite we need to use based on the x location offset in memory
-;                 ld      l, a                        ; Load A with the number of shifts needed
-;                 ld      h, 0                        ; Reset the HL high byte
-;                 add     hl, hl                      ; Double HL as the lookup table entries are words
-;                 add     hl, de                      ; Add base address of sprite table which is held in DE
-;                 ld      e, (hl)                     ; Load E with the contents of (HL)
-;                 inc     hl                          ; Move HL to the next byte of address in the table
-;                 ld      d, (hl)                     ; Load D with the high byte
-
-;                 ; Work out the X offset for the screen memory address
-;                 ld      a, b                        ; Work out the X Offset using the shift value
-;                 rra
-;                 rra
-;                 rra
-;                 and     31
-;                 ld      b, a                        ; Store the X Byte Offset
-;                 push    bc
-
-;                 ; Load IX with the first address of the y-axis lookup table
-;                 ld      b, 0                        ; Clear B
-;                 ld      ix, scrnLnLkup              ; Load IY with the lookup table address
-;                 add     ix, bc                      ; Increment IX by the Y pixel position
-;                 add     ix, bc                      ; twice as the table contains word values
-;                 pop     bc                          ; Restore B which holds the X byte offset
-
-;     REPT 5                                          ; Repeat this code 8 times for the 8 pixles rows of a ball sprite
-;                 ld      a, (ix + 0)                 ; Get the current line
-;                 or      b                           ; Merge in our X Offset
-;                 ld      l, a                        ; Load the merged low byte in L
-;                 ld      h, (ix + 1)                 ; Get the high byte from the lookup table
-;                 inc     ix  
-;                 inc     ix                          ; Move to the next line which is a word away
-    
-;                 ld      a, (de)
-;                 inc     de
+;****************************************************************************************************************
+; Plot a pixel at the pixel location in DE
+;
+; Entry Registers:
+;   BC = Pixel location B = X, C = Y
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+; pltPxl
+;                 ld      e, c
+;                 ld      d, b
+;                 call    getPixelAddr
+;                 ld      a, b
+;                 and     7
+;                 ld      bc, pxlData
+;                 add     a, c
+;                 ld      c, a
+;                 ld      a, (bc)
 ;                 or      (hl)
 ;                 ld      (hl), a
-;                 inc     l
-
-;                 ld      a, (de)
-;                 inc     de
-;                 or      (hl)
-;                 ld      (hl), a
-;                 dec     l
-
-;                 ld      a, (de)
-;                 inc     de
+;                 inc     c
+;                 ld      a, (bc)
 ;                 and     (hl)
 ;                 ld      (hl), a
-;                 inc     l
-
-;                 ld      a, (de)
-;                 inc     de
-;                 and     (hl)
-;                 ld      (hl), a
-;     ENDM               
-;                 ret                                 ; All done! 
+;                 ret
 
 ;****************************************************************************************************************
 ; Save screen data at the pixel location in BC to the location in DE. The width and height of pixels to copy is
