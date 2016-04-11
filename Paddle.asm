@@ -89,7 +89,7 @@ PAPER                   equ                 8       ; Multiply with INK to get p
 BRIGHT                  equ                 64
 FLASH                   equ                 128
 
-NUMPRTCLS               equ                 15
+NUMPRTCLS               equ                 12
 
 ;****************************************************************************************************************
 ; Start of Contended Memory
@@ -168,15 +168,6 @@ objctBat        db      112, 4, 150
 objctScore              ; Timer 1 byte, Ypos 1 byte, Xpos 1 byte, Screen Background 16 bytes
                 ds      7 * 23                       ; Make space for five score banners
 
-objctPrtcls             
-                db      50, 0                        ; Lifespan (50ths Second), Timer  
-                dw      0x0050, 100                        ; Xvector, Xpos
-                dw      0x0050, 100                        ; YVector, Ypos
-                ds      10                          ; Space needed to store the background of the particle sprite
-objctPrtclsEnd
-                ds      (objctPrtclsEnd - objctPrtcls) * 14    ; Reserve the space for 9 more particles givin 15 in total 
-PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls    ; Calculate the size of a particle
-
 lvlData         ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
                 ds      15 * 7
 
@@ -187,14 +178,53 @@ PAGE0E          equ     PAGE0END - PAGE0                ; Pad to the next 256 pa
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
-; PAGE 1: Page boundary for SIN tables
+; PAGE 1: Page boundary Particle Storage
 PAGE1
-                db      0
+
+objctPrtcls             
+                db      50, 0                        ; Lifespan (50ths Second), Timer  
+                dw      0x0050, 100                        ; Xvector, Xpos
+                dw      0x0050, 100                        ; YVector, Ypos
+                ds      10                          ; Space needed to store the background of the particle sprite
+objctPrtclsEnd
+                ds      (objctPrtclsEnd - objctPrtcls) * 11    ; Reserve the space for particles
+PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls    ; Calculate the size of a particle
+
+; pxlData
+;                 db      %10000000, %01111111
+;                 db      %01000000, %10111111
+;                 db      %00100000, %11011111
+;                 db      %00010000, %11101111
+;                 db      %00001000, %11110111
+;                 db      %00000100, %11111011
+;                 db      %00000010, %11111101
+;                 db      %00000001, %11111110
+
 
 ; PAGE1 END
 PAGE1END
 PAGE1E          equ     PAGE1END - PAGE1                ; Pad to the next 256 page boundary
                 defm    256 - PAGE1E
+;****************************************************************************************************************
+
+;****************************************************************************************************************
+; PAGE 1: Page boundary Particle Storage
+PAGE2
+
+pxlData
+                db      %10000000, %01111111
+                db      %01000000, %10111111
+                db      %00100000, %11011111
+                db      %00010000, %11101111
+                db      %00001000, %11110111
+                db      %00000100, %11111011
+                db      %00000010, %11111101
+                db      %00000001, %11111110
+
+; PAGE2 END
+PAGE2END
+PAGE2E          equ     PAGE2END - PAGE2                ; Pad to the next 256 page boundary
+                defm    256 - PAGE2E
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
@@ -361,6 +391,7 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 out     (0xfe), a
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
+                
                 ld      a, 1
                 out     (0xfe), a
                 call    updtPrtcls
@@ -379,6 +410,7 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
         IF .debug
                 call    dbgPrnt                     ; Print debug output during development
         ENDIF
+                
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 ld      a, 6
@@ -551,7 +583,7 @@ _chckGmeSttePlyrDead
 ;****************************************************************************************************************
 stupPrtcls
                 ld      hl, objctPrtcls             ; Point HL at the screen buffer
-                ld      bc, 14 * 10                 ; Load BC with the number of bytes to clear
+                ld      bc, 12 * 20                 ; Load BC with the number of bytes to clear
                 call    clrMem                      ; Call the clear mem routine
                 ret
 
@@ -617,41 +649,41 @@ _updtPrtcl
                 jr      z, _rstPrtclTmr             ; If 0 then reset the timer
                 push    hl
                 ld      (hl), a                     ; Save new timer value
-                inc     hl                          ; Move to the x vector address
+                inc     l                          ; Move to the x vector address
 
                 ; Update X Position
                 ld      c, (hl)                     ; Load the low byte of the xVector into C
-                inc     hl                          ; Move to the hight byte
+                inc     l                          ; Move to the hight byte
                 ld      b, (hl)                     ; Load the hight byte of the xVector into B
-                ld      a, (grvty)
-                ld      e, a
-                ld      a, (grvty + 1)
-                ld      d, a
-                ex      de, hl
-;                 add     hl, bc
-                ex      de, hl
-                ld      c, e
-                ld      b, d
-                dec     hl
-                ld      (hl), e
-                inc     hl
-                ld      (hl), d
-                inc     hl
+;                 ld      a, (grvty)
+;                 ld      e, a
+;                 ld      a, (grvty + 1)
+;                 ld      d, a
+;                 ex      de, hl
+; ;                 add     hl, bc
+;                 ex      de, hl
+;                 ld      c, e
+;                 ld      b, d
+;                 dec     hl
+;                 ld      (hl), e
+;                 inc     hl
+;                 ld      (hl), d
+                inc     l
                 ld      e, (hl)                     ; Load low byte of xpos into E
-                inc     hl                          ; Move to the high byte
+                inc     l                          ; Move to the high byte
                 ld      d, (hl)                     ; Load the high byte of xpos into D
                 ex      de, hl                      ; Exchange DE and HL 
                 add     hl, bc                      ; Add the xvector to the xpos
                 ex      de, hl                      ; Exchange DE and HL again to get the particle address back into HL
                 ld      (hl), d                     ; Save high byte of xpos
-                dec     hl                          ; Move to the low byte
+                dec     l                          ; Move to the low byte
                 ld      (hl), e                     ; Save the low byte of xpos
-                inc     hl                          ; Move to the YVector
-                inc     hl                          ; ...which is a word away    
+                inc     l                          ; Move to the YVector
+                inc     l                          ; ...which is a word away    
 
                 ; Update Y Position 
                 ld      c, (hl)                     ; Load the low byte of the xVector into C
-                inc     hl                          ; Move to the hight byte
+                inc     l                          ; Move to the hight byte
                 ld      b, (hl)                     ; Load the hight byte of the xVector into B
                 ld      a, (grvty)
                 ld      e, a
@@ -662,22 +694,22 @@ _updtPrtcl
                 ex      de, hl
                 ld      c, e
                 ld      b, d
-                dec     hl
+                dec     l
                 ld      (hl), e
-                inc     hl
+                inc     l
                 ld      (hl), d
-                inc     hl
+                inc     l
                 ld      e, (hl)                     ; Load low byte of xpos into E
-                inc     hl                          ; Move to the high byte
+                inc     l                          ; Move to the high byte
                 ld      d, (hl)                     ; Load the high byte of xpos into D
                 ex      de, hl                      ; Exchange DE and HL 
                 add     hl, bc                      ; Add the xvector to the xpos
                 ex      de, hl                      ; Exchange DE and HL again to get the particle address back into HL
                 ld      (hl), d                     ; Save high byte of xpos
-                dec     hl                          ; Move to the low byte
+                dec     l                          ; Move to the low byte
                 ld      (hl), e                     ; Save the low byte of xpos
-                inc     hl                          ; Move to the YVector
-                inc     hl                          ; ...which is a word away 
+                inc     l                          ; Move to the YVector
+                inc     l                          ; ...which is a word away 
 
                 pop     hl                          ; Resotore HL before we started moving around
                 pop     bc                          ; Restore our particle counter in B
@@ -971,17 +1003,17 @@ _chkPrtclActv
 _drwCrrntPrtcl
                 push    bc                          ; Save BC as its holding our score loop count in B
                 push    hl                          ; Save HL as this is our pointer into the object table
-                inc     hl                          ; XVector Low
-                inc     hl                          ; XVector high
-                inc     hl                          ; Xpos low
-                inc     hl                          ; Xpos high
+                inc     l                          ; XVector Low
+                inc     l                          ; XVector high
+                inc     l                          ; Xpos low
+                inc     l                          ; Xpos high
                 ld      b, (hl)
-                inc     hl
-                inc     hl
-                inc     hl
-                inc     hl
+                inc     l
+                inc     l
+                inc     l
+                inc     l
                 ld      c, (hl)
-                inc     hl
+                inc     l
                 ex      de, hl
                 push    bc
                 ld      hl, 0x0205
@@ -991,6 +1023,7 @@ _drwCrrntPrtcl
                 xor     a
                 ld      de, ParticleSpriteData
                 call    drwMskdSprt
+;                 call    pltPxl
 
                 pop     hl
                 pop     bc
@@ -1740,33 +1773,60 @@ _even
 genPrtcl
                 push    bc
                 call    fndInctvPrtcl
+                cp      0                           ; Check if A is zero...
+                ret     z                           ; ...and return if it is 
+                pop     bc
+
+                inc     b                           ; Move to the center of the block
+                inc     b
+                inc     b
+                inc     b
+
+                push    bc                          ; Save B for use later now its been adjusted
+
+                ld      a, 40                       ; Set lifespan of particle
+                ld      (hl), a                     ; save it
+                inc     l                           ; Move HL to...
+                inc     l                           ; ...the XVector
+                ld      (hl), 0x64                  ; Load 0 into the XVector
+                inc     l                           ; Move HL to...
+                ld      (hl), 0x00                  ; Load 0 into the XVector
+                inc     l                           ; ...the Xpos
+                ld      (hl), 0                     ; Set the low byte to 0
+                inc     l                           ; Move to high byte
+                ld      (hl), b                     ; Set high byte to B
+                inc     l                           ; Move to the YVector
+                ld      (hl), 0xff                  ; Load YVextor high byte
+                inc     l                           ; Move HL to...
+                ld      (hl), 0xfd                  ; Load YVextor high byte
+                inc     l                           ; ...the ypos
+                ld      (hl), 0                     ; Set the low byte to 0
+                inc     l                           ; Move to high byte
+                ld      (hl), c                     ; Set high byte to C
+
+                call    fndInctvPrtcl
                 pop     bc
                 cp      0                           ; Check if A is zero...
                 ret     z                           ; ...and return if it is 
 
-                inc     b
-                inc     b
-                inc     b
-                inc     b
-
-                ld      a, 45                       ; Set lifespan of particle
+                ld      a, 35                       ; Set lifespan of particle
                 ld      (hl), a                     ; save it
-                inc     hl                          ; Move HL to...
-                inc     hl                          ; ...the XVector
-                ld      (hl), 0x00                  ; Load 0 into the XVector
-                inc     hl                          ; Move HL to...
-                ld      (hl), 0x00                  ; Load 0 into the XVector
-                inc     hl                          ; ...the Xpos
+                inc     l                           ; Move HL to...
+                inc     l                           ; ...the XVector
+                ld      (hl), 0xff                  ; Load 0 into the XVector
+                inc     l                           ; Move HL to...
+                ld      (hl), 0xfe                  ; Load 0 into the XVector
+                inc     l                           ; ...the Xpos
                 ld      (hl), 0                     ; Set the low byte to 0
-                inc     hl                          ; Move to high byte
+                inc     l                           ; Move to high byte
                 ld      (hl), b                     ; Set high byte to B
-                inc     hl                          ; Move to the YVector
+                inc     l                           ; Move to the YVector
                 ld      (hl), 0xff                  ; Load YVextor high byte
-                inc     hl                          ; Move HL to...
+                inc     l                           ; Move HL to...
                 ld      (hl), 0xfd                  ; Load YVextor high byte
-                inc     hl                          ; ...the ypos
+                inc     l                           ; ...the ypos
                 ld      (hl), 0                     ; Set the low byte to 0
-                inc     hl                          ; Move to high byte
+                inc     l                           ; Move to high byte
                 ld      (hl), c                     ; Set high byte to C
 
                 ret
