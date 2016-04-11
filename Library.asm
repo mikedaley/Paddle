@@ -3,7 +3,61 @@
 ; This assmebly file contains library routines that could be re-used in other projects such as sprite drawing or
 ; pixel address calculation
 ;
+; clrMem
+; watFrSpc
+; getPixelAddr
+; moveLineDown
+; prShft
+; drwSprt
+; drwMskdSprt
+; sveScrnBlck
+; rstrScrnBlck
+; prntStrng
+; genRndmNmbr
+; getChrLctn
+; getChrctrAttr
+; setChrctrAttr
+; 
 ;****************************************************************************************************************
+
+;****************************************************************************************************************
+; Clear defined number of bytes in BC at location HL
+;
+; Entry Registers:
+;   HL = Location to start clearing
+;   BC = Number of bytes to clear
+; Registers Used:
+;   A, B, C, E, HL
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+clrMem
+                ld      e, 0
+clrByte         ld      (hl), e
+                inc     hl
+                dec     bc
+                ld      a, b
+                or      c
+                jr      nz, clrByte
+                ret
+
+;****************************************************************************************************************
+; Wait For Space
+; Loops until the space key is pressed
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   A, B, C
+; Returned Registers:
+;   NONE
+;************************************************************************************************************************
+watFrSpc
+                ld      bc, 0x7FFE                  ; B = 0x7F (BNM SymShift Space), Port = 0xFE
+                in      a, (c)                      ; Read the port
+                rra                                 ; Rotate the byte right 
+                ret     nc                          ; If there is a carry then bit 0 was set which was the SPACE key...
+                jp      watFrSpc                    ; ...otherwise keep on waiting
 
 ;****************************************************************************************************************
 ; Calculate the screen address of a pixel location
@@ -16,7 +70,7 @@
 ; Returned Registers:
 ;   HL = screen address
 ;****************************************************************************************************************
-getPixelAddr:
+getPixelAddr
             ld      a,e                                 ; Load A with the Y pixel location
             srl     a                                   ; Rotate A three time to the left
             srl     a
@@ -493,4 +547,95 @@ genRndmNmbr     ld      hl, rndmNmbr1
                 ld      (hl), a
                 ret
 
+
+;****************************************************************************************************************
+; Get Character Location 
+; Convert a pixel location into a char x, y location
+;
+; Entry Registers:
+;   DE = D = pixel X, E = pixel Y
+; Used Registers:
+;   A, B, C
+; Returned Registers:
+;   B = X char position
+;   C = Y char position 
+;****************************************************************************************************************
+getChrLctn 
+                ld      a, d
+                srl     a                           ; Divide by 8 to get the char X position
+                srl     a
+                srl     a
+                ld      c, a
+
+                ld      a, e                        ; Divide by 8 to get the char y position
+                srl     a
+                srl     a
+                srl     a
+                ld      b, a
+                ret
+
+;****************************************************************************************************************
+; Set the attribute at the given X, Y character location to the attribute value held in A
+;
+; Entry Registers:
+;   DE = D = pixel X, E = pixel Y
+;   A = Attribute to load
+; Used Registers:
+;   A, B, C
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+setChrctrAttr 
+                ld      h, 0                        ; Get the Y pos from the corner
+                ld      l, d
+
+                add     hl, hl                      ; Multiply the Y position by 32
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+
+                ld      b, 0                        ; Get the X position
+                ld      c, e
+                add     hl, bc                      ; Add it to the Y position 
+
+                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
+                add     hl, de
+
+                ld      (hl), a                     ; Load the attribute at HL
+                ret
+
+;****************************************************************************************************************
+; Get the attribute at the given X, Y
+; D = X, E = Y, returns A = given attribute
+;****************************************************************************************************************
+;****************************************************************************************************************
+; Get the attribute for the character position provided in DE and return the attribute found in A
+;
+; Entry Registers:
+;   DE = D = pixel X, E = pixel Y
+; Used Registers:
+;   A, B, C
+; Returned Registers:
+;   A = Attribute to load
+;****************************************************************************************************************
+getChrctrAttr 
+                ld      h, 0                        ; Get the Y pos from the corner
+                ld      l, d
+
+                add     hl, hl                      ; Multiply the Y position by 32
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+                add     hl, hl
+
+                ld      b, 0                        ; Get the X position
+                ld      c, e
+                add     hl, bc                      ; Add it to the Y position 
+
+                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
+                add     hl, de
+
+                ld      a, (hl)                     ; Load the attribute at HL
+                ret
                 

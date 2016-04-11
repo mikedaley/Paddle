@@ -182,24 +182,14 @@ PAGE0E          equ     PAGE0END - PAGE0                ; Pad to the next 256 pa
 PAGE1
 
 objctPrtcls             
-                db      50, 0                        ; Lifespan (50ths Second), Timer  
-                dw      0x0050, 100                        ; Xvector, Xpos
-                dw      0x0050, 100                        ; YVector, Ypos
+                db      0                           ; Lifespan
+                db      0                           ; Timer
+                dw      0x0000, 0x0000              ; Xvector, Xpos
+                dw      0x0000, 0x0000              ; YVector, Ypos
                 ds      10                          ; Space needed to store the background of the particle sprite
 objctPrtclsEnd
-                ds      (objctPrtclsEnd - objctPrtcls) * 11    ; Reserve the space for particles
+                ds      (objctPrtclsEnd - objctPrtcls) * 12    ; Reserve the space for particles
 PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls    ; Calculate the size of a particle
-
-; pxlData
-;                 db      %10000000, %01111111
-;                 db      %01000000, %10111111
-;                 db      %00100000, %11011111
-;                 db      %00010000, %11101111
-;                 db      %00001000, %11110111
-;                 db      %00000100, %11111011
-;                 db      %00000010, %11111101
-;                 db      %00000001, %11111110
-
 
 ; PAGE1 END
 PAGE1END
@@ -299,7 +289,7 @@ shftSprts
                 ld      c, 5
                 call    prShft
 
-                ; Shift Sprite Bat
+                ; Shift Sprite Bat animation frames
                 ld      hl, SpriteBatData0
                 ld      de, SpriteBatData0 + 4 * 8
                 ld      b, 4
@@ -354,7 +344,7 @@ strtNewGame
                 call    clrScrn
                 call    rstScr                      ; Reset the score
                 call    rstBt
-                call    rstScrSprt
+                call    stupPrtcls
                 call    drwUI 
 
                 ld      a, 5 
@@ -391,14 +381,13 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 out     (0xfe), a
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
-                
                 ld      a, 1
                 out     (0xfe), a
                 call    updtPrtcls
-                ld      a, 2
+                ld      a, 5
                 out     (0xfe), a
                 call    drwPrtcls
-                ld      a, 3
+                ld      a, 0
                 out     (0xfe), a
                 call    updtBtAnmtnFrm
                 ld      a, 4
@@ -410,16 +399,15 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
         IF .debug
                 call    dbgPrnt                     ; Print debug output during development
         ENDIF
-                
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 ld      a, 6
                 out     (0xfe), a
                 call    drwBll                      ; Erase the ball (XOR)
-                ld      a, 2
+                ld      a, 3
                 out     (0xfe), a
                 call    rstrScrBckgrnd
-                ld      a, 4
+                ld      a, 2
                 out     (0xfe), a
                 call    drwBt                       ; Erase the bat (XOR)
 
@@ -616,116 +604,6 @@ _svBtFrm
                 ret                                 ; Return
 
 ;****************************************************************************************************************
-; Updates active particles by adjusting their current position using their current vector. A particle is active
-; if it has a timer value > 0
-;
-; Entry Registers:
-;   NONE
-; Registers Used:
-;   A, B, D, E, H, L
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-updtPrtcls
-                ld      b, NUMPRTCLS                ; Load B with the total number of particles available
-                ld      hl, objctPrtcls             ; Point HL at the particle objects object pool
-
-_nxtPrtcl 
-                ld      c, (hl)                     ; Save lifespan
-                inc     hl                          ; Move to timer
-                ld      a, (hl)                     ; Load timer
-                cp      0                           ; Is it active > 0           
-                jr      nz, _updtPrtcl              ; Yes then update
-                ld      de, PRTCLSZ - 1             ; Move to next particle     
-                add     hl, de                      ; Increase HL
-                djnz    _nxtPrtcl                   ; Loop
-                ret
-
-_updtPrtcl
-                push    bc                          ; Save the counter in B
-
-                inc     a                           ; Increment timer
-                cp      c                           ; Compare with lifespan
-                jr      z, _rstPrtclTmr             ; If 0 then reset the timer
-                push    hl
-                ld      (hl), a                     ; Save new timer value
-                inc     l                          ; Move to the x vector address
-
-                ; Update X Position
-                ld      c, (hl)                     ; Load the low byte of the xVector into C
-                inc     l                          ; Move to the hight byte
-                ld      b, (hl)                     ; Load the hight byte of the xVector into B
-;                 ld      a, (grvty)
-;                 ld      e, a
-;                 ld      a, (grvty + 1)
-;                 ld      d, a
-;                 ex      de, hl
-; ;                 add     hl, bc
-;                 ex      de, hl
-;                 ld      c, e
-;                 ld      b, d
-;                 dec     hl
-;                 ld      (hl), e
-;                 inc     hl
-;                 ld      (hl), d
-                inc     l
-                ld      e, (hl)                     ; Load low byte of xpos into E
-                inc     l                          ; Move to the high byte
-                ld      d, (hl)                     ; Load the high byte of xpos into D
-                ex      de, hl                      ; Exchange DE and HL 
-                add     hl, bc                      ; Add the xvector to the xpos
-                ex      de, hl                      ; Exchange DE and HL again to get the particle address back into HL
-                ld      (hl), d                     ; Save high byte of xpos
-                dec     l                          ; Move to the low byte
-                ld      (hl), e                     ; Save the low byte of xpos
-                inc     l                          ; Move to the YVector
-                inc     l                          ; ...which is a word away    
-
-                ; Update Y Position 
-                ld      c, (hl)                     ; Load the low byte of the xVector into C
-                inc     l                          ; Move to the hight byte
-                ld      b, (hl)                     ; Load the hight byte of the xVector into B
-                ld      a, (grvty)
-                ld      e, a
-                ld      a, (grvty + 1)
-                ld      d, a
-                ex      de, hl  
-                add     hl, bc
-                ex      de, hl
-                ld      c, e
-                ld      b, d
-                dec     l
-                ld      (hl), e
-                inc     l
-                ld      (hl), d
-                inc     l
-                ld      e, (hl)                     ; Load low byte of xpos into E
-                inc     l                          ; Move to the high byte
-                ld      d, (hl)                     ; Load the high byte of xpos into D
-                ex      de, hl                      ; Exchange DE and HL 
-                add     hl, bc                      ; Add the xvector to the xpos
-                ex      de, hl                      ; Exchange DE and HL again to get the particle address back into HL
-                ld      (hl), d                     ; Save high byte of xpos
-                dec     l                          ; Move to the low byte
-                ld      (hl), e                     ; Save the low byte of xpos
-                inc     l                          ; Move to the YVector
-                inc     l                          ; ...which is a word away 
-
-                pop     hl                          ; Resotore HL before we started moving around
-                pop     bc                          ; Restore our particle counter in B
-                ld      de, PRTCLSZ - 1             ; Load DE with the size of a particle struct - 1
-                add     hl, de                      ; Move HL to the next particle address
-                djnz    _nxtPrtcl                   ; Loop
-_rstPrtclTmr      
-                pop     bc                          ; Restore the particle counter in B
-                xor     a                           ; Clear A
-                ld      (hl), a                     ; Save A to the timer basically resetting it
-                ld      de, PRTCLSZ - 1             ; Load DE with the size of a particle struct - 1
-                add     hl, de                      ; Move HL to the next particle address
-                djnz    _nxtPrtcl                   ; Loop
-                ret
-
-;****************************************************************************************************************
 ; Restores the backgroun behind each active particle
 ; 
 ; Entry Registers:
@@ -831,56 +709,7 @@ updtBllChrPs                                       ; Update the balls character 
 
                 call    chckBlckCllsn               ; Now go see if the ball has hit something :)
 
-                ret
-
-;****************************************************************************************************************
-; Find the address of a particle that is not currently active
-;
-; Entry Registers:
-;   NONE
-; Registers Used:
-;   A, B, D, E, H, L
-; Returned Registers:
-;   A = > 0 means a particle was found
-;   HL = Address of available score sprite
-;****************************************************************************************************************
-fndInctvPrtcl
-                ld      b, NUMPRTCLS                ; Load B with the total number of available particles 
-                ld      hl, objctPrtcls + 1         ; Load HL with the address of the first particles timer value
-_chkNxtPrtcl     
-                ld      a, (hl)                     ; Load A with the time value from the particle
-                cp      0                           ; If its zero...
-                jr      z, _foundPrtcl              ; ...then its available and we can finish...
-                ld      de, PRTCLSZ                 ; ...otherwise we load DE with the size of a particle...
-                add     hl, de                      ; ... and increment HL to get to the next particle
-                djnz    _chkNxtPrtcl                ; Loop if necessary
-                xor     a                           ; Getting here means no available particles, so reset A
                 ret                                 ; Return
-_foundPrtcl
-                inc     a                           ; We found a particle so increment the timer to mark is used
-                ld      (hl), a
-                dec     l                           ; Move to the start of the particle struct
-                ret                                 ; Return
-
-;****************************************************************************************************************
-; Reset all the score sprites to inactive
-;
-; Entry Registers:
-;   NONE
-; Registers Used:
-;   A, B, D, E, H, L
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-rstScrSprt
-                ld      b, 5                        ; Five scores available
-                ld      hl, objctScore              ; Point HL at score object table
-                xor     a
-_rstNxtScr      ld      (hl), a
-                ld      de, 23
-                add     hl, de
-                djnz    _rstNxtScr                  ; Loop if B > 0
-                ret
 
 ;****************************************************************************************************************
 ; Draw the UI elements of the game e.g. labels and borders
@@ -990,7 +819,7 @@ _vrtclLp2
 ;****************************************************************************************************************
 drwPrtcls 
                 ld      b, NUMPRTCLS                ; There are a maximum of five scores that can be drawn
-                ld      hl, objctPrtcls + 1         ; Point HL at the start of the score object table
+                ld      hl, objctPrtcls + 1         ; Point HL at the first particles timer data
 _chkPrtclActv
                 ld      a, (hl)                     ; Get the timer for the score object
                 cp      0                           ; Check it against 0
@@ -1023,7 +852,6 @@ _drwCrrntPrtcl
                 xor     a
                 ld      de, ParticleSpriteData
                 call    drwMskdSprt
-;                 call    pltPxl
 
                 pop     hl
                 pop     bc
@@ -1103,45 +931,6 @@ drwMvngBlck
                 call    drwSprt
                 ret
 
-;****************************************************************************************************************
-; Clear defined number of bytes in BC at location HL
-;
-; Entry Registers:
-;   HL = Location to start clearing
-;   BC = Number of bytes to clear
-; Registers Used:
-;   A, B, C, E, HL
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-clrMem
-                ld      e, 0
-clrByte         ld      (hl), e
-                inc     hl
-                dec     bc
-                ld      a, b
-                or      c
-                jr      nz, clrByte
-                ret
-
-;****************************************************************************************************************
-; Wait For Space
-; Loops until the space key is pressed
-;
-; Entry Registers:
-;   NONE
-; Registers Used:
-;   A, B, C
-; Returned Registers:
-;   NONE
-;************************************************************************************************************************
-watFrSpc
-                ld      bc, 0x7FFE                  ; B = 0x7F (BNM SymShift Space), Port = 0xFE
-                in      a, (c)                      ; Read the port
-                rra                                 ; Rotate the byte right 
-                ret     nc                          ; If there is a carry then bit 0 was set which was the SPACE key...
-                jp      watFrSpc                    ; ...otherwise keep on waiting
-
 ;************************************************************************************************************************
 ; Read Control Keys
 ; Checks the control keys used in the game i.e. 1 = left, 2 = right and if either of these keys are pressed then the bats
@@ -1188,97 +977,6 @@ _mvBtRght
                 ret     
 _btHtRghtEdg         
                 ld      (hl), BTMXRGHT              ; Hit the edge so set the X pos to the BTMXRGHT value
-                ret
-
-;****************************************************************************************************************
-; Get Character Location 
-; Convert a pixel location into a char x, y location
-;
-; Entry Registers:
-;   DE = D = pixel X, E = pixel Y
-; Used Registers:
-;   A, B, C
-; Returned Registers:
-;   B = X char position
-;   C = Y char position 
-;****************************************************************************************************************
-getChrLctn 
-                ld      a, d
-                srl     a                           ; Divide by 8 to get the char X position
-                srl     a
-                srl     a
-                ld      c, a
-
-                ld      a, e                        ; Divide by 8 to get the char y position
-                srl     a
-                srl     a
-                srl     a
-                ld      b, a
-                ret
-
-;****************************************************************************************************************
-; Set the attribute at the given X, Y character location to the attribute value held in A
-;
-; Entry Registers:
-;   DE = D = pixel X, E = pixel Y
-;   A = Attribute to load
-; Used Registers:
-;   A, B, C
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-setChrctrAttr 
-                ld      h, 0                        ; Get the Y pos from the corner
-                ld      l, d
-
-                add     hl, hl                      ; Multiply the Y position by 32
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-
-                ld      b, 0                        ; Get the X position
-                ld      c, e
-                add     hl, bc                      ; Add it to the Y position 
-
-                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
-                add     hl, de
-
-                ld      (hl), a                     ; Load the attribute at HL
-                ret
-
-;****************************************************************************************************************
-; Get the attribute at the given X, Y
-; D = X, E = Y, returns A = given attribute
-;****************************************************************************************************************
-;****************************************************************************************************************
-; Get the attribute for the character position provided in DE and return the attribute found in A
-;
-; Entry Registers:
-;   DE = D = pixel X, E = pixel Y
-; Used Registers:
-;   A, B, C
-; Returned Registers:
-;   A = Attribute to load
-;****************************************************************************************************************
-getChrctrAttr 
-                ld      h, 0                        ; Get the Y pos from the corner
-                ld      l, d
-
-                add     hl, hl                      ; Multiply the Y position by 32
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-
-                ld      b, 0                        ; Get the X position
-                ld      c, e
-                add     hl, bc                      ; Add it to the Y position 
-
-                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
-                add     hl, de
-
-                ld      a, (hl)                     ; Load the attribute at HL
                 ret
 
 ;****************************************************************************************************************
@@ -1527,7 +1225,6 @@ _bncUp
                 ret 
 
 ;****************************************************************************************************************
-; Check Block Collision
 ; Check the collisions points around the ball against the attribute buffer and if a collision is found then Remove
 ; the block and bounce the ball.  By checking each collision point around the ball sprite we can find out which
 ; part of the ball has hit a tile. This then allows us to update the sprites X or Y speed causing the ball to 
@@ -1544,14 +1241,14 @@ _bncUp
 chckBlckCllsn 
                 ld      a, (objctBall + BLLYSPD)    ; Load the Y Speed of the ball
                 cp      0                           ; Compare it with 0 to find out if the balls is moving up...
-                jp      p, _mddlBttm                ; or down the screen, if moving down then no need to check the top collision
+                jp      p, _mddlBttm                ; ...if p then moving down the screen so check the bottom of the ball
 
                 ld      de, (ballMT)                ; Load the middle collison point into DE, D = Y, E = X
                 push    de                          ; Save DE
                 call    getChrctrAttr               ; Get the character attribute at DE
                 pop     de                          ; Restore DE
                 cp      5                           ; Is the attribute returned Cyan on black...
-                jr      z, _mddlBttm                ; ...if so then check the right collision point as there is no block
+                jr      z, _mddlRght                ; ...if so then check the right collision point as there is no block
                 
                 ld      a, (objctBall + BLLYSPD)    ; Load A with the ball.ySpeed
                 neg                                 ; Reverse the ball.ySpeed...
@@ -1577,6 +1274,9 @@ _mddlBttm
                 call    prntScr
 
 _mddlRght 
+                ld      a, (objctBall + BLLXSPD)
+                cp      0
+                jp      m, _mddlLft 
                 ld      de, (ballMR)
                 push    de
                 call    getChrctrAttr
@@ -1592,6 +1292,9 @@ _mddlRght
                 call    prntScr
 
 _mddlLft 
+                ld      a, (objctBall + BLLXSPD)
+                cp      0
+                ret     p
                 ld      de, (ballML)
                 push    de
                 call    getChrctrAttr
@@ -1765,70 +1468,6 @@ _even
 
                 pop     bc                          ; Restore BC with the blocks position 
                 call    genPrtcl
-                ret
-
-;****************************************************************************************************************
-; Start a particle effect at the pixel location in BC
-;****************************************************************************************************************
-genPrtcl
-                push    bc
-                call    fndInctvPrtcl
-                cp      0                           ; Check if A is zero...
-                ret     z                           ; ...and return if it is 
-                pop     bc
-
-                inc     b                           ; Move to the center of the block
-                inc     b
-                inc     b
-                inc     b
-
-                push    bc                          ; Save B for use later now its been adjusted
-
-                ld      a, 40                       ; Set lifespan of particle
-                ld      (hl), a                     ; save it
-                inc     l                           ; Move HL to...
-                inc     l                           ; ...the XVector
-                ld      (hl), 0x64                  ; Load 0 into the XVector
-                inc     l                           ; Move HL to...
-                ld      (hl), 0x00                  ; Load 0 into the XVector
-                inc     l                           ; ...the Xpos
-                ld      (hl), 0                     ; Set the low byte to 0
-                inc     l                           ; Move to high byte
-                ld      (hl), b                     ; Set high byte to B
-                inc     l                           ; Move to the YVector
-                ld      (hl), 0xff                  ; Load YVextor high byte
-                inc     l                           ; Move HL to...
-                ld      (hl), 0xfd                  ; Load YVextor high byte
-                inc     l                           ; ...the ypos
-                ld      (hl), 0                     ; Set the low byte to 0
-                inc     l                           ; Move to high byte
-                ld      (hl), c                     ; Set high byte to C
-
-                call    fndInctvPrtcl
-                pop     bc
-                cp      0                           ; Check if A is zero...
-                ret     z                           ; ...and return if it is 
-
-                ld      a, 35                       ; Set lifespan of particle
-                ld      (hl), a                     ; save it
-                inc     l                           ; Move HL to...
-                inc     l                           ; ...the XVector
-                ld      (hl), 0xff                  ; Load 0 into the XVector
-                inc     l                           ; Move HL to...
-                ld      (hl), 0xfe                  ; Load 0 into the XVector
-                inc     l                           ; ...the Xpos
-                ld      (hl), 0                     ; Set the low byte to 0
-                inc     l                           ; Move to high byte
-                ld      (hl), b                     ; Set high byte to B
-                inc     l                           ; Move to the YVector
-                ld      (hl), 0xff                  ; Load YVextor high byte
-                inc     l                           ; Move HL to...
-                ld      (hl), 0xfd                  ; Load YVextor high byte
-                inc     l                           ; ...the ypos
-                ld      (hl), 0                     ; Set the low byte to 0
-                inc     l                           ; Move to high byte
-                ld      (hl), c                     ; Set high byte to C
-
                 ret
 
 ;****************************************************************************************************************
@@ -2020,6 +1659,7 @@ _dthSndLp       push    bc
 ;****************************************************************************************************************
                 include     Menu.asm
                 include     Library.asm
+                include     Particles.asm
                 include     Maths.asm
                 include     Levels.asm
         IF .debug
