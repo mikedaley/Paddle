@@ -101,15 +101,17 @@ NUMPRTCLS               equ                 12
 
                 include Contended.asm               ; Load data and code that can sit in contended memory
 
-CONTENDEDEND
-CONTENDE        equ     CONTENDEDEND - CONTENDEDADDR
-                ds      CODESTART-CONTENDEDADDR - CONTENDE      ; Fill memory from the end of contended code to the
-                                                                ; start of fast memory
+; CONTENDEDEND
+; CONTENDE        equ     CONTENDEDEND - CONTENDEDADDR
+;                 ds      CODESTART-CONTENDEDADDR - CONTENDE      ; Fill memory from the end of contended code to the
+;                                                                 ; start of fast memory
 
 ;****************************************************************************************************************
 ; PAGE 0: Page boundary for tables and variables
 ;****************************************************************************************************************
-PAGE0           jp      init                        ; Jump to the init code
+PAGE0           
+                org     32768
+;                 jp      init                        ; Jump to the init code
 
 ; Variables
 gmeStte         db      0                           ; 1 = GMESTTE_PLYNG, 2 = GMESTTE_WTNG to Start, 4 = GMESTTE_DEAD
@@ -166,22 +168,24 @@ objctBat        db      112, 4, 150
                 db      0 ; Delay counter used to time how long each frame should be visible
                 db      0 ; Animation Frame
                 db      0 ; Frame delay
-                        
-objctScore              ; Timer 1 byte, Ypos 1 byte, Xpos 1 byte, Screen Background 16 bytes
-                ds      7 * 23                       ; Make space for five score banners
-
-lvlData         ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
-                ds      15 * 7
 
 ; PAGE0 END
-PAGE0END
-PAGE0E          equ     PAGE0END - PAGE0                ; Pad to the next 256 page boundary
-                defm    256 - PAGE0E
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
 ; PAGE 1: Page boundary Particle Storage
 PAGE1
+                org     ($ + 255) & $ff00
+                        
+lvlData         ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
+                ds      15 * 7
+; PAGE1 END
+;****************************************************************************************************************
+
+;****************************************************************************************************************
+; PAGE 2: Page boundary Particle Storage
+PAGE2
+                org     ($ + 255) & $ff00
 
 objctPrtcls             
                 db      0                           ; Lifespan
@@ -190,30 +194,27 @@ objctPrtcls
                 dw      0x0000, 0x0000              ; YVector, Ypos
                 ds      10                          ; Space needed to store the background of the particle sprite
 objctPrtclsEnd
-                ds      (objctPrtclsEnd - objctPrtcls) * 12     ; Reserve the space for particles
-PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls            ; Calculate the size of a particle
+PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls; Calculate the size of a particle
+                ds      PRTCLSZ * 11                ; Reserve the space for particles
 
-; PAGE1 END
-PAGE1END
-PAGE1E          equ     PAGE1END - PAGE1            ; Pad to the next 256 page boundary
-                defm    256 - PAGE1E
+; PAGE2 END
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
-; PAGE 2: Page boundary Particle Storage
-PAGE2
+; PAGE 3: IM 2 jump table
+PAGE3
+                org     ($ + 255) & $ff00
 
 intJmpTbl
                 ds      256
+
 ; PAGE2 END
-PAGE2END
-PAGE2E          equ     PAGE2END - PAGE2                ; Pad to the next 256 page boundary
-                defm    256 - PAGE2E
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
-; PAGE 3: Page boundary Particle Storage
-PAGE3
+; PAGE 4: Page boundary Particle Storage
+PAGE4
+                org     ($ + 255) & $ff00
 
 pxlData
                 db      %10000000, %01111111
@@ -225,10 +226,7 @@ pxlData
                 db      %00000010, %11111101
                 db      %00000001, %11111110
 
-; PAGE3 END
-PAGE3END
-PAGE3E          equ     PAGE3END - PAGE3                ; Pad to the next 256 page boundary
-                defm    256 - PAGE3E
+; PAGE4 END
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
