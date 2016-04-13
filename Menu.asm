@@ -56,23 +56,6 @@ menu
                 ld      bc, cpyrghtEnd - cpyrght
                 call    8252
 
-                ;*************************************
-                ; Debug
-IF .debug
-                ld      e, 184
-                ld      d, 8*1
-                call    getPixelAddr
-                ld      a, 256 - PAGE0E               ; Space left in Page 0                
-                call    HexByte
-
-
-                ld      e, 184
-                ld      d, 8*4
-                call    getPixelAddr
-                ld      a, 256 - PAGE1E               ; Space left in Page 0                
-                call    HexByte
-                ;*************************************
-ENDIF
                 ld      hl, logoAttrFx              ; Load HL with the logo attr FX address
                 ld      (attrFxAddr), hl            ; ...and save it to memory
 
@@ -129,7 +112,6 @@ rdOptnKys
 ; Variables
 attrFxAddr      dw      0
 logoFXCnt       db      0
-oldStack        dw      0x0000
 
 ;****************************************************************************************************************
 ; Menu Text
