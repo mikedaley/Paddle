@@ -171,12 +171,15 @@ _updtPrtcl
                 add     hl, bc                      ; Add the xvector to the xpos
                 ex      de, hl                      ; Exchange DE and HL again to get the particle address back into HL
 
-                ld      a, d
-                cp      SCRNLFT
-                jr      nc, _sveXPos
-                ld      d, 8
+                ld      a, d                        ; Check to see if the X location 
+                cp      SCRNLFT                     ; ...has passed the left edge of the screen area
+                jr      nc, _chkRght                ; If not then check the right screen edge
+                ld      d, SCRNLFT                  ; otherwise set the balls X pos to the screens edge
+_chkRght        
+                cp      SCRNRGHT - BLLPXLWIDTH      ; Check to see if the X location has passed the right screen edge
+                jp      c, _sveXPos                 ; If not then save the current X pos
+                ld      d, 256 - 16 - BLLPXLWIDTH   ; ...otherwise set the X pos to be the right screen edge
 _sveXPos
-
                 ld      (hl), d                     ; Save high byte of xpos
                 dec     l                           ; Move to the low byte
                 ld      (hl), e                     ; Save the low byte of xpos
