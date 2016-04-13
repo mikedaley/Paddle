@@ -2,19 +2,16 @@
 ; Generate three particles from the particle pool using the location passed in BC
 ;****************************************************************************************************************
 genPrtcl
-                push    bc
-                call    fndInctvPrtcl
-                or      a                           ; Check if A is zero...
-                ret     z                           ; ...and return if it is 
-                pop     bc
-
                 inc     b                           ; Move to the center of the block
                 inc     b
                 inc     b
                 inc     b
 
-                push    bc                          ; Save B for use later now its been adjusted
                 push    bc
+                call    fndInctvPrtcl
+                pop     bc
+                or      a                           ; Check if A is zero...
+                ret     z                           ; ...and return if it is 
 
                 ld      a, 35                       ; Set lifespan of particle
                 ld      (hl), a                     ; save it
@@ -36,8 +33,9 @@ genPrtcl
                 inc     l                           ; ...the ypos
                 ld      (hl), 0                     ; Set the low byte to 0
                 inc     l                           ; Move to high byte
-                ld      (hl), c                     ; Set high byte to C
+_prtcl_y_1      ld      (hl), c                     ; Set high byte to C
 
+                push    bc
                 call    fndInctvPrtcl
                 pop     bc
                 or      a                           ; Check if A is zero...
@@ -54,7 +52,7 @@ genPrtcl
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
-                ld      (hl), b                   
+_prtcl_x_2      ld      (hl), b                   
                 inc     l                         
                 ld      a, (rndmNmbr3)
                 ld      (hl), a                   
@@ -63,8 +61,9 @@ genPrtcl
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
-                ld      (hl), c                   
+_prtcl_y_2      ld      (hl), c                   
 
+                push    bc
                 call    fndInctvPrtcl
                 pop     bc
                 or      a                           ; Check if A is zero...
@@ -81,7 +80,7 @@ genPrtcl
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
-                ld      (hl), b                   
+_prtcl_x_3      ld      (hl), b                   
                 inc     l                         
                 ld      a, (rndmNmbr3)
                 ld      (hl), a                   
@@ -90,7 +89,7 @@ genPrtcl
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
-                ld      (hl), c 
+_prtcl_y_3      ld      (hl), c
 
                 ret
 
@@ -142,22 +141,20 @@ _nxtPrtcl
                 ld      c, (hl)                     ; Save lifespan
                 inc     hl                          ; Move to timer
                 ld      a, (hl)                     ; Load timer
-                or      a                           ; Is it active > 0           
-                jr      nz, _updtPrtcl              ; Yes then update
+                cp      0                           ; Is timer > 0           
+                jp      nz, _updtPrtcl              ; Yes then update
                 ld      de, PRTCLSZ - 1             ; Move to next particle     
                 add     hl, de                      ; Increase HL
                 djnz    _nxtPrtcl                   ; Loop
                 ret
-
 _updtPrtcl
-                push    bc                          ; Save the counter in B
-
                 inc     a                           ; Increment timer
                 cp      c                           ; Compare with lifespan
-                jr      z, _rstPrtclTmr             ; If 0 then reset the timer
+                jp      z, _rstPrtclTmr             ; If 0 then reset the timer
+                push    bc
                 push    hl
                 ld      (hl), a                     ; Save new timer value
-                inc     l                          ; Move to the x vector address
+                inc     l                           ; Move to the x vector address
 
                 ; Update X Position with XVector
                 ld      c, (hl)                     ; Load the low byte of the xVector into C
@@ -224,10 +221,9 @@ _sveXPos
                 ld      de, PRTCLSZ - 1             ; Load DE with the size of a particle struct - 1
                 add     hl, de                      ; Move HL to the next particle address
                 djnz    _nxtPrtcl                   ; Loop
-
+                ret
 
 _rstPrtclTmr    ; Reset the timer for the current particle as its not dead
-                pop     bc                          ; Restore the particle counter in B
                 xor     a                           ; Clear A
                 ld      (hl), a                     ; Save A to the timer basically resetting it
                 ld      de, PRTCLSZ - 1             ; Load DE with the size of a particle struct - 1
