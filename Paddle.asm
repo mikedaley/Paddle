@@ -236,6 +236,7 @@ pxlData
 .debug          equ     0
 
 init 
+                call    stupInt
                 call    genLnrYLkupTbl              ; Generate linear YAxis lookup table
 
                 xor     a                           ; Set the border colour
@@ -265,38 +266,31 @@ init
                 call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    stupPrtcls
                 call    menu
-                call    stupInt
 
                 ret
 
 ;****************************************************************************************************************
 ; Setup a blank interrupt routine
 stupInt                    
-                di                                  ; 
+                di
 
                 ld      hl, intJmpTbl
-                ld      de, vbInt
-                ld      b, 128
+                ld      de, intJmpTbl + 1
+                ld      bc, 256  
 
                 ld      a, h
                 ld      i, a
 
-_intTblStup         
-                ld      (hl), e
-                inc     hl
-                ld      (hl), d
-                inc     hl
-                djnz    _intTblStup
+                ld      a, 0xfc
+                ld      (hl), a
+
+                ldir
 
                 im      2
                 ei
 
                 ret
  
-vbInt
-                ei
-                reti
-
 ;****************************************************************************************************************
 ; Pre-shift the sprites
 shftSprts
@@ -575,7 +569,7 @@ _chckGmeSttePlyrDead
 ;****************************************************************************************************************
 stupPrtcls
                 ld      hl, objctPrtcls             ; Point HL at the screen buffer
-                ld      bc, 12 * 20                 ; Load BC with the number of bytes to clear
+                ld      bc, NUMPRTCLS * 20          ; Load BC with the number of bytes to clear
                 call    clrMem                      ; Call the clear mem routine
                 ret
 
@@ -608,7 +602,9 @@ _svBtFrm
                 ret                                 ; Return
 
 ;****************************************************************************************************************
-; Restores the backgroun behind each active particle
+; Restores the background behind each active particle. When a particle sprite is drawn the contents of the screen
+; buffer at the particles location is saved to the particle to be drawn. This data is then restored to erase the
+; particle sprite and restore the background underneath it.
 ; 
 ; Entry Registers:
 ;   NONE
@@ -618,38 +614,38 @@ _svBtFrm
 ;   NONE
 ;****************************************************************************************************************
 rstrScrBckgrnd
-                ld      b, NUMPRTCLS                        ; Upto to five scores can be alive at the same time
-                ld      hl, objctPrtcls + 1              ; Point HL at the score sprite table
+                ld      b, NUMPRTCLS                ; Load B with number of particles
+                ld      hl, objctPrtcls + 1         ; Point HL at timer in the first particle
 _nxtBckgrnd     ld      a, (hl)                     ; Load A with the timer value for the score
-                cp      0                           ; Is the timer 0?
-                jp      nz, _updtBckgrnd                ; If not then update it as its active...
-                ld      de, PRTCLSZ                        ; Move to the...
-                add     hl, de                      ; ...score object
-                djnz    _nxtBckgrnd                     ; Loop if there are score objects left
+                or      a                           ; Is the timer 0?
+                jp      nz, _updtBckgrnd            ; If not then update it as its active...
+                ld      de, PRTCLSZ                 ; Move to the next...
+                add     hl, de                      ; ...particle
+                djnz    _nxtBckgrnd                 ; Loop if there are particles objects left
                 ret
 _updtBckgrnd
                 push    hl
                 push    bc
-                inc     hl                          ; Point HL at the Ypos of the score... 
-                inc     hl                          ; Point HL at the Ypos of the score... 
-                inc     hl                          ; Point HL at the Ypos of the score... 
-                inc     hl                          ; Point HL at the Ypos of the score... 
-                ld      b, (hl)
-                inc     hl                          ; Point HL at the Xpos                       
-                inc     hl                          ; Point HL at the Xpos                       
-                inc     hl                          ; Point HL at the Xpos                       
-                inc     hl                          ; Point HL at the Xpos                       
-                ld      c, (hl)
-                inc     hl                          ; Point HL at background data
+                inc     l                          ; Point HL at the  
+                inc     l                          ; ... 
+                inc     l                          ; ... 
+                inc     l                          ; high byte of the x position 
+                ld      b, (hl)                     ; Load B with the x pos high byte
+                inc     l                          ; Point HL at the                       
+                inc     l                          ; ...                       
+                inc     l                          ; ...                       
+                inc     l                          ; high byte of the y position                       
+                ld      c, (hl)                     ; Load C with the y pos high byte
+                inc     l                          ; Point HL at background data
                 ex      de, hl                      ; Put HL into DE
                 ld      hl, 0x0205                  ; Load HL with the size of sprite to restore
-                call    rstrScrnBlck
-                pop     bc
-                pop     hl
+                call    rstrScrnBlck                ; Restore the screen with the background data held with the particle
+                pop     bc                          ; Restore the particle counter
+                pop     hl                          ; Restore the table pointer
 
-                ld      de, PRTCLSZ
-                add     hl, de                      ; to get to the next score object
-                djnz    _nxtBckgrnd                 ; Loop if there are score objects letf
+                ld      de, PRTCLSZ                 ; Load DE with the size of a single particle...
+                add     hl, de                      ; ...and add that to HL to move to the next particle
+                djnz    _nxtBckgrnd                 ; Loop if there are particle objects left
                 ret
 
 ;****************************************************************************************************************
@@ -1649,5 +1645,11 @@ _dthSndLp       push    bc
                 include     Debug.asm               ; Only need the debug routines during development
         ENDIF
                 include     Graphics.asm
+
+                org     0xfcfc                
+vbInt
+                ei
+                reti
+
 
                 END init
