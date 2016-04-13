@@ -16,26 +16,14 @@ menu
                 call    clrMem                      ; Clear memory
 
                 ; Draw logo
-;                 ld      hl, logoAttrFx              ; Load in the attribute FX data
-;                 ld      de, ATTRSCRNADDR
-;                 ld      bc, 32 * 6
-;                 ldir
-
-                ld      hl, ATTRSCRNADDR              ; Load in the attribute FX data
-                ld      de, ATTRSCRNADDR + 1
+                ld      hl, logoAttrFx              ; Load in the attribute FX data
+                ld      de, ATTRSCRNADDR
                 ld      bc, 32 * 6
-                ld      (hl), 7
                 ldir
 
-;                 ld      de, Logo                    ; Draw the logo sprite
-;                 ld      bc, 0x0000
-;                 call    drwSprt
-
-                ld      hl, BTMPSCRNSDDR
-                ld      de, BTMPSCRNSDDR + 1
-                ld      bc, 6144
-                ld      (hl), 255
-                ldir
+                ld      de, Logo                    ; Draw the logo sprite
+                ld      bc, 0x0000
+                call    drwSprt
 
                 ld      hl, ATTRSCRNADDR + (6 * 32) ; Fill the rest of the screen with cyan on black
                 ld      de, ATTRSCRNADDR + (6 * 32) + 1
@@ -89,107 +77,34 @@ ENDIF
                 ld      (attrFxAddr), hl            ; ...and save it to memory
 
 _mnuLp
-                ld      hl, 549                 ; 10T          
+                ld      b, 5                        ; Pause for (1/50 * A) seconds
 
-                halt                             ; Ts = 0
-wait
-                dec     hl                      ; 6T
-                ld      a, h                    ; 9T
-                or      l                       ; 4T
-                jp      nz, wait                ; 7T + 12T when falls through
-
-                ld      hl, 0x0202              ; 10T
-                ld      de, 0x0404              ; 10T
-                di
-                ld      (oldStack), sp          ; 20T
-                ld      sp, ATTRSCRNADDR + 32   ; 10T
-
-                ; Total Ts to here is 14336
-
-                push    hl                      ; 11T * 16 = 176T
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-
-                ld      bc, 0                   ; 18 * 3 = 30
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                nop                             ; 4 * 2 = 8
-                nop
-
-                ld      sp, ATTRSCRNADDR + 32   ; 10T
-
-                ; Total Ts 224
-
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-                push    de
-
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-                ld      bc, 0
-
-                ld      sp, ATTRSCRNADDR + 32   ; 10T
-
-                push    hl                      ; 11T
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-                push    hl
-
-                ld      sp, (oldStack)
-                ei
-
+_pause          halt                                ; Wait for V-Sync
+                push    bc                          ; Save B as it contains our pause counter
                 call    rdOptnKys                   ; Action any key presses
+                pop     bc                          ; Restore B
+                djnz    _pause
 
+                ld      hl, (attrFxAddr)            ; Load HL with the current FX address 
+                ld      de, ATTRSCRNADDR            ; Load DE with the screen address
+                ld      bc, 192                     ; Load BC with 6 rows e.g. 32 * 6
+                ldir                                ; Move the attributes to screen
+
+                ld      hl, (attrFxAddr)            ; Load HL with the attribute fx address
+                ld      de, 32                      ; Add 32 to the address...
+                add     hl, de                      ; ...moving to the next line
+                ld      (attrFxAddr), hl            ; Save that back to the variable
+
+                ld      a, (logoFXCnt)              ; Load A with the current FX count
+                inc     a                           ; Inc it
+                ld      (logoFXCnt), a              ; Save it
+                cp      4                           ; Compare with 4
+                jp      nz, _mnuLp                  ; Loop if not reached
+
+                xor     a                           ; Clear A
+                ld      (logoFXCnt), a              ; Reset the fx count
+                ld      hl, logoAttrFx              ; Reset HL with the logo attribute fx
+                ld      (attrFxAddr), hl            ; Save it to the variable
 
                 jp      _mnuLp                      ; Loop
 
