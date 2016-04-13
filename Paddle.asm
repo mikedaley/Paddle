@@ -8,7 +8,6 @@
 ; * Using IM1 so IY can't be used as the IM1 interrupt doesn't protect it. 
 ; 
 ; TODO
-; * Implement IM2 to see what can be done with that
 ; * Implement reading IO Port 0x40FF for the colour attribute currently being read by the ULA. This can cause
 ;   compatibility issues, but I want to see what can be done by using that rather than HALT to get more time
 ;   to draw to the screen directly
@@ -53,7 +52,7 @@ BLLYSPD                 equ                 3
 ; BALL constants            
 BLLPXLHGHT              equ                 5
 BLLPXLWIDTH             equ                 5
-BLLHLFWIDTH             equ                 BLLPXLWIDTH / 2
+BLLHLFWIDTH             equ                 3
             
 ; Offsets into the BAT structure        
 BTXPS                   equ                 0
@@ -91,7 +90,7 @@ PAPER                   equ                 8       ; Multiply with INK to get p
 BRIGHT                  equ                 64
 FLASH                   equ                 128
 
-NUMPRTCLS               equ                 12
+NUMPRTCLS               equ                 6
 
 ;****************************************************************************************************************
 ; Start of Contended Memory
@@ -195,7 +194,7 @@ objctPrtcls
                 ds      10                          ; Space needed to store the background of the particle sprite
 objctPrtclsEnd
 PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls; Calculate the size of a particle
-                ds      PRTCLSZ * 11                ; Reserve the space for particles
+                ds      PRTCLSZ * (NUMPRTCLS - 1)   ; Reserve the space for particles
 
 ; PAGE2 END
 ;****************************************************************************************************************
@@ -281,7 +280,7 @@ stupInt
                 ld      a, h
                 ld      i, a
 
-                ld      a, 0xfc
+                ld      a, vbInt
                 ld      (hl), a
 
                 ldir
@@ -426,7 +425,7 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 call    rdCntrlKys                  ; Read the keyboard
 
                 ld      a, (objctBat + BTYPS)       ; Get the bats Y position
-                ld      b, BLLPXLHGHT - 3           ; Get the pixel height of the ball
+                ld      b, BLLPXLHGHT               ; Get the pixel height of the ball
                 sub     b                           ; Calulcate the bats Y pos minus the balls height putting the ball ontop of the bat
                 ld      (objctBall + BLLYPS), a     ; Update the balls Y Position with the bats Y position 
                 ld      a, (objctBat + BTXPS)       ; Load the bats X pos
@@ -476,7 +475,7 @@ _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
                 call    prntStrng
 
                 pop     af                          ; Restore AF
-                cp      0                           ; Check if the players lives have reached 0 
+                or      a                           ; Check if the players lives have reached 0 
                 jp      z, _setGmeStteDead          ; Jump to set the game state to DEAD
 
                 call    rstBt                       ; Reset the bats location
@@ -1646,7 +1645,7 @@ _dthSndLp       push    bc
         ENDIF
                 include     Graphics.asm
 
-                org     0xfcfc                
+                org     0xfefe                
 vbInt
                 ei
                 reti
