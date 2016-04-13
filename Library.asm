@@ -377,23 +377,27 @@ _nxtMskdSprtClmn
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
-; pltPxl
-;                 ld      e, c
-;                 ld      d, b
-;                 call    getPixelAddr
-;                 ld      a, b
-;                 and     7
-;                 ld      bc, pxlData
-;                 add     a, c
-;                 ld      c, a
-;                 ld      a, (bc)
-;                 or      (hl)
-;                 ld      (hl), a
-;                 inc     c
-;                 ld      a, (bc)
-;                 and     (hl)
-;                 ld      (hl), a
-;                 ret
+pltPxl
+                ld      e, c
+                ld      d, b
+                call    getPixelAddr
+                ld      a, b
+                and     7
+                ld      bc, pxlData
+                add     a, c
+                add     a, c
+                ld      c, a
+                ld      a, (bc)
+
+                or      (hl)
+                ld      (hl), a
+                inc     c
+
+                ld      a, (bc)
+                and     (hl)
+                ld      (hl), a
+                
+                ret
 
 ;****************************************************************************************************************
 ; Save screen data at the pixel location in BC to the location in DE. The width and height of pixels to copy is
