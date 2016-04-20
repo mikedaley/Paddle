@@ -1,4 +1,14 @@
 ;****************************************************************************************************************
+;
+; This file contains particle related routines
+;
+; genPrtcl
+; fndInctvPrtcl
+; updtPrtcls
+; 
+;****************************************************************************************************************
+
+;****************************************************************************************************************
 ; Generate three particles from the particle pool using the location passed in BC
 ;****************************************************************************************************************
 genPrtcl
@@ -33,7 +43,7 @@ genPrtcl
                 inc     l                           ; ...the ypos
                 ld      (hl), 0                     ; Set the low byte to 0
                 inc     l                           ; Move to high byte
-_prtcl_y_1      ld      (hl), c                     ; Set high byte to C
+                ld      (hl), c                     ; Set high byte to C
 
                 push    bc
                 call    fndInctvPrtcl
@@ -52,7 +62,7 @@ _prtcl_y_1      ld      (hl), c                     ; Set high byte to C
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
-_prtcl_x_2      ld      (hl), b                   
+                ld      (hl), b                   
                 inc     l                         
                 ld      a, (rndmNmbr3)
                 ld      (hl), a                   
@@ -61,7 +71,7 @@ _prtcl_x_2      ld      (hl), b
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
-_prtcl_y_2      ld      (hl), c                   
+                ld      (hl), c                   
 
                 push    bc
                 call    fndInctvPrtcl
@@ -73,23 +83,23 @@ _prtcl_y_2      ld      (hl), c
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
-                ld      a, (rndmNmbr1)
+                ld      a, (rndmNmbr3)
                 ld      (hl), 0                     
                 inc     l                           
                 ld      (hl), 0                  
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
-_prtcl_x_3      ld      (hl), b                   
+                ld      (hl), b                   
                 inc     l                         
-                ld      a, (rndmNmbr3)
+                ld      a, (rndmNmbr1)
                 ld      (hl), a                   
                 inc     l                         
                 ld      (hl), 0xfc                
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
-_prtcl_y_3      ld      (hl), c
+                ld      (hl), c
 
                 ret
 

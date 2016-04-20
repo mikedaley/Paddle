@@ -34,19 +34,19 @@ menu
                 ; Print the menu options
                 ld      de, kybrdTxt
                 ld      bc, kybrdTxtEnd - kybrdTxt
-                call    8252
+                call    ROMPRINT
 
                 ld      de, snclrTxt
                 ld      bc, snclrTxtEnd - snclrTxt
-                call    8252
+                call    ROMPRINT
 
                 ld      de, kmpstnTxt
                 ld      bc, kmpstnTxtEnd - kmpstnTxt
-                call    8252
+                call    ROMPRINT
 
                 ld      de, strtTxt
                 ld      bc, strtTxtEnd - strtTxt
-                call    8252
+                call    ROMPRINT
 
                 ; Set channel to the bottom of the screen and print the copyright
                 ld      a, 1
@@ -54,7 +54,7 @@ menu
 
                 ld      de, cpyrght
                 ld      bc, cpyrghtEnd - cpyrght
-                call    8252
+                call    ROMPRINT
 
                 ld      hl, logoAttrFx              ; Load HL with the logo attr FX address
                 ld      (attrFxAddr), hl            ; ...and save it to memory
@@ -115,13 +115,13 @@ logoFXCnt       db      0
 
 ;****************************************************************************************************************
 ; Menu Text
-strtTxt         db      17, PAPER * BLACK, 16, WHITE, 22, 11, 10, "0. START"
+strtTxt         db      17, BLACK, 16, WHITE, 22, 11, 10, "0. START"
 strtTxtEnd
-kybrdTxt        db      17, PAPER * BLACK, 16, WHITE, 22, 13, 10, "1. KEYBOARD"
+kybrdTxt        db      17, BLACK, 16, WHITE, 22, 13, 10, "1. KEYBOARD"
 kybrdTxtEnd     
-snclrTxt        db      17, PAPER * BLACK, 16, WHITE, 22, 15, 10, "2. SINCLAIR"
+snclrTxt        db      17, BLACK, 16, WHITE, 22, 15, 10, "2. SINCLAIR"
 snclrTxtEnd
-kmpstnTxt       db      17, PAPER * BLACK, 16, WHITE, 22, 17, 10, "3. KEMPTSTON"
+kmpstnTxt       db      17, BLACK, 16, WHITE, 22, 17, 10, "3. KEMPTSTON"
 kmpstnTxtEnd
 cpyrght         db      17, BLUE, 16, GREEN, 22, 1, 8, "Mike Daley 2016"
 cpyrghtEnd

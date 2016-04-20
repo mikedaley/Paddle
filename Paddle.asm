@@ -92,6 +92,8 @@ FLASH                   equ                 128
 
 NUMPRTCLS               equ                 6
 
+ROMPRINT                equ                 8252
+
 ;****************************************************************************************************************
 ; Start of Contended Memory
 ;****************************************************************************************************************           
@@ -100,19 +102,12 @@ NUMPRTCLS               equ                 6
 
                 include Contended.asm               ; Load data and code that can sit in contended memory
 
-; CONTENDEDEND
-; CONTENDE        equ     CONTENDEDEND - CONTENDEDADDR
-;                 ds      CODESTART-CONTENDEDADDR - CONTENDE      ; Fill memory from the end of contended code to the
-;                                                                 ; start of fast memory
-
 ;****************************************************************************************************************
 ; PAGE 0: Page boundary for tables and variables
 ;****************************************************************************************************************
 PAGE0           
                 org     32768
-;                 jp      init                        ; Jump to the init code
 
-; Variables
 gmeStte         db      0                           ; 1 = GMESTTE_PLYNG, 2 = GMESTTE_WTNG to Start, 4 = GMESTTE_DEAD
 lvlBlckCnt      db      0                           ; Number of blocks in this level
 crrntLvl        db      0                           ; Stores the current level index
@@ -207,7 +202,7 @@ PAGE3
 intJmpTbl
                 ds      256
 
-; PAGE2 END
+; PAGE3 END
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
@@ -235,7 +230,7 @@ pxlData
 .debug          equ     0
 
 init 
-                call    stupInt
+                call    stupInt                     ; Setup IM 2
                 call    genLnrYLkupTbl              ; Generate linear YAxis lookup table
 
                 xor     a                           ; Set the border colour
@@ -244,49 +239,9 @@ init
                 ld      a, 5                        ; Set the ink colour
                 ld      (0x5C8D), a  
 
-;                 ld      hl, 0x3D00                  ; Copy the ROM standard font
-;                 ld      de, Font                    ; ...to the font table in game
-;                 ld      bc, 0x300                     
-;                 ldir
-
-;                 ld      hl, NumberFont              ; Copy the custom numbers font data
-;                 ld      de, Font + (8 * 16)         ;
-;                 ld      bc, 0x50
-;                 ldir
-
-;                 ld      hl, CharFont                ; Copy the custom Characters font data...
-;                 ld      de, Font + (8 * 33)         ; ...making sure it is position in memory like the ROM font
-;                 ld      bc, 0xD0
-;                 ldir
-
-;                 ld      hl, Font - 0x100            ; Point HL to our new font data - 256 and...
-;                 ld      (0x5C36), hl                ; ...update the CHARS sysvar with the new location 
-
                 call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    stupPrtcls
                 call    menu
-
-                ret
-
-;****************************************************************************************************************
-; Setup a blank interrupt routine
-stupInt                    
-                di
-
-                ld      hl, intJmpTbl
-                ld      de, intJmpTbl + 1
-                ld      bc, 256  
-
-                ld      a, h
-                ld      i, a
-
-                ld      a, vbInt
-                ld      (hl), a
-
-                ldir
-
-                im      2
-                ei
 
                 ret
  
@@ -351,7 +306,6 @@ dbgPrnt
                 call    HexByte
 
                 ret
-
 ENDIF
 
 ;****************************************************************************************************************
@@ -425,8 +379,8 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 call    rdCntrlKys                  ; Read the keyboard
 
                 ld      a, (objctBat + BTYPS)       ; Get the bats Y position
-                ld      b, BLLPXLHGHT               ; Get the pixel height of the ball
-                sub     b                           ; Calulcate the bats Y pos minus the balls height putting the ball ontop of the bat
+                ld      b, BLLPXLHGHT - 2           ; Get the pixel height of the ball
+                sub     b                           ; Calculate the bats Y pos minus the balls height putting the ball on top of the bat
                 ld      (objctBall + BLLYPS), a     ; Update the balls Y Position with the bats Y position 
                 ld      a, (objctBat + BTXPS)       ; Load the bats X pos
                 ld      b, BTHLFWDTH - BLLHLFWIDTH  ; Calc the X pos middle of the bat
@@ -519,7 +473,7 @@ _chckGmeStteDsplyLvl                                ; *** Game state DISPLAY LEV
                 ld      d, h                        ; Load HL the address of the text...
                 ld      e, l                        ; ...into DE
                 inc     de                          ; + 1 DE which is the start of the actual string
-                call    8252                        ; ROM print the title
+                call    ROMPRINT                    ; ROM print the title
                 ld      de, 100                     ; Load DE with 100 for a delay loop
 _lvlDsplyWtng   
                 halt                                ; Wait for the scan line to reach the top of the screen (50hz)
@@ -539,7 +493,7 @@ _lvlDsplyWtng
                 ld      d, h 
                 ld      e, l
                 inc     de
-                call    8252
+                call    ROMPRINT
                 ld      a, GMESTTE_WTNG             ; Set the game state to WAITING
                 ld      (gmeStte), a
 
@@ -552,7 +506,7 @@ _chckGmeSttePlyrDead
                 jp      nz, mnLp
                 ld      de, gmeOvrTxt
                 ld      bc, gmeOvrTxtEnd - gmeOvrTxt
-                call    8252
+                call    ROMPRINT
                 call    watFrSpc
                 jp      menu
 
@@ -723,11 +677,11 @@ updtBllChrPs                                       ; Update the balls character 
 drwUI
                 ld      de, scrLblTxt               ; Point DE to the score label text
                 ld      bc, 10                      ; Set the length of the string
-                call    8252                        ; ROM print
+                call    ROMPRINT                    ; ROM print
 
                 ld      de, lvsLblTxt               ; Point DE to lives label text
                 ld      bc, lvsLblTxtEnd - lvsLblTxt; Set the length of the string
-                call    8252                        ; ROM print
+                call    ROMPRINT                    ; ROM print
 
                 call    drwBrdrs
                 ret
@@ -1482,103 +1436,7 @@ rstBt
                 ld      (objctBat + BTYPS), a
                 ld      a, -2
                 ld      (objctBall + BLLYSPD), a
-                ret
-
-;****************************************************************************************************************
-; Load Level
-; A = Level to load 
-;****************************************************************************************************************
-ldLvl 
-                ld      hl, SCRNBFFR                ; Point HL at the screen buffer
-                ld      bc, 6144                    ; Load BC with the number of bytes to clear
-                call    clrMem                      ; Call the clear mem routine
-
-                ld      de, lvlLkup                 ; Load DE with the address of the Level Loopup Table
-                ld      a, (crrntLvl)               ; Load A with the level number to load
-                ld      l, a
-                ld      h, 0                        ; Reset the HL high byte
-                add     hl, hl                      ; Double HL as the level lookup table entries are words
-                add     hl, de                      ; Add base address of level lookup table which is held in DE
-                ld      e, (hl)                     ; Pop the address at HL into DE
-                inc     hl
-                ld      d, (hl)
-                ld      (crrntLvlAddr), de          ; Store away 
-                push    de
-
-                ; Copy the level row data into the temp level data structure. This will be used to check how many
-                ; hits a block needs to be destroyed.
-                ld      de, LEVEL_ROWS
-                add     hl, de
-                ld      de, lvlData
-                ld      bc, 15 * 7
-                ldir
-                pop     hl
-
-                ; Load the block colours from the level data into the attribute buffer starting at the 4th row
-                ld      a, 7                        ; Number of rows to load
-                ld      de, ATTRSCRNADDR + (32 * 7) ; Load into the 4th row of attributes
-_lvlRwLp
-                ld      bc, ROW_CLR_BYTES           ; Set how many bytes to copy
-                ldir                                ; Perform the copy
-                inc     de                          ; Move DE to the start of the next row in the...
-                inc     de                          ; ...attribute buffer
-                dec     a                           ; Reduce the row count...
-                jp      nz, _lvlRwLp                ; ...and loop if there are more rows to copy
-
-                ; Draw the blocks based on the levels block lookup table
-_nxtBlckRw      xor     a                           ; Clear A
-                ld      (currntBlckCl), a
-                ld      (currntBlckRw), a
-                ld      (currntBlckX), a
-                ld      a, 8 * 7
-                ld      (currntBlckY), a
-
-_drwNxtBlck     ld      bc, (currntBlckY)
-                ld      a, (hl)
-                inc     hl
-                cp      0
-                jr      z, _skpBlck
-
-                ld      a, (lvlBlckCnt)
-                inc     a
-                ld      (lvlBlckCnt), a
-
-                push    hl
-                push    bc
-                ld      de, SpriteBlockData
-                xor     a
-                call    drwSprt
-                pop     bc
-                ld      de, SpriteBlockData
-                ld      a, 1
-                call    drwSprt
-                pop     hl
-
-_skpBlck        ld      a, (currntBlckX)
-                add     a, 16
-                ld      (currntBlckX), a
-                ld      a, (currntBlckCl)
-                inc     a
-                ld      (currntBlckCl), a
-                cp      15
-                jr      nz, _drwNxtBlck
-
-                xor     a
-                ld      (currntBlckX), a
-                ld      a, (currntBlckY)
-                add     a, 8
-                ld      (currntBlckY), a
-                xor     a
-                ld      (currntBlckCl), a
-
-                ld      a, (currntBlckRw)
-                inc     a
-                ld      (currntBlckRw), a
-                cp      7
-                jr      nz, _drwNxtBlck
-
-                ret
-
+                re
 ;****************************************************************************************************************
 ; Reset score to 0000000
 ;****************************************************************************************************************
@@ -1645,6 +1503,13 @@ _dthSndLp       push    bc
         ENDIF
                 include     Graphics.asm
 
+;****************************************************************************************************************
+; IM2 Routine. It's very important that the address of this routine starts at an address where the high and low
+; address bytes are the same e.g. 0xFEFE. This is because of how the jump table has been constructed in that it
+; contains 256 copies of the high address. When an interrupt is fired the byte on the BUS is used as an index
+; into the jump table. The value from that table at that index is then added to the value in the I register to
+; form the actual address to jump too, hence the need for the address to have matching high and low bytes values
+;****************************************************************************************************************
                 org     0xfefe                
 vbInt
                 ei

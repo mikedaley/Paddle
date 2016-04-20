@@ -644,10 +644,6 @@ setChrctrAttr
                 ret
 
 ;****************************************************************************************************************
-; Get the attribute at the given X, Y
-; D = X, E = Y, returns A = given attribute
-;****************************************************************************************************************
-;****************************************************************************************************************
 ; Get the attribute for the character position provided in DE and return the attribute found in A
 ;
 ; Entry Registers:
@@ -676,4 +672,67 @@ getChrctrAttr
 
                 ld      a, (hl)                     ; Load the attribute at HL
                 ret
-                
+
+;****************************************************************************************************************
+; Setup the system variables to point to a custom font
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+stupFont
+                ld      hl, 0x3D00                  ; Copy the ROM standard font
+                ld      de, Font                    ; ...to the font table in game
+                ld      bc, 0x300                     
+                ldir
+
+                ld      hl, NumberFont              ; Copy the custom numbers font data
+                ld      de, Font + (8 * 16)         ;
+                ld      bc, 0x50
+                ldir
+
+                ld      hl, CharFont                ; Copy the custom Characters font data...
+                ld      de, Font + (8 * 33)         ; ...making sure it is position in memory like the ROM font
+                ld      bc, 0xD0
+                ldir
+
+                ld      hl, Font - 0x100            ; Point HL to our new font data - 256 and...
+                ld      (0x5C36), hl                ; ...update the CHARS sysvar with the new location 
+
+                ret
+
+;****************************************************************************************************************
+; Setup an IM 2 jump table that points to the routine called vbInt. This vbInt routine is usually an empty routine
+; that simply enables interrupts and returns using RETI. This means that the usual ROM interrupt routines are not
+; called which during game development can waste cycles as things like reading the keyboard are done by custom 
+; game code
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+stupInt                    
+                di                                  ; Disable interrupts
+
+                ld      hl, intJmpTbl               ; Point HL at the jump table address
+                ld      de, intJmpTbl + 1           ; Point DE at the jump table address + 1
+                ld      bc, 256                     ; We are doing to fill the table using LDIR so set BC to the size
+
+                ld      a, h                        ; Load A with the high byte of the int table
+                ld      i, a                        ; Load that value into the I register
+
+                ld      a, vbInt                    ; Load A with the low byte of the int routine...
+                ld      (hl), a                     ; ... and load it into the address at HL
+
+                ldir                                ; Populate the table
+
+                im      2                           ; Enable IM 2
+                ei                                  ; Start interrupts
+
+                ret
