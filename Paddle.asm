@@ -312,7 +312,7 @@ ENDIF
 ; Start new game
 ;****************************************************************************************************************
 strtNewGame
-                call    clrScrn
+                call    romClrScrn
                 call    rstScr                      ; Reset the score
                 call    rstBt
                 call    stupPrtcls
