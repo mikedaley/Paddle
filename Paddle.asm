@@ -402,10 +402,10 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
 
                 call    genRndmNmbr
                 
-                ld      bc, 32766                   ; Want to see if SPACE has been pressed
+                ld      bc, 0x7ffe                  ; Want to see if SPACE has been pressed
                 in      a, (c)                      ; Read the port
                 rra                                 ; Rotate Right
-                jp      c, mnLp                     ; If SPACE is not pressed then keep looping
+                jp      c, mnLp                     ; Loop if SPACE has not been pressed
                 
                 ld      a, GMESTTE_PLYNG            ; Otherwise update the game state to GMESTTE_PLYNG
                 ld      (gmeStte), a                ; Save the game state
@@ -424,7 +424,7 @@ _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
                 add     a, 48                       ; Add 48 to the number of lives to get the character code for the lives number
                 ld      (lvsTxt), a                 ; Update the lives text with the new lives character at position 5 in the string
 
-                ld      de, 0xF000
+                ld      de, 0xf000
                 ld      bc, lvsTxt                  ; Load DE with the lives text
                 call    prntStrng
 
@@ -521,13 +521,13 @@ _chckGmeSttePlyrDead
 ;   NONE
 ;****************************************************************************************************************
 stupPrtcls
-                ld      hl, objctPrtcls             ; Point HL at the screen buffer
+                ld      hl, objctPrtcls             ; Point HL at the particle pool
                 ld      bc, NUMPRTCLS * 20          ; Load BC with the number of bytes to clear
                 call    clrMem                      ; Call the clear mem routine
                 ret
 
 ;****************************************************************************************************************
-; Update bate animation
+; Update bat animation
 ; Updates the bats sprite frame number which is used to identify which sprite frame to draw
 ;
 ; Entry Registers:
@@ -539,10 +539,11 @@ stupPrtcls
 ;****************************************************************************************************************
 updtBtAnmtnFrm
                 ld      a, (objctBat + BTANMTONDLY) ; Point DE at the animation delay counter
-                inc     a                           ; Increment the frame count
+                inc     a                           ; Increment the frame delay counter
                 ld      (objctBat + BTANMTONDLY), a ; Save the new delay amount
                 cp      5                           ; Check the delay (1/50 * n)
                 ret     nz                          ; and return if we've not reached the delay value
+
                 xor     a                           ; Delay has been reached so reset the delay...
                 ld      (objctBat + BTANMTONDLY), a ; ...and save it
                 ld      a, (objctBat + BTANMTONFRM) ; Load A with the current frame count
@@ -579,17 +580,17 @@ _nxtBckgrnd     ld      a, (hl)                     ; Load A with the timer valu
 _updtBckgrnd
                 push    hl
                 push    bc
-                inc     l                          ; Point HL at the  
-                inc     l                          ; ... 
-                inc     l                          ; ... 
-                inc     l                          ; high byte of the x position 
+                inc     l                           ; Point HL at the  
+                inc     l                           ; ... 
+                inc     l                           ; ... 
+                inc     l                           ; high byte of the x position 
                 ld      b, (hl)                     ; Load B with the x pos high byte
-                inc     l                          ; Point HL at the                       
-                inc     l                          ; ...                       
-                inc     l                          ; ...                       
-                inc     l                          ; high byte of the y position                       
+                inc     l                           ; Point HL at the                       
+                inc     l                           ; ...                       
+                inc     l                           ; ...                       
+                inc     l                           ; high byte of the y position                       
                 ld      c, (hl)                     ; Load C with the y pos high byte
-                inc     l                          ; Point HL at background data
+                inc     l                           ; Point HL at background data
                 ex      de, hl                      ; Put HL into DE
                 ld      hl, 0x0205                  ; Load HL with the size of sprite to restore
                 call    rstrScrnBlck                ; Restore the screen with the background data held with the particle
@@ -847,7 +848,7 @@ drwBll
 ;   NONE
 ;****************************************************************************************************************
 drwBt 
-                ld      a, (objctBat + 4)           ; Load the current frame number
+                ld      a, (objctBat + BTANMTONFRM) ; Load the current frame number
                 ld      e, a                        ; Load the frame into E...
                 ld      d, 0                        ; ...and clear D
                 ld      hl, SpriteBatFrameTable     ; Load HL with the address of the frame table
@@ -880,7 +881,7 @@ rdCntrlKys
                 ; Check if keys O or P
                 ld      hl, objctBat                ; HL = X Position
 
-                ld      bc, 0xDFFE                  ; B = 0xDF (QUIOP), C = port 0xFE
+                ld      bc, 0xdffe                  ; B = 0xDF (QUIOP), C = port 0xFE
                 in      a, (c)                      ; Load A with the keys that have been pressed
                 rra                                 ; Outermost bit = key 1
                 jp      nc, _mvBtRght               ; Move the bat left
@@ -914,16 +915,14 @@ _btHtRghtEdg
 
 ;****************************************************************************************************************
 ; Move Ball
-; Responsible for bouncing the ball sprite around the screen, detecting when it hits the edges of the screen
-; and any tile objects
+; Responsible for bouncing the ball sprite around the screen.
 ;
 ; Entry Registers:
-;   DE = D = pixel X, E = pixel Y
+;   NONE
 ; Used Registers:
-;   A, B, C
+;   A, B, C, D, E, H, L
 ; Returned Registers:
-;   B = X char position
-;   C = Y char position ;
+;   NONE
 ;****************************************************************************************************************
 mvBll 
                 ld      hl, objctBall               ; Use HL to hold the ball object as using IX is expensive                
@@ -1006,11 +1005,11 @@ _bncRght
 
 ;****************************************************************************************************************
 ; Check Bat Collision
-; Responsible for checking if the ball has hit the bat. If the ball has hit then bat then depending on the
+; Responsible for checking if the ball has hit the bat. If the ball has hit the bat then depending on the
 ; y position of the ball on the bat the balls x speed is updated along with its y speed being reversed
 ;
 ; Entry Registers:
-;   DE = D = pixel X, E = pixel Y
+;   NONE
 ; Used Registers:
 ;   A, B, C, D, E, H, L
 ; Returned Registers:
@@ -1167,7 +1166,7 @@ _bncUp
 ; Entry Registers:
 ;   NONE
 ; Used Registers:
-;   A, D, E
+;   A, D, E, H, L
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
@@ -1244,7 +1243,7 @@ _mddlLft
                 ret
 
 ;****************************************************************************************************************
-; Increment the players score by the value in the B register
+; Increment the players score by the value in the HL register
 ;
 ; Entry Registers:
 ;   HL = Value to be added to the current score
@@ -1292,8 +1291,7 @@ _incScrDn
 ; Print the current score onto the screen
 ;
 ; Entry Registers:
-;   DE = Address of the score text
-;   BC = Length of the score text
+;   NONE
 ; Used Registers:
 ;   DE, BC
 ; Returned Registers:
@@ -1309,7 +1307,7 @@ prntScr
 ; Remove the block that contains the x,y provided D = Y and E = X
 ;
 ; Entry Registers:
-;   DE = X, Y
+;   DE = Y, X
 ; Used Registers:
 ;   A, B, C, D, E, H, L
 ; Returned Registers:
@@ -1436,7 +1434,8 @@ rstBt
                 ld      (objctBat + BTYPS), a
                 ld      a, -2
                 ld      (objctBall + BLLYSPD), a
-                re
+                ret
+
 ;****************************************************************************************************************
 ; Reset score to 0000000
 ;****************************************************************************************************************
@@ -1446,9 +1445,7 @@ rstScr
                 ld      bc, 6                       ; Load BC with the length of the string
                 ld      (hl), '0'                   ; Load (HL) with a 0 which will be copied using...
                 ldir                                ; ...LDIR
-                ld      de, 0x3800                  ; Set the coordinates for printing the score
-                ld      bc, scrTxt                  ; Point BC to the score text string address
-                call    prntStrng                   ; Print the string
+                call    prntScr
                 ret
 
 ;****************************************************************************************************************
