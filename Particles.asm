@@ -45,6 +45,8 @@ genPrtcl
                 inc     l                           ; Move to high byte
                 ld      (hl), c                     ; Set high byte to C
 
+                call    genRndmNmbr
+
                 push    bc
                 call    fndInctvPrtcl
                 pop     bc
@@ -55,7 +57,7 @@ genPrtcl
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
-                ld      a, (rndmNmbr2)
+                ld      a, (rndmNmbr1)
                 ld      (hl), a                     
                 inc     l                           
                 ld      (hl), 0xff                  
@@ -73,6 +75,8 @@ genPrtcl
                 inc     l                         
                 ld      (hl), c                   
 
+                call    genRndmNmbr
+
                 push    bc
                 call    fndInctvPrtcl
                 pop     bc
@@ -83,7 +87,7 @@ genPrtcl
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
-                ld      a, (rndmNmbr3)
+                ld      a, (rndmNmbr1)
                 ld      (hl), 0                     
                 inc     l                           
                 ld      (hl), 0                  
@@ -92,7 +96,7 @@ genPrtcl
                 inc     l                         
                 ld      (hl), b                   
                 inc     l                         
-                ld      a, (rndmNmbr1)
+                ld      a, (rndmNmbr3)
                 ld      (hl), a                   
                 inc     l                         
                 ld      (hl), 0xfc                
