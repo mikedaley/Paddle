@@ -3,3 +3,7 @@ Beam.bin
 Beam.tap
 Scratch/knightlore.asm
 Scratch/print.asm
+bcd.asm
+BorderTRIX.asm
+BorderTRIX.tap
+test.py
