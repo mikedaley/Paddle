@@ -22,7 +22,7 @@ menu
                 ldir
 
                 ld      de, Logo                    ; Draw the logo sprite
-                ld      bc, 0x0000
+                ld      bc, 0x000a
                 call    drwSprt
 
                 ld      hl, ATTRSCRNADDR + (6 * 32) ; Fill the rest of the screen with cyan on black
@@ -32,29 +32,21 @@ menu
                 ldir
 
                 ; Print the menu options
-                ld      de, kybrdTxt
-                ld      bc, kybrdTxtEnd - kybrdTxt
-                call    ROMPRINT
-
-                ld      de, snclrTxt
-                ld      bc, snclrTxtEnd - snclrTxt
-                call    ROMPRINT
-
-                ld      de, kmpstnTxt
-                ld      bc, kmpstnTxtEnd - kmpstnTxt
-                call    ROMPRINT
-
-                ld      de, strtTxt
-                ld      bc, strtTxtEnd - strtTxt
-                call    ROMPRINT
+                call    romPrntStrng
+                db      PAPER, BLACK, INK, WHITE, AT, 11, 10, "0. START", 0xff
+                call    romPrntStrng
+                db      PAPER, BLACK, INK, WHITE, AT, 13, 10, "1. KEYBOARD", 0xff
+                call    romPrntStrng
+                db      PAPER, BLACK, INK, WHITE, AT, 15, 10, "2. SINCLAIR", 0xff
+                call    romPrntStrng
+                db      PAPER, BLACK, INK, WHITE, AT, 17, 10, "3. KEMPTSTON", 0xff
 
                 ; Set channel to the bottom of the screen and print the copyright
                 ld      a, 1
                 call    5633
 
-                ld      de, cpyrght
-                ld      bc, cpyrghtEnd - cpyrght
-                call    ROMPRINT
+                call    romPrntStrng
+                db      PAPER, BLUE, INK, GREEN, AT, 1, 8, "Mike Daley 2016", 0xff
 
                 ld      hl, logoAttrFx              ; Load HL with the logo attr FX address
                 ld      (attrFxAddr), hl            ; ...and save it to memory
@@ -112,19 +104,6 @@ rdOptnKys
 ; Variables
 attrFxAddr      dw      0
 logoFXCnt       db      0
-
-;****************************************************************************************************************
-; Menu Text
-strtTxt         db      17, BLACK, 16, WHITE, 22, 11, 10, "0. START"
-strtTxtEnd
-kybrdTxt        db      17, BLACK, 16, WHITE, 22, 13, 10, "1. KEYBOARD"
-kybrdTxtEnd     
-snclrTxt        db      17, BLACK, 16, WHITE, 22, 15, 10, "2. SINCLAIR"
-snclrTxtEnd
-kmpstnTxt       db      17, BLACK, 16, WHITE, 22, 17, 10, "3. KEMPTSTON"
-kmpstnTxtEnd
-cpyrght         db      17, BLUE, 16, GREEN, 22, 1, 8, "Mike Daley 2016"
-cpyrghtEnd
 
 LOGOFXINKCLR1   equ     YELLOW + BRIGHT
 LOGOFXINKCLR2   equ     CYAN
