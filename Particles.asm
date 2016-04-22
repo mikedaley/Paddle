@@ -9,7 +9,19 @@
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
-; Generate three particles from the particle pool using the location passed in BC
+; CONSTANTS
+;****************************************************************************************************************
+PRTCLLFSPN              equ     30
+
+;****************************************************************************************************************
+; Generate three particles at the location provided in BC
+;
+; Entry Registers:
+;   BC = Pixel address, B = X, C = Y
+; Registers Used:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+; NONE
 ;****************************************************************************************************************
 genPrtcl
                 inc     b                           ; Move to the center of the block
@@ -17,13 +29,13 @@ genPrtcl
                 inc     b
                 inc     b
 
+                ; Generate particle 1
                 push    bc
                 call    fndInctvPrtcl
                 pop     bc
                 or      a                           ; Check if A is zero...
                 ret     z                           ; ...and return if it is 
-
-                ld      a, 35                       ; Set lifespan of particle
+                ld      a, PRTCLLFSPN               ; Set lifespan of particle
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
@@ -45,15 +57,13 @@ genPrtcl
                 inc     l                           ; Move to high byte
                 ld      (hl), c                     ; Set high byte to C
 
-                call    genRndmNmbr
-
+                ; Generate particle 2
                 push    bc
                 call    fndInctvPrtcl
                 pop     bc
                 or      a                           ; Check if A is zero...
                 ret     z                           ; ...and return if it is 
-
-                ld      a, 35                       ; Set lifespan of particle
+                ld      a, PRTCLLFSPN               ; Set lifespan of particle
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
@@ -75,15 +85,13 @@ genPrtcl
                 inc     l                         
                 ld      (hl), c                   
 
-                call    genRndmNmbr
-
+                ; Generate particle 3
                 push    bc
                 call    fndInctvPrtcl
                 pop     bc
                 or      a                           ; Check if A is zero...
                 ret     z                           ; ...and return if it is 
-
-                ld      a, 35                       ; Set lifespan of particle
+                ld      a, PRTCLLFSPN               ; Set lifespan of particle
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector

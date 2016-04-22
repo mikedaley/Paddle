@@ -33,13 +33,9 @@ ATTRSCRNADDR            equ                 22528   ; Address of screen attribut
 ATTRSCRNSZ              equ                 768     ; Size of the screen attribute data
 SCRNSZ                  equ                 6911    ; Size of bitmap screen file + screen attributes
 
-; Bat constants
-BTMXRGHT                equ                 224     ; Furthest pixel to the right the paddle can be drawn
-BTMXLFT                 equ                 8       ; Furthes pixel to the left the bat can be drawn
-
 ; Screen boundaries in pixels used when bouncing the ball
-SCRNLFT                 equ                 8
-SCRNRGHT                equ                 248
+SCRNLFT                 equ                 16
+SCRNRGHT                equ                 240
 SCRNTP                  equ                 10
 SCRNBTTM                equ                 180
             
@@ -54,6 +50,10 @@ BLLPXLHGHT              equ                 5
 BLLPXLWIDTH             equ                 5
 BLLHLFWIDTH             equ                 3
             
+; Bat constants
+BTMXRGHT                equ                 SCRNRGHT - BTPXLWDTH ; Furthest pixel to the right the paddle can be drawn
+BTMXLFT                 equ                 SCRNLFT       ; Furthes pixel to the left the bat can be drawn
+
 ; Offsets into the BAT structure        
 BTXPS                   equ                 0
 BTSPD                   equ                 1
@@ -86,9 +86,11 @@ GREEN                   equ                 4
 CYAN                    equ                 5
 YELLOW                  equ                 6
 WHITE                   equ                 7
-PAPER                   equ                 8       ; Multiply with INK to get paper colour            
 BRIGHT                  equ                 64
-FLASH                   equ                 128
+
+PAPER                   equ                 17      ; RST 10 control codes for colour
+INK                     equ                 16
+AT                      equ                 22      ; RST 10 control codes for location
 
 NUMPRTCLS               equ                 6
 
@@ -234,10 +236,10 @@ init
                 call    genLnrYLkupTbl              ; Generate linear YAxis lookup table
 
                 xor     a                           ; Set the border colour
-                out     (0xFE), a                    
+                out     (0xfe), a                   ; Output the border colour to the FE port
                         
                 ld      a, 5                        ; Set the ink colour
-                ld      (0x5C8D), a  
+                ld      (0x5c8d), a                 ; Set the SYSVAR for ink colour  
 
                 call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    stupPrtcls
@@ -701,7 +703,7 @@ drwUI
 drwBrdrs
                 ; Draw top wall
                 ld      h, 0
-                ld      b, 8
+                ld      b, SCRNLFT
                 ld      c, 2
 _hrzntlLp
                 push    hl
@@ -716,7 +718,7 @@ _hrzntlLp
                 ld      b, a
                 inc     h
                 ld      a, h
-                cp      30
+                cp      28
                 jr      nz, _hrzntlLp
 
                 ; Draw right hand wall
@@ -741,7 +743,7 @@ _vrtclLp1
 
                 ; Draw Left hand wall
                 ld      h, 0
-                ld      b, 0
+                ld      b, SCRNLFT - 8
                 ld      c, 9
 _vrtclLp2
                 push    hl
@@ -1208,7 +1210,7 @@ _mddlBttm
 _mddlRght 
                 ld      a, (objctBall + BLLXSPD)
                 cp      0
-                jp      m, _mddlLft                 ; Only check the right edge of moving right
+                jp      m, _mddlLft                 ; Only check the right edge if moving right
                 ld      de, (ballMR)
                 push    de
                 call    getChrctrAttr
@@ -1389,20 +1391,20 @@ _even
                 ld      c, a
                 push    bc
                 push    bc
-                xor     a
-                ld      de, SpriteBlockData
-                call    drwSprt
+                xor     a                           ; A = 0 as we are drawing the block to the screen file
+                ld      de, SpriteBlockData         ; Point to the block data
+                call    drwSprt                     ; XOR the sprite onto the screen file
                 pop     bc
-                ld      a, 1
-                ld      de, SpriteBlockData
-                call    drwSprt
+                ld      a, 1                        ; A = 1 as we are drawing the block to the back buffer
+                ld      de, SpriteBlockData         ; Point to the block sprite data
+                call    drwSprt                     ; XOR the sprite onto the back buffer
 
                 pop     bc                          ; Restore BC with the blocks position 
                 call    genPrtcl
                 ret
 
 ;****************************************************************************************************************
-; Checks the state of a block e.g. how many hits has it had so that a block can servive more than one hit
+; Checks the state of a block e.g. how many hits has it had so that a block can survive more than one hit
 ;****************************************************************************************************************
 chkBlckState
                 ld      h, 0                        ; Get the Y pos from the corner
