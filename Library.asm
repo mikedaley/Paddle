@@ -325,7 +325,7 @@ drwMskdSprt
 
 _nxtMskdSprtRw
                 ex      af, af'                     ; Move to the alt AF register which saves the current contents of A
-_sprtMskdLnLkup     ld      hl, 0                       ; Load HL with the value modified in earlier
+_sprtMskdLnLkup ld      hl, 0                       ; Load HL with the value modified in earlier
                 inc     hl                          ; Increment HL to point to the next line lookup table entry
                 ld      a, (hl)                     ; Load A with the low byte value in the table
                 inc     hl                          ; Move HL to the high byte in the table
@@ -480,7 +480,7 @@ rstrScrnBlck
                 dec     hl                          ; Dec HL so that its ready to be INC'd inside the loop later
                 ld      (_rstrLnLkup + 1), hl       ; Save the value in HL to the LD command later
 
-_rstrHght        ld      a, 0                       ; Load A with the height put into this command earlier
+_rstrHght       ld      a, 0                        ; Load A with the height put into this command earlier
 _nxtrstrRw
                 ex      af, af'                     ; Move to the alt AF register which saves the current contents of A
 _rstrLnLkup     ld      hl, 0                       ; Load HL with the value modified in earlier
@@ -529,7 +529,7 @@ _ntSpc
                 sub     48                          ; Sub the ASCII value for 0...
                 cp      10                          ; ...and compare against 10
                 jr      c, _ntAlph                  ; If Carry then this is a number
-                sub     65-48-10                    ; Otherwise adjust the index for an alpha
+                sub     65 - 48 - 10                ; Otherwise adjust the index for an alpha
 _ntAlph
                 sla     a                           ; Multiply A by 8...
                 sla     a                           ; ... to get the index...
@@ -736,3 +736,30 @@ stupInt
                 ei                                  ; Start interrupts
 
                 ret
+
+;****************************************************************************************************************
+; Print the text defined immediately after the call to this routine. The text can include control characters and
+; must be terminated with 00.
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+romPrntStrng
+                pop     hl                          ; Push the address of the first message character to the stack
+                ld      a, (hl)                     ; Load the character into A
+                inc     hl                          ; INC the address
+                push    hl                          ; Push the new address of the next character onto the stack
+                cp      0xff                        ; Check of the character is 00...
+                ret     z                           ; ...and return if it is
+                rst     0x10                        ; Call the ROM print routine for the character in A
+                jr      romPrntStrng                ; Loop to the next character
+
+
+
+
+
+                
