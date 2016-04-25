@@ -52,7 +52,7 @@ menu
                 ld      (attrFxAddr), hl            ; ...and save it to memory
 
 _mnuLp
-                ld      b, 7                        ; Pause for (1/50 * A) seconds
+                ld      b, 4                        ; Pause for (1/50 * A) seconds
 
 _pause          halt                                ; Wait for V-Sync
                 push    bc                          ; Save B as it contains our pause counter
