@@ -169,12 +169,12 @@ objctBat        db      112, 4, 150
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
-; PAGE 1: Page boundary Particle Storage
+; PAGE 1: Page boundary Temp Level Data
 PAGE1
                 org     ($ + 255) & $ff00
                         
 lvlData         ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
-                ds      15 * 7
+                ds      224
 ; PAGE1 END
 ;****************************************************************************************************************
 
