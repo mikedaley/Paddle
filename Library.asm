@@ -616,10 +616,10 @@ getChrLctn
 ; Set the attribute at the given X, Y character location to the attribute value held in A
 ;
 ; Entry Registers:
-;   DE = D = pixel X, E = pixel Y
-;   A = Attribute to load
+;   A = Attribute value to be used
+;   DE = D = Char X, E = Char Y
 ; Used Registers:
-;   A, B, C
+;   A, B, C, D, E, H, L
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
@@ -647,9 +647,9 @@ setChrctrAttr
 ; Get the attribute for the character position provided in DE and return the attribute found in A
 ;
 ; Entry Registers:
-;   DE = D = pixel X, E = pixel Y
+;   DE = D = Char X, E = Char Y
 ; Used Registers:
-;   A, B, C
+;   A, B, C, D, E, H, L
 ; Returned Registers:
 ;   A = Attribute to load
 ;****************************************************************************************************************
@@ -762,4 +762,3 @@ romPrntStrng
 
 
 
-                
