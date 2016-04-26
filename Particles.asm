@@ -29,7 +29,7 @@ genPrtcl
                 inc     b
                 inc     b
 
-                ; Generate particle 1
+                ; Generate particle RIGHT
                 push    bc
                 call    fndInctvPrtcl
                 pop     bc
@@ -39,7 +39,7 @@ genPrtcl
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
-                ld      a, (rndmNmbr1)
+                ld      a, 0xfb
                 ld      (hl), a                     ; Load 0 into the XVector
                 inc     l                           ; Move HL to...
                 ld      (hl), 0x00                  ; Load 0 into the XVector
@@ -48,16 +48,16 @@ genPrtcl
                 inc     l                           ; Move to high byte
                 ld      (hl), b                     ; Set high byte to B
                 inc     l                           ; Move to the YVector
-                ld      a, (rndmNmbr3)
+                ld      a, 0x00
                 ld      (hl), a                     ; Load YVextor low byte
                 inc     l                           ; Move HL to...
-                ld      (hl), 0xfd                  ; Load YVextor high byte
+                ld      (hl), 0xfe                  ; Load YVextor high byte
                 inc     l                           ; ...the ypos
                 ld      (hl), 0                     ; Set the low byte to 0
                 inc     l                           ; Move to high byte
                 ld      (hl), c                     ; Set high byte to C
 
-                ; Generate particle 2
+                ; Generate particle LEFT
                 push    bc
                 call    fndInctvPrtcl
                 pop     bc
@@ -67,25 +67,25 @@ genPrtcl
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
-                ld      a, (rndmNmbr1)
+                ld      a, 0x00
                 ld      (hl), a                     
                 inc     l                           
-                ld      (hl), 0xff                  
+                ld      (hl), 0xff
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
                 ld      (hl), b                   
                 inc     l                         
-                ld      a, (rndmNmbr3)
+                ld      a, 00
                 ld      (hl), a                   
                 inc     l                         
-                ld      (hl), 0xfd                
+                ld      (hl), 0xfe                
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
                 ld      (hl), c                   
 
-                ; Generate particle 3
+                 ; Generate particle MIDDLE
                 push    bc
                 call    fndInctvPrtcl
                 pop     bc
@@ -95,7 +95,7 @@ genPrtcl
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
-                ld      a, (rndmNmbr1)
+                ld      a, 0x0a
                 ld      (hl), 0                     
                 inc     l                           
                 ld      (hl), 0                  
@@ -104,10 +104,10 @@ genPrtcl
                 inc     l                         
                 ld      (hl), b                   
                 inc     l                         
-                ld      a, (rndmNmbr3)
+                ld      a, 00  
                 ld      (hl), a                   
                 inc     l                         
-                ld      (hl), 0xfc                
+                ld      (hl), 0xfe                
                 inc     l                         
                 ld      (hl), 0                   
                 inc     l                         
@@ -197,7 +197,7 @@ _updtPrtcl
 _chkRght        
                 cp      SCRNRGHT - BLLPXLWIDTH      ; Check to see if the X location has passed the right screen edge
                 jp      c, _sveXPos                 ; If not then save the current X pos
-                ld      d, 256 - 16 - BLLPXLWIDTH   ; ...otherwise set the X pos to be the right screen edge
+                ld      d, 256 - 16 - 5   ; ...otherwise set the X pos to be the right screen edge
 _sveXPos
                 ld      (hl), d                     ; Save high byte of xpos
                 dec     l                           ; Move to the low byte
