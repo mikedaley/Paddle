@@ -139,6 +139,8 @@ rndmNmbr3       db      0xf0                        ; Holds a random number calc
 
 grvty           dw      0x0035                      ; Gravity to be applied to particles each frame
 
+index           db      0
+
 ; Text
                         ; Colour, Yellow, Position, X, Y, Text
 scrLblTxt       db      16, 6, 22, 0, 1, 'SCORE'
@@ -290,22 +292,22 @@ shftSprts
 IF .debug
 dbgPrnt
                 ld      e, 168
-                ld      d, 8*3
+                ld      d, 8 * 4
                 call    getPixelAddr
-                ld      a, (objctPrtcls + 1)               ; Bat X Position
+                ld      a, (index)               ; Bat X Position
                 call    HexByte
 
-                ld      e, 168
-                ld      d, 8*6
-                call    getPixelAddr
-                ld      a, (objctPrtcls + 1 + PRTCLSZ * 1)               ; Bat X Position
-                call    HexByte
+;                 ld      e, 168
+;                 ld      d, 8*6
+;                 call    getPixelAddr
+;                 ld      a, (objctPrtcls + 1 + PRTCLSZ * 1)               ; Bat X Position
+;                 call    HexByte
 
-                ld      e, 168
-                ld      d, 8*9
-                call    getPixelAddr
-                ld      a, (objctPrtcls + 1 + (PRTCLSZ * 2))               ; Bat X Position
-                call    HexByte
+;                 ld      e, 168
+;                 ld      d, 8*9
+;                 call    getPixelAddr
+;                 ld      a, (objctPrtcls + 1 + (PRTCLSZ * 2))               ; Bat X Position
+;                 call    HexByte
 
                 ret
 ENDIF
@@ -318,7 +320,6 @@ strtNewGame
                 call    rstScr                      ; Reset the score
                 call    rstBt
                 call    stupPrtcls
-                call    drwUI 
 
                 ld      a, 5 
                 ld      (lives), a
@@ -333,6 +334,7 @@ strtNewGame
                 ld      (lvlBlckCnt), a             ; ...block count
                 ld      (crrntLvl), a               ; Save the level 
                 call    ldLvl                       ; Load the current level
+                call    drwUI 
 
                 ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISPLAY LEVEL
                 ld      (gmeStte), a                ; Save the game state
@@ -637,7 +639,7 @@ updtBllChrPs                                       ; Update the balls character 
                 add     a, BLLPXLHGHT / 2           ; Add half the height of the ball sprite to Y
                 ld      e, a                        ; Save A in E
                 call    getChrLctn                  ; Get the character location based on D = X and E = Y
-                ld      (ballMR), bc                ; The character locatiojn is returned in BC so we save that
+                ld      (ballMR), bc                ; The character location is returned in BC so we save that
 
                 dec     hl
                 dec     hl
@@ -732,6 +734,11 @@ _vrtclLp1
                 xor     a
                 call    drwSprt
                 pop     bc
+                push    bc
+                ld      de, VertLBlockData
+                ld      a, 1
+                call    drwSprt
+                pop     bc                
                 pop     hl
                 ld      a,c
                 add     a, 8
@@ -752,6 +759,11 @@ _vrtclLp2
                 xor     a
                 call    drwSprt
                 pop     bc
+                push    bc
+                ld      de, VertRBlockData
+                ld      a, 1
+                call    drwSprt
+                pop     bc                
                 pop     hl
                 ld      a,c
                 add     a, 8
@@ -1179,29 +1191,39 @@ chckBlckCllsn
 
                 ld      de, (ballMT)                ; Load the middle collison point into DE, D = Y, E = X
                 push    de                          ; Save DE
-                call    getChrctrAttr               ; Get the character attribute at DE
-                pop     de                          ; Restore DE
-                cp      5                           ; Is the attribute returned Cyan on black...
+                call    chkBlckState
+                pop     de
+                or      a                           ; Is the attribute returned Cyan on black...
                 jr      z, _mddlRght                ; ...if so then check the right collision point as there is no block
                 
                 ld      a, (objctBall + BLLYSPD)    ; Load A with the ball.ySpeed
                 neg                                 ; Reverse the ball.ySpeed...
                 ld      (objctBall + BLLYSPD), a    ; ...and save it back with the ball data
+                ld      a, b
+                or      a
+                jp      nz, _plyHitSnd1
                 call    rmvBlck
                 ld      hl, 1234
                 call    incScr
                 call    prntScr
+                jp      _mddlBttm
+_plyHitSnd1
+                ld      b, 200
+                call    plyClck
 
 _mddlBttm
                 ld      de, (ballMB)
                 push    de
-                call    getChrctrAttr
+                call    chkBlckState
                 pop     de
-                cp      5
+                or      a
                 jr      z, _mddlRght
                 ld      a, (objctBall + BLLYSPD)
                 neg
                 ld      (objctBall + BLLYSPD), a   
+                ld      a, b
+                or      a
+                jp      nz, _mddlRght
                 call    rmvBlck
                 ld      hl, 1234
                 call    incScr
@@ -1213,13 +1235,16 @@ _mddlRght
                 jp      m, _mddlLft                 ; Only check the right edge if moving right
                 ld      de, (ballMR)
                 push    de
-                call    getChrctrAttr
+                call    chkBlckState
                 pop     de
-                cp      5
+                or      a
                 jr      z, _mddlLft
                 ld      a, (objctBall + BLLXSPD)
                 neg
                 ld      (objctBall + BLLXSPD), a
+                ld      a, b
+                or      a
+                jp      nz, _mddlLft
                 call    rmvBlck
                 ld      hl, 1234
                 call    incScr
@@ -1231,17 +1256,75 @@ _mddlLft
                 ret     p                           ; Only check the left edge if moving left
                 ld      de, (ballML)
                 push    de
-                call    getChrctrAttr
+                call    chkBlckState
                 pop     de
-                cp      5
+                or      a
                 ret     z
                 ld      a, (objctBall + BLLXSPD)
                 neg
                 ld      (objctBall + BLLXSPD), a   
+                ld      a, b
+                or      a
+                ret     nz
                 call    rmvBlck
                 ld      hl, 1234
                 call    incScr
                 call    prntScr
+                ret
+
+;****************************************************************************************************************
+; Checks the state of a block e.g. how many hits has it had so that a block can survive more than one hit
+;****************************************************************************************************************
+chkBlckState
+                ; e = X  d = Y
+
+                ld      a, e
+                rra
+                sub     1
+                ld      b, a
+
+                ld      a, d
+                sub     STRT_CHR_Y_POS
+
+                jp      p, _calcIndx
+_LssThnZro
+                ld      a, 0
+                ret
+_calcIndx
+                ld      l, 0
+                ld      h, 14                       ; Multiplier
+                ld      d, 0
+                ld      e, a                        ; Multipland
+                call    mult_H_E
+
+                ld      a, l
+                add     a, b
+                ld      (index), a
+
+                cp      112
+                jp      c, _inRnge
+_outRnge
+                ld      a, 0
+                ld      (index), a
+                ret
+_inRnge
+                ld      ix, lvlData
+                add     a, a                        ; Double A as each column is two bytes
+                ld      e, a
+                ld      d, 0
+                add     ix, de
+                ld      b, 0                        ; B = 0 on return means remove the block as this is the last hit
+                ld      a, (ix + BLCK_HIT_CNT)      ; Get the hit count for the block
+                or      a                           ; See if its 0
+                jr      z, _finish                  ; and if so then no need to save it
+                dec     a                           ; otherwise decrement the hit count
+                ld      (ix + BLCK_HIT_CNT), a      ; and save it back to the block
+                or      a
+                jp      z, _htZro
+                ld      b, 1
+_htZro
+                ld      a, 1                        ; Return 1 to say that the block should be hit
+_finish
                 ret
 
 ;****************************************************************************************************************
@@ -1401,29 +1484,6 @@ _even
 
                 pop     bc                          ; Restore BC with the blocks position 
                 call    genPrtcl
-                ret
-
-;****************************************************************************************************************
-; Checks the state of a block e.g. how many hits has it had so that a block can survive more than one hit
-;****************************************************************************************************************
-chkBlckState
-                ld      h, 0                        ; Get the Y pos from the corner
-                ld      l, d
-
-                add     hl, hl                      ; Multiply the Y position by 32
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-                add     hl, hl
-
-                ld      b, 0                        ; Get the X position
-                ld      c, e
-                add     hl, bc                      ; Add it to the Y position 
-
-                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
-                add     hl, de
-
-                ld      (hl), a                     ; Load the attribute at HL
                 ret
 
 ;****************************************************************************************************************
