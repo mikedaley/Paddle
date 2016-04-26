@@ -17,8 +17,8 @@ NMBR_RWS            equ     8
 
 STRT_X_POS          equ     2 * 8
 STRT_CHR_X_POS      equ     2
-STRT_Y_POS          equ     5 * 8
-STRT_CHR_Y_POS      equ     5
+STRT_Y_POS          equ     6 * 8
+STRT_CHR_Y_POS      equ     6
 
 BLCK_CLR            equ     0
 BLCK_HIT_CNT        equ     1
@@ -42,24 +42,6 @@ blckChrY        db      0
 ;****************************************************************************************************************
 ; Load Level
 ; A = Level to load 
-
-                ; When calculating the index into the level data the following calculation should be used  i = (x - 16) / 16
-                ; LD A, (XPOS)
-                ; SUB 16
-                ; RRA
-                ; RRA
-                ; RRA
-                ; RRA
-                ; LD (INDEX), A
-                ; LD A, (YPOS)
-                ; SUB 56
-                ; RRA
-                ; RRA
-                ; RRA
-                ; LD B, (INDEX)
-                ; ADD A, B
-                ; LD (INDEX), A
-
 ;****************************************************************************************************************
 ldLvl 
                 ld      hl, SCRNBFFR                ; Point HL at the screen buffer
@@ -80,6 +62,7 @@ ldLvl
                 ; Copy the level row data into the temp level data structure. This will be used to check how many
                 ; hits a block needs to be destroyed.
                 push    de                          ; Save the current level address
+                ld      hl, (crrntLvlAddr)
                 ld      de, lvlData
                 ld      bc, BYTS_PER_CLMN * NMBR_CLMNS * NMBR_RWS
                 ldir
@@ -183,14 +166,14 @@ Level1
                 ; A column containing 0,0 means there is no block at that position    
                 ; 14 columns of two bytes * 8 rows = 224 bytes
 
-                db  1,1,  2,1,  3,1,  4,1,  6,1, 66,1, 65,1, 65,1, 66,1,  6,1,  4,1,  3,1,  2,1,  1,1
-                db  1,1,  2,1,  3,1,  4,1,  6,1, 65,1, 65,1, 65,1, 65,1,  6,1,  4,1,  3,1,  2,1,  1,1
-                db  1,1,  2,1,  3,1,  4,1,  6,1, 66,1, 65,1, 65,1, 66,1,  6,1,  4,1,  3,1,  2,1,  1,1
-                db  1,1,  2,0,  3,0,  4,1,  6,1, 65,1, 65,0, 65,0, 65,1,  6,1,  4,1,  3,0,  2,0,  1,1
-                db  1,1,  2,0,  3,0,  4,1,  6,1, 66,1, 65,0, 65,0, 66,1,  6,1,  4,1,  3,0,  2,0,  1,1
-                db  1,1,  2,1,  3,1,  4,1,  6,1, 65,1, 65,0, 65,0, 65,1,  6,1,  4,1,  3,1,  2,1,  1,1
-                db  1,1,  2,1,  3,1,  4,1,  6,1, 66,1, 65,1, 65,1, 66,1,  6,1,  4,1,  3,1,  2,1,  1,1
-                db  1,1,  2,1,  3,1,  4,1,  6,1, 65,1, 70,1, 70,1, 65,1,  6,1,  4,1,  3,1,  2,1,  1,1
+                db  0,0,  2,1,  3,1,  4,1,  6,1, 66,1, 65,1, 65,1, 66,1,  6,1,  4,1,  3,1,  2,1,  0,0
+                db  0,0,  2,1,  3,1,  4,1,  6,1, 65,1, 65,1, 65,1, 65,1,  6,1,  4,1,  3,1,  2,1,  0,0
+                db  0,0,  2,1,  3,1,  4,1,  6,1, 66,1, 65,1, 65,1, 66,1,  6,1,  4,1,  3,1,  2,1,  0,0
+                db  0,0,  2,0,  3,1,  4,1,  6,1, 65,1, 65,0, 65,0, 65,1,  6,1,  4,1,  3,1,  2,0,  0,0
+                db  0,0,  2,0,  3,1,  4,1,  6,1, 66,1, 65,0, 65,0, 66,1,  6,1,  4,1,  3,1,  2,0,  0,0
+                db  0,0,  2,1,  3,1,  4,1,  6,1, 65,1, 65,0, 65,0, 65,1,  6,1,  4,1,  3,1,  2,1,  0,0
+                db  0,0,  2,1,  3,1,  4,1,  6,1, 66,1, 65,1, 65,1, 66,1,  6,1,  4,1,  3,1,  2,1,  0,0
+                db  0,0,  2,1,  3,1,  4,1,  6,1,  7,5,  7,5,  7,5,  7,5,  6,1,  4,1,  3,1,  2,1,  0,0
 
 Level1BatSpeed      
                 db 1, 2, 2, 3
