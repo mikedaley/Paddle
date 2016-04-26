@@ -13,25 +13,33 @@
 dvd_HL_C
                 xor a                               ; Clear A     
     REPT 16
-                add hl, hl    
+                add     hl, hl    
                 rla           
-                cp c
-                jr c, $+4
-                sub c
-                inc l
+                cp      c
+                jr      c, $ + 4
+                sub     c
+                inc     l
     ENDM             
                 ret
 
-;                 ld      a, c
-;                 ld      d, a
-;                 ld      e, 0
-;                 ld      b, 8
-; _div            xor     a
-;                 sbc     hl, de
-;                 inc     hl
-;                 jp      p, _noAdd
-;                 add     hl, de
-;                 dec     hl
-; _noAdd          add     hl, hl
-;                 djnz    _div
-;                 ret
+;****************************************************************************************************************
+; Multiplies the unsigned number in H (Multiplier) with the unsigned number in E (Multipland)
+;
+; Entry Registers:
+;   H = Multiplier
+;   E = Multipland
+; Used Registers:
+;   A, C, HL
+; Returned Registers:
+;   HL = Result
+;****************************************************************************************************************
+mult_H_E
+                sla     h       ; optimised 1st iteration
+                jr      nc, $ + 3
+                ld      l, e
+    REPT 7
+                add     hl, hl       ; unroll 7 times
+                jr      nc, $ + 3      ; ...
+                add     hl, de       ; ...
+    ENDM
+                ret
