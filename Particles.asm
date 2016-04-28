@@ -39,7 +39,7 @@ genPrtcl
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
-                ld      a, 0xfb
+                ld      a, (rndmNmbr1)
                 ld      (hl), a                     ; Load 0 into the XVector
                 inc     l                           ; Move HL to...
                 ld      (hl), 0x00                  ; Load 0 into the XVector
@@ -67,7 +67,7 @@ genPrtcl
                 ld      (hl), a                     ; save it
                 inc     l                           ; Move HL to...
                 inc     l                           ; ...the XVector
-                ld      a, 0x00
+                ld      a, (rndmNmbr2)
                 ld      (hl), a                     
                 inc     l                           
                 ld      (hl), 0xff
@@ -197,7 +197,7 @@ _updtPrtcl
 _chkRght        
                 cp      SCRNRGHT - BLLPXLWIDTH      ; Check to see if the X location has passed the right screen edge
                 jp      c, _sveXPos                 ; If not then save the current X pos
-                ld      d, 256 - 16 - 5   ; ...otherwise set the X pos to be the right screen edge
+                ld      d, 256 - 16 - 6             ; ...otherwise set the X pos to be the right screen edge
 _sveXPos
                 ld      (hl), d                     ; Save high byte of xpos
                 dec     l                           ; Move to the low byte
