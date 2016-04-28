@@ -3,9 +3,6 @@
 ; 26/09/15
 ;
 ; Paddle is a Break Out clone used to learn Z80 Assembly on the ZX Spectrum
-;
-; Notes
-; * Using IM1 so IY can't be used as the IM1 interrupt doesn't protect it. 
 ; 
 ; TODO
 ; * Implement reading IO Port 0x40FF for the colour attribute currently being read by the ULA. This can cause
@@ -88,13 +85,18 @@ YELLOW                  equ                 6
 WHITE                   equ                 7
 BRIGHT                  equ                 64
 
+
 PAPER                   equ                 17      ; RST 10 control codes for colour
 INK                     equ                 16
 AT                      equ                 22      ; RST 10 control codes for location
+FLASH                   equ                 18
 
 NUMPRTCLS               equ                 6
 
 ROMPRINT                equ                 8252
+
+; Powerups
+PWRUP_BEER              equ                 1
 
 ;****************************************************************************************************************
 ; Start of Contended Memory
@@ -139,22 +141,28 @@ rndmNmbr3       db      0xf0                        ; Holds a random number calc
 
 grvty           dw      0x0035                      ; Gravity to be applied to particles each frame
 
-index           db      0
+index           db      0                           ; Index into the level data for collision detection
+
+pwrUpCnt        db      0                           ; Stores the number of current powerups on screen
+
+crrntPwrUps     db      0                           ; Each bit of this byte defines a different powerup. 1 = active
+                                                    
+sndFxDrtn       db      0
 
 ; Text
                         ; Colour, Yellow, Position, X, Y, Text
-scrLblTxt       db      16, 6, 22, 0, 1, 'SCORE'
+scrLblTxt       db      INK, YELLOW, AT, 0, 1, 'SCORE'
 scrLblTxtEnd
 
 scrTxt          db      '0000000', 0x00
 scrTxtEnd
 
-lvsLblTxt       db      16, 6, 22, 0, 24, 'LIVES'
+lvsLblTxt       db      INK, YELLOW, AT, 0, 24, 'LIVES'
 lvsLblTxtEnd
 
 lvsTxt          db      '5', 0x00
 
-gmeOvrTxt       db      16, 7, 17, 2, 22, 15, 11, ' GAME OVER '
+gmeOvrTxt       db      FLASH, 1, INK, WHITE, PAPER, RED, AT, 15, 11, ' GAME OVER ', FLASH, 0
 gmeOvrTxtEnd
 
 ; Object data
@@ -226,6 +234,23 @@ pxlData
 
 ; PAGE4 END
 ;****************************************************************************************************************
+
+;****************************************************************************************************************
+; PAGE 5: Page boundary Powerups
+PAGE5
+                org     ($ + 255) & $ff00
+objctPwrUps
+                db      0                           ; Xpos
+                db      0                           ; YPos
+                ds      16 * 13                     ; Space needed to store the background behind the powerup sprite
+objctPwrUpsEnd
+PWRUPSZ         equ     objctPwrUpsEnd - objctPwrUps; Calculate the size of a powerup object
+
+
+
+; PAGE5 END
+;****************************************************************************************************************
+
 
 ;****************************************************************************************************************
 ; Main code
@@ -354,21 +379,21 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 call    rdCntrlKys                  ; Read the keyboard
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
-                call    drwPrtcls
-                call    updtBtAnmtnFrm
+                call    drwPrtcls                   ; Draw any active particles
+                call    updtBtAnmtnFrm              ; Update the bats animation frame
                 call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
-                call    rstrScrBckgrnd
+                call    rstrScrBckgrnd              ; Restore the background behind the particles
                 call    drwBt                       ; Erase the bat (XOR)
-                call    updtPrtcls
+                call    updtPrtcls                  ; Update any active particles
 
-                call    genRndmNmbr
+                call    genRndmNmbr                 ; Generate three random numbers
 
                 ld      a, (lvlBlckCnt)             ; Load A with the number of blocks that are still visible
-                cp      0                           ; Check the number of blocks against 0
+                or      a                           ; Check the number of blocks against 0
                 jr      nz, mnLp                    ; If not yet 0 then loop
                 ld      a, GMESTTE_NXTLVL           ; No more blocks so set the game state to NEXT LEVEL
                 ld      (gmeStte), a                ; Save the game state and loop
@@ -383,7 +408,7 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 call    rdCntrlKys                  ; Read the keyboard
 
                 ld      a, (objctBat + BTYPS)       ; Get the bats Y position
-                ld      b, BLLPXLHGHT - 2           ; Get the pixel height of the ball
+                ld      b, BLLPXLHGHT               ; Get the pixel height of the ball
                 sub     b                           ; Calculate the bats Y pos minus the balls height putting the ball on top of the bat
                 ld      (objctBall + BLLYPS), a     ; Update the balls Y Position with the bats Y position 
                 ld      a, (objctBat + BTXPS)       ; Load the bats X pos
@@ -391,7 +416,6 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 add     a, b                        ; Calc the new X pos for the ball so its in the middle of the bat
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
                 
-                call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
                 call    drwPrtcls
                 call    updtBtAnmtnFrm
@@ -714,6 +738,11 @@ _hrzntlLp
                 xor     a
                 call    drwSprt
                 pop     bc
+                push    bc
+                ld      de, HorizBlockData
+                ld      a, 1
+                call    drwSprt
+                pop     bc                
                 pop     hl
                 ld      a, b
                 add     a, 8
@@ -1201,15 +1230,11 @@ chckBlckCllsn
                 ld      (objctBall + BLLYSPD), a    ; ...and save it back with the ball data
                 ld      a, b
                 or      a
-                jp      nz, _plyHitSnd1
+                jp      nz, _mddlBttm
                 call    rmvBlck
                 ld      hl, 1234
                 call    incScr
                 call    prntScr
-                jp      _mddlBttm
-_plyHitSnd1
-                ld      b, 200
-                call    plyClck
 
 _mddlBttm
                 ld      de, (ballMB)
@@ -1272,12 +1297,21 @@ _mddlLft
                 call    prntScr
                 ret
 
+
 ;****************************************************************************************************************
-; Checks the state of a block e.g. how many hits has it had so that a block can survive more than one hit
+; This routine takes the an X and Y character location and checks to see if a block exists at that location and
+; it so reduces the blocks hit count
+;
+; Entry Registers:
+;   D = Y
+;   E = X
+; Used Registers:
+;   A, B, C, D, E, H, L
+; Returned Registers:
+;   A = 0 No block was hit, = 1 Block was hit
+;   B = 0 Block was hit and should be removed, = 1 Block was hit but should not be removed e.g. hit count > 0
 ;****************************************************************************************************************
 chkBlckState
-                ; e = X  d = Y
-
                 ld      a, e
                 rra
                 sub     1
@@ -1321,7 +1355,7 @@ _inRnge
                 ld      (ix + BLCK_HIT_CNT), a      ; and save it back to the block
                 or      a
                 jp      z, _htZro
-                ld      b, 1
+                ld      b, 1                        ; B = 1 on return a block was hit but shoult not be removed
 _htZro
                 ld      a, 1                        ; Return 1 to say that the block should be hit
 _finish
@@ -1514,6 +1548,9 @@ rstScr
 ; Play click sound with b = length of the loop
 ;****************************************************************************************************************
 plyClck       
+;                 ld      a, 16
+;                 ld      (sndFxDrtn), a
+;                 ret
                 ld      a, 16
                 and     248
                 out     (254), a
@@ -1571,6 +1608,24 @@ _dthSndLp       push    bc
 ;****************************************************************************************************************
                 org     0xfefe                
 vbInt
+;                 di
+;                 push    af
+;                 ld      a, (sndFxDrtn)
+;                 or      a
+;                 jp      nz, _ply
+;                 ld      a, 0
+;                 and     248
+;                 out     (254), a
+;                 jp      _intDone
+
+; _ply
+;                 dec     a
+;                 ld      (sndFxDrtn), a
+;                 ld      a, 16
+;                 and     248
+;                 out     (254), a
+; _intDone
+;                 pop     af
                 ei
                 reti
 
