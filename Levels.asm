@@ -1,10 +1,6 @@
-;*******************************************************************************************
-; This file contains the level data for the game.
-;*******************************************************************************************
-
-;*******************************************************************************************
+;****************************************************************************************************************
 ; Level Table Constants
-;*******************************************************************************************
+;****************************************************************************************************************
 
 LEVEL_BAT_SPEEDS    equ     224
 LEVEL_TITLE         equ     228
@@ -81,84 +77,82 @@ ldLvl
                 ld      a, STRT_CHR_Y_POS
                 ld      (blckChrY), a               ; Init the Block Y char pos
 
-                ld      ix, (crrntLvlAddr)
-                ld      b, NMBR_CLMNS
+                ld      ix, (crrntLvlAddr)          ; Grab the current levels address
+                ld      b, NMBR_CLMNS               ; Setup the number of columns
 _rwLp         
-                push    bc
-                ld      a, (ix + BLCK_HIT_CNT)
-                or      a
-                jr      nz, _drwBlck
-                ld      a, (blckChrX)
-                inc     a
-                ld      (blckChrX), a
+                push    bc                          ; B holds the column counter so save it
+                ld      a, (ix + BLCK_HIT_CNT)      ; Grab the hit count for the current block
+                or      a                           ; Check if its zero
+                jr      nz, _drwBlck                ; If not then draw the block
+                ld      hl, blckChrX                ; Not drawing a block so we need to increment the...
+                inc     (hl)                        ; ...CHAR X pos
 _nxtClmn
-                ld      a, (blckChrX)
-                inc     a
-                ld      (blckChrX), a
-                ld      a, (blckX)
-                add     a, 16
-                ld      (blckX), a
-                inc     ix
-                inc     ix
+                ld      hl, blckChrX                ; Need to increment the CHAR X pos again as each...
+                inc     (hl)                        ; ...block is two char cells wide
+                ld      a, (blckX)                  ; Grab the Blocks X Pixel position 
+                add     a, 16                       ; Each block is 16 pixels wide so add to the X pos
+                ld      (blckX), a                  ; Save it
+                inc     ix                          ; Move to the next column in the level data
+                inc     ix                          ; Two bytes per column so two inc's
 
-                pop     bc
-                djnz    _rwLp
+                pop     bc                          ; Restore the loop counter
+                djnz    _rwLp                       ; Process the next column
 
 _nxtRw
-                ld      a, STRT_CHR_X_POS
-                ld      (blckChrX), a
-                ld      a, STRT_X_POS
-                ld      (blckX), a
+                ld      a, STRT_CHR_X_POS           ; Grab the initial CHAR X position 
+                ld      (blckChrX), a               ; Save it as the current CHAR X pos
+                ld      a, STRT_X_POS               ; Grab the initial Pixel X position
+                ld      (blckX), a                  ; Save it as the current pixel x pos
 
-                ld      a, (blckChrY)
-                inc     a
-                cp      STRT_CHR_Y_POS + NMBR_RWS
+                ld      a, (blckChrY)               ; Grab the blocks CHAR Y pos
+                inc     a                           ; Increase it as we are on the next row
+                cp      STRT_CHR_Y_POS + NMBR_RWS   ; Once all rows are rendered return
                 ret     z
 
-                ld      (blckChrY), a
-                ld      a, (blckY)
-                add     a, 8
-                ld      (blckY), a
+                ld      hl, blckChrY
+                ld      (blckChrY), a               ; Save the CHAR Y pos
+                ld      a, (blckY)                  ; Grab the pixel Y pos
+                add     a, 8                        ; Each block is 8 pixels high 
+                ld      (blckY), a                  ; Save it
 
-                ld      b, NMBR_CLMNS
-                jp      _rwLp
+                ld      b, NMBR_CLMNS               ; Load the number of columns 
+                jp      _rwLp                       ; Go back to processing the columns
 
 _drwBlck
-                ld      a, (lvlBlckCnt)
-                inc     a
-                ld      (lvlBlckCnt), a
+                ld      hl, lvlBlckCnt              ; Get the address of the block count variable
+                inc     (hl)                        ; Increment the block count variable 
                 ld      de, SpriteBlockData         ; Point to the block sprite data 
                 ld      bc, (blckPosYX)             ; Grab the Y and X position of the block
-                push    bc
+                push    bc                          ; Save the blocks position 
                 xor     a                           ; Want to draw to the screen file
-                call    drwSprt
+                call    drwSprt                     ; Draw the sprite
                 ld      de, SpriteBlockData         ; Point to the block sprite data 
-                pop     bc
-                ld      a, 1
-                call    drwSprt                
+                pop     bc                          ; Restore the blocks position
+                ld      a, 1                        ; Want to draw to the screen buffer
+                call    drwSprt                     ; Draw sprite
                 
-                ld      a, (ix + BLCK_CLR)
-                ld      de, (blckChrYX)
-                call    setChrctrAttr
+                ld      a, (ix + BLCK_CLR)          ; Grab the colour for this block
+                ld      de, (blckChrYX)             ; Grab the blocks Y, X position     
+                push    de                          ; Save the blocks attribute position
+                call    setChrctrAttr               ; Set the attributes for that position
                 
-                ld      a, (blckChrX)
-                inc     a
-                ld      (blckChrX), a
+                ld      hl, blckChrX                ; Move to the next char cell as blocks...
+                inc     (hl)                        ; ...are two cells wide
 
-                ld      a, (ix + BLCK_CLR)
-                ld      de, (blckChrYX)
-                call    setChrctrAttr
+                pop     de                          ; Restore the blocks attribute position 
+                inc     e                           ; INC to the next cell
+                call    setChrctrAttr               ; Set the attribute colour to what is in A
 
-                jp      _nxtClmn
+                jp      _nxtClmn                    ; Next column1
 
-;*******************************************************************************************
+;****************************************************************************************************************
 ; Level lookup table
-;*******************************************************************************************
+;****************************************************************************************************************
 lvlLkup         dw      Level1, Level1, Level1, Level1, Level1, Level1, Level1
 
-;*******************************************************************************************
+;****************************************************************************************************************
 ; Level 1
-;*******************************************************************************************
+;****************************************************************************************************************
                 org     ($ + 255) & $ff00
 Level1
                 ; Colour, # of hits to destroy
@@ -167,13 +161,13 @@ Level1
                 ; 14 columns of two bytes * 8 rows = 224 bytes
 
                 db  0,0,  2,1,  3,1,  4,1,  6,1, 66,1, 65,1, 65,1, 66,1,  6,1,  4,1,  3,1,  2,1,  0,0
-                db  0,0,  2,1,  3,1,  4,1,  6,1, 65,1, 65,1, 65,1, 65,1,  6,1,  4,1,  3,1,  2,1,  0,0
+                db  0,0,  2,1,  3,1,  4,1,  6,1,  7,3,  7,3,  7,3,  7,3,  6,1,  4,1,  3,1,  2,1,  0,0
                 db  0,0,  2,1,  3,1,  4,1,  6,1, 66,1, 65,1, 65,1, 66,1,  6,1,  4,1,  3,1,  2,1,  0,0
-                db  0,0,  2,0,  3,1,  4,1,  6,1, 65,1, 65,0, 65,0, 65,1,  6,1,  4,1,  3,1,  2,0,  0,0
-                db  0,0,  2,0,  3,1,  4,1,  6,1, 66,1, 65,0, 65,0, 66,1,  6,1,  4,1,  3,1,  2,0,  0,0
+                db 69,1,  2,0,  3,1,  4,1,  6,1, 65,1, 65,0, 65,0, 65,1,  6,1,  4,1,  3,1,  2,0, 69,1
+                db 69,1,  2,0,  3,1,  4,1,  6,1, 66,1, 65,0, 65,0, 66,1,  6,1,  4,1,  3,1,  2,0, 69,1
                 db  0,0,  2,1,  3,1,  4,1,  6,1, 65,1, 65,0, 65,0, 65,1,  6,1,  4,1,  3,1,  2,1,  0,0
                 db  0,0,  2,1,  3,1,  4,1,  6,1, 66,1, 65,1, 65,1, 66,1,  6,1,  4,1,  3,1,  2,1,  0,0
-                db  0,0,  2,1,  3,1,  4,1,  6,1,  7,5,  7,5,  7,5,  7,5,  6,1,  4,1,  3,1,  2,1,  0,0
+                db  0,0,  2,1,  3,1,  4,1,  6,1, 71,5, 71,5, 71,5, 71,5,  6,1,  4,1,  3,1,  2,1,  0,0
 
 Level1BatSpeed      
                 db 1, 2, 2, 3
