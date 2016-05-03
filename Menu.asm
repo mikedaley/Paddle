@@ -22,7 +22,7 @@ menu
                 ldir
 
                 ld      de, Logo                    ; Draw the logo sprite
-                ld      bc, 0x000a
+                ld      bc, 0x0009
                 call    drwSprt
 
                 ld      hl, ATTRSCRNADDR + (6 * 32) ; Fill the rest of the screen with cyan on black
@@ -35,7 +35,7 @@ menu
                 call    romPrntStrng
                 db      PAPER, BLACK, INK, WHITE, AT, 11, 10, "0. START", 0xff
                 call    romPrntStrng
-                db      PAPER, BLACK, INK, WHITE, AT, 13, 10, "1. KEYBOARD", 0xff
+                db      BRGHT, 1, FLASH, 1, PAPER, BLACK, INK, WHITE, AT, 13, 10, "1. KEYBOARD", BRGHT, 0, FLASH, 0, 0xff
                 call    romPrntStrng
                 db      PAPER, BLACK, INK, WHITE, AT, 15, 10, "2. SINCLAIR", 0xff
                 call    romPrntStrng
