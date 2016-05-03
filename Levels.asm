@@ -19,6 +19,8 @@ STRT_CHR_Y_POS      equ     6
 BLCK_CLR            equ     0
 BLCK_HIT_CNT        equ     1
 
+LVL_TTL_Y_POS       equ     17
+
 ;****************************************************************************************************************
 ; Variables on a byte boundary
 ;****************************************************************************************************************
@@ -143,12 +145,12 @@ _drwBlck
                 inc     e                           ; INC to the next cell
                 call    setChrctrAttr               ; Set the attribute colour to what is in A
 
-                jp      _nxtClmn                    ; Next column1
+                jp      _nxtClmn                    ; Next column
 
 ;****************************************************************************************************************
 ; Level lookup table
 ;****************************************************************************************************************
-lvlLkup         dw      Level1, Level1, Level1, Level1, Level1, Level1, Level1
+lvlLkup         dw      Level1, Level2, Level1, Level2, Level1, Level2, Level1
 
 ;****************************************************************************************************************
 ; Level 1
@@ -172,8 +174,36 @@ Level1
 Level1BatSpeed      
                 db 1, 2, 2, 3
 Level1Title         
-                db 12, 16, 5, 22, 15, 12, 'LEVEL 1'
+                db Level1TitleEnd - 1 - Level1Title, FLASH, 1, PAPER, BLUE, INK, RED, AT, LVL_TTL_Y_POS, 11, ' ROUND 1 ', FLASH, 0
+Level1TitleEnd
 Level1TitleClear    
-                db 12, 16, 5, 22, 15, 12, '       '
+                db Level1TitleClearEnd - 1 - Level1TitleClear, PAPER, BLACK, INK, CYAN, AT, LVL_TTL_Y_POS, 11, '         '
+Level1TitleClearEnd
 
+;****************************************************************************************************************
+; Level 2
+;****************************************************************************************************************
+Level2
+                ; Colour, # of hits to destroy
+                ; Each column represents a block which is 16 pixels wide and 8 pixels deep
+                ; A column containing 0,0 means there is no block at that position    
+                ; 14 columns of two bytes * 8 rows = 224 bytes
+
+                db 66,3, 66,3, 66,3, 66,3, 65,1, 65,1, 70,3, 70,3, 65,1, 65,1, 65,1, 68,3, 68,3, 65,1
+                db 65,1, 65,1, 65,1, 66,3, 65,1, 70,3, 65,1, 65,1, 70,3, 65,1, 68,3, 65,1, 65,1, 68,3
+                db 65,1, 65,1, 65,1, 66,3, 65,1, 70,3, 65,1, 65,1, 70,3, 65,1, 68,3, 65,1, 65,1, 68,3
+                db 65,1, 65,1, 66,3, 65,1, 65,1, 65,1, 70,3, 70,3, 65,1, 65,1, 68,3, 65,1, 65,1, 68,3
+                db  1,1,  2,3,  1,1,  1,1,  1,1,  6,3,  1,1,  1,1,  6,3,  1,1,  4,3,  1,1,  1,1,  4,3
+                db  2,3,  1,1,  1,1,  1,1,  1,1,  6,3,  1,1,  1,1,  6,3,  1,1,  4,3,  1,1,  1,1,  4,3
+                db  2,3,  1,1,  1,1,  1,1,  1,1,  6,3,  1,1,  1,1,  6,3,  1,1,  4,3,  1,1,  1,1,  4,3
+                db  2,3,  2,3,  2,3,  2,3,  1,1,  1,1,  6,3,  6,3,  1,1,  1,1,  1,1,  4,3,  4,3,  1,1
+
+Level2BatSpeed      
+                db 1, 2, 2, 3
+Level2Title         
+                db Level2TitleEnd - 1 - Level2Title, FLASH, 1, PAPER, BLUE, INK, YELLOW, AT, LVL_TTL_Y_POS, 11, ' ROUND 2 ', FLASH , 0
+Level2TitleEnd
+Level2TitleClear    
+                db Level2TitleClearEnd - 1 - Level2TitleClear, PAPER, BLACK, INK, CYAN, AT, LVL_TTL_Y_POS, 11, '         '
+Level2TitleClearEnd
 
