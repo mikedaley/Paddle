@@ -90,6 +90,7 @@ PAPER                   equ                 17      ; RST 10 control codes for c
 INK                     equ                 16
 AT                      equ                 22      ; RST 10 control codes for location
 FLASH                   equ                 18
+BRGHT                   equ                 19
 
 NUMPRTCLS               equ                 6
 
@@ -135,10 +136,6 @@ prShftSize      dw      0                           ; Holds the size of a sprite
 
 crrntScrCnt     db      0                           ; How many scores are visible on screen
 
-rndmNmbr1       db      0xaa                        ; Holds a random number calculated each frame
-rndmNmbr2       db      0x55                        ; Holds a random number calculated each frame
-rndmNmbr3       db      0xf0                        ; Holds a random number calculated each frame
-
 grvty           dw      0x0035                      ; Gravity to be applied to particles each frame
 
 index           db      0                           ; Index into the level data for collision detection
@@ -161,6 +158,8 @@ lvsLblTxt       db      INK, YELLOW, AT, 0, 24, 'LIVES'
 lvsLblTxtEnd
 
 lvsTxt          db      '5', 0x00
+
+rndTxt          db      '1', 0x00
 
 gmeOvrTxt       db      FLASH, 1, INK, WHITE, PAPER, RED, AT, 15, 11, ' GAME OVER ', FLASH, 0
 gmeOvrTxtEnd
@@ -246,11 +245,8 @@ objctPwrUps
 objctPwrUpsEnd
 PWRUPSZ         equ     objctPwrUpsEnd - objctPwrUps; Calculate the size of a powerup object
 
-
-
 ; PAGE5 END
 ;****************************************************************************************************************
-
 
 ;****************************************************************************************************************
 ; Main code
@@ -269,10 +265,11 @@ init
                 ld      (0x5c8d), a                 ; Set the SYSVAR for ink colour  
 
                 call    shftSprts                   ; Create shifted versions of the sprites being used
-                call    stupPrtcls
-                call    menu
-
-                ret
+                call    menu                        ; Start off by showing the main menu
+ 
+                                                    ; Just in case we get here go back to basic
+                IM      1                           ; Switch back to IM 1
+                ret                                 ; Return to basic
  
 ;****************************************************************************************************************
 ; Pre-shift the sprites
@@ -351,12 +348,9 @@ strtNewGame
                 ld      a, 53                       ; The number five in the character set
                 ld      (lvsTxt), a
                 
-                ld      de, 0xF000
-                ld      bc, lvsTxt                  ; Load DE with the address of the Lives Text
-                call    prntStrng
-
                 xor     a                           ; Reset the level...
                 ld      (lvlBlckCnt), a             ; ...block count
+                ld      a, 1
                 ld      (crrntLvl), a               ; Save the level 
                 call    ldLvl                       ; Load the current level
                 call    drwUI 
@@ -712,6 +706,17 @@ drwUI
                 ld      bc, lvsLblTxtEnd - lvsLblTxt; Set the length of the string
                 call    ROMPRINT                    ; ROM print
 
+                ld      de, 0xf000
+                ld      bc, lvsTxt                  ; Load DE with the address of the Lives Text
+                call    prntStrng
+
+                call    romPrntStrng
+                db      PAPER, BLACK, INK, YELLOW, AT, 0, 15, "ROUND 1", 0xff
+
+                ld      de, 0xa800
+                ld      bc, rndTxt
+                call    prntStrng
+
                 call    drwBrdrs
                 ret
 
@@ -996,7 +1001,7 @@ _mvY
 
                 inc     hl                          ; Move HL to the Y Speed
                 ld      a, (hl)                     ; Load the Y Speed into A to check if its moving up or down the screen
-                cp      0                           ; Is the ball moving down the screen?
+                or      a                           ; Is the ball moving down the screen?
                 jp      m, _chkTp                   ; If not then check the balls position with the top of the screen
                 call    chkBtCllsn                  ; Otherwise ball is moving down the screen so check if its hit the bat
                 call    updtBllChrPs                ; Finally update the balls character x, y position 
@@ -1096,7 +1101,7 @@ _chkHrzntlPstn
                 ; Check the balls x direction and based on that perform the bats collision checks
                 inc     hl                          ; Point HL at the X speed of the ball
                 ld      a, (hl)                     ; Load the X speed into A
-                cp      0                           ; See which direction its moving    
+                or      a                           ; See which direction its moving    
                 jp      m, _bllMvngLft              ; A < 0 means left otherwise right
 
 _bllMvngRght  
@@ -1215,7 +1220,7 @@ _bncUp
 ;****************************************************************************************************************
 chckBlckCllsn 
                 ld      a, (objctBall + BLLYSPD)    ; Load the Y Speed of the ball
-                cp      0                           ; Compare it with 0 to find out if the balls is moving up...
+                or      a                           ; Compare it with 0 to find out if the balls is moving up...
                 jp      p, _mddlBttm                ; ...if p then moving down the screen so check the bottom of the ball
 
                 ld      de, (ballMT)                ; Load the middle collison point into DE, D = Y, E = X
@@ -1232,7 +1237,7 @@ chckBlckCllsn
                 or      a
                 jp      nz, _mddlBttm
                 call    rmvBlck
-                ld      hl, 1234
+                ld      hl, 125
                 call    incScr
                 call    prntScr
 
@@ -1250,13 +1255,13 @@ _mddlBttm
                 or      a
                 jp      nz, _mddlRght
                 call    rmvBlck
-                ld      hl, 1234
+                ld      hl, 125
                 call    incScr
                 call    prntScr
 
 _mddlRght 
                 ld      a, (objctBall + BLLXSPD)
-                cp      0
+                or      a
                 jp      m, _mddlLft                 ; Only check the right edge if moving right
                 ld      de, (ballMR)
                 push    de
@@ -1271,13 +1276,13 @@ _mddlRght
                 or      a
                 jp      nz, _mddlLft
                 call    rmvBlck
-                ld      hl, 1234
+                ld      hl, 125
                 call    incScr
                 call    prntScr
 
 _mddlLft 
                 ld      a, (objctBall + BLLXSPD)
-                cp      0
+                or      a
                 ret     p                           ; Only check the left edge if moving left
                 ld      de, (ballML)
                 push    de
@@ -1292,7 +1297,7 @@ _mddlLft
                 or      a
                 ret     nz
                 call    rmvBlck
-                ld      hl, 1234
+                ld      hl, 125
                 call    incScr
                 call    prntScr
                 ret
@@ -1443,7 +1448,7 @@ rmvBlck
                 ; Remove the block
                 ld      a, e
                 and     1                           ; Check to see if the number is _odd
-                cp      0
+                or      a
                 jr      z, _even
 
 _odd             
