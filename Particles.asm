@@ -11,7 +11,7 @@
 ;****************************************************************************************************************
 ; CONSTANTS
 ;****************************************************************************************************************
-PRTCLLFSPN              equ     30
+PRTCLLFSPN              equ     30                  ; Lifespan of each particle in 1/50th second
 
 ;****************************************************************************************************************
 ; Generate three particles at the location provided in BC
@@ -161,9 +161,9 @@ updtPrtcls
 
 _nxtPrtcl 
                 ld      c, (hl)                     ; Save lifespan
-                inc     hl                          ; Move to timer
+                inc     l                           ; Move to timer
                 ld      a, (hl)                     ; Load timer
-                cp      0                           ; Is timer > 0           
+                or      a                           ; Is timer > 0           
                 jp      nz, _updtPrtcl              ; Yes then update
                 ld      de, PRTCLSZ - 1             ; Move to next particle     
                 add     hl, de                      ; Increase HL
