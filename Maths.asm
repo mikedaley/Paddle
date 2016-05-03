@@ -43,3 +43,38 @@ mult_H_E
                 add     hl, de       ; ...
     ENDM
                 ret
+
+;****************************************************************************************************************
+; Generate a random number
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, D, E, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+genRndmNmbr     ld      hl, rndmNmbr1
+                ld      e, (hl)
+                inc     l
+                ld      d, (hl)
+                inc     l
+                ld      a, r
+                xor     (hl)
+                xor     e
+                xor     d
+                rlca
+                rlca
+                rlca
+                srl     e
+                srl     d
+                ld      (hl), d
+                dec     l
+                ld      (hl), e
+                dec     l
+                ld      (hl), a
+                ret
+
+rndmNmbr1       db      0xaa                        ; Holds a random number calculated each frame
+rndmNmbr2       db      0x55                        ; Holds a random number calculated each frame
+rndmNmbr3       db      0xf0                        ; Holds a random number calculated each frame
