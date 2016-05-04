@@ -678,6 +678,12 @@ stupFont
 ; called which during game development can waste cycles as things like reading the keyboard are done by custom 
 ; game code
 ;
+; It's very important that the address of the IM 2 routine starts at an address where the high and low
+; address bytes are the same e.g. 0xFEFE. This is because of how the jump table has been constructed in that it
+; contains 256 copies of the high address. When an interrupt is fired the byte on the BUS is used as an index
+; into the jump table. The value from that table at that index is then added to the value in the I register to
+; form the actual address to jump too, hence the need for the address to have matching high and low bytes values
+;
 ; Entry Registers:
 ;   NONE
 ; Used Registers:
@@ -695,10 +701,15 @@ stupInt
                 ld      a, h                        ; Load A with the high byte of the int table
                 ld      i, a                        ; Load that value into the I register
 
-                ld      a, vbInt                    ; Load A with the low byte of the int routine...
+                ld      a, 0xfe                     ; Load A with the low byte of the int routine...
                 ld      (hl), a                     ; ... and load it into the address at HL
 
                 ldir                                ; Populate the table
+
+                ld      a, 0xfb                     ; EI
+                ld      (0xfefe), a                 ; Save it
+                ld      de, 0x4ded                  ; RETI
+                ld      (0xfeff), de                ; Save it
 
                 im      2                           ; Enable IM 2
                 ei                                  ; Start interrupts
@@ -725,6 +736,74 @@ romPrntStrng
                 ret     z                           ; ...and return if it is
                 rst     0x10                        ; Call the ROM print routine for the character in A
                 jr      romPrntStrng                ; Loop to the next character
+
+;****************************************************************************************************************
+; Clear the screen by erasing one pixel row at a time from top to bottom
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+wpeScrn
+                ld      a, 0xfe                     ; Make sure that the upper screen area is select
+                call    0x1601                      ; Before clearing the screen
+
+                ld      hl, ATTRSCRNADDR            ; Fill the attribute file with cyan on black
+                ld      de, ATTRSCRNADDR + 1
+                ld      (hl), CYAN
+                ld      bc, 768
+                ldir
+
+                ld      hl, BTMPSCRNSDDR
+                ld      b, 192
+_wpeLp  
+                push    bc
+                push    hl
+                ld      e, l
+                ld      d, h
+                inc     de
+                ld      (hl), 0
+                ld      bc, 31
+                ldir
+                pop     hl
+                call    moveLineDown
+                ld      de, 600
+_wpePause       
+                dec     de
+                ld      a, d
+                or      e
+                jp      nz, _wpePause
+
+                pop     bc
+                djnz    _wpeLp
+                ret                                        
+
+fdeToBlck
+                ld      a, 0xfe                     ; Make sure that the upper screen area is select
+                call    0x1601                      ; Before clearing the screen
+
+                ld      de, ATTRSCRNADDR + ATTRSCRNSZ - 1
+                ld      a, (de)
+                or      a
+                ret     z
+                ld      hl, ATTRSCRNADDR + ATTRSCRNSZ - 1 - 32
+                ld      bc, 23 * 32                     ; 23 rows * 32 cols
+                halt
+                lddr
+                ld      c, e
+                add     hl, bc
+                lddr
+                ld      a, (de)
+                add     a, l
+                sbc     a, l
+                ld      (de), a
+                jr      fdeToBlck
+
+
+
 
 
 

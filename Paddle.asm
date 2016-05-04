@@ -338,6 +338,8 @@ ENDIF
 ; Start new game
 ;****************************************************************************************************************
 strtNewGame
+;                 call    wpeScrn
+                call    fdeToBlck
                 call    romClrScrn
                 call    rstScr                      ; Reset the score
                 call    rstBt
@@ -1317,53 +1319,53 @@ _mddlLft
 ;   B = 0 Block was hit and should be removed, = 1 Block was hit but should not be removed e.g. hit count > 0
 ;****************************************************************************************************************
 chkBlckState
-                ld      a, e
-                rra
-                sub     1
-                ld      b, a
+                ld      a, e                        ; Grab the X pos
+                rra                                 ; Divide by 8
+                sub     1                           ; Sub 1
+                ld      b, a                        ; Save the result in B
 
-                ld      a, d
-                sub     STRT_CHR_Y_POS
+                ld      a, d                        ; Grab the Y pos
+                sub     STRT_CHR_Y_POS              ; Subtract the starting Y position for the blocks on screen
 
-                jp      p, _calcIndx
+                jp      p, _calcIndx                ; If the result is positive then calculate the index of the block
 _LssThnZro
-                ld      a, 0
-                ret
+                ld      a, 0                        ; Index was < 0 so set A to 0 
+                ret                                 ; and return
 _calcIndx
-                ld      l, 0
+                ld      l, 0                        
                 ld      h, 14                       ; Multiplier
                 ld      d, 0
                 ld      e, a                        ; Multipland
-                call    mult_H_E
+                call    mult_H_E                    ; Multiply H with E
 
-                ld      a, l
-                add     a, b
-                ld      (index), a
+                ld      a, l                        ; Grab the result of the multiplication 
+                add     a, b                        ; and add it to the index in B
+                ld      (index), a                  ; Save the index to memory 
 
-                cp      112
+                cp      112                         ; Maximum block data index
                 jp      c, _inRnge
 _outRnge
-                ld      a, 0
-                ld      (index), a
+                ld      a, 0                        ; Index is out of range so set A to 0
+                ld      (index), a                  ; and save it to the index memory variable
                 ret
 _inRnge
-                ld      ix, lvlData
+                ld      ix, lvlData                 ; Grab the lvlData location
                 add     a, a                        ; Double A as each column is two bytes
-                ld      e, a
-                ld      d, 0
-                add     ix, de
+                ld      e, a                        ; Put the index into E
+                ld      d, 0                        ; Clear D
+                add     ix, de                      ; Add the index to the level data location
                 ld      b, 0                        ; B = 0 on return means remove the block as this is the last hit
                 ld      a, (ix + BLCK_HIT_CNT)      ; Get the hit count for the block
                 or      a                           ; See if its 0
-                jr      z, _finish                  ; and if so then no need to save it
+                jr      z, _chkBlckFnsh             ; and if so then no need to save it
                 dec     a                           ; otherwise decrement the hit count
                 ld      (ix + BLCK_HIT_CNT), a      ; and save it back to the block
-                or      a
-                jp      z, _htZro
-                ld      b, 1                        ; B = 1 on return a block was hit but shoult not be removed
+                or      a                           ; Check if A == 0
+                jp      z, _htZro                   ; and if so then the block should be hit AND removed
+                ld      b, 1                        ; B = 1 on return a block was hit but should NOT be removed
 _htZro
                 ld      a, 1                        ; Return 1 to say that the block should be hit
-_finish
+_chkBlckFnsh
                 ret
 
 ;****************************************************************************************************************
@@ -1553,9 +1555,6 @@ rstScr
 ; Play click sound with b = length of the loop
 ;****************************************************************************************************************
 plyClck       
-;                 ld      a, 16
-;                 ld      (sndFxDrtn), a
-;                 ret
                 ld      a, 16
                 and     248
                 out     (254), a
@@ -1599,40 +1598,10 @@ _dthSndLp       push    bc
                 include     Particles.asm
                 include     Maths.asm
                 include     Levels.asm
+                include     Graphics.asm
+
         IF .debug
                 include     Debug.asm               ; Only need the debug routines during development
         ENDIF
-                include     Graphics.asm
-
-;****************************************************************************************************************
-; IM2 Routine. It's very important that the address of this routine starts at an address where the high and low
-; address bytes are the same e.g. 0xFEFE. This is because of how the jump table has been constructed in that it
-; contains 256 copies of the high address. When an interrupt is fired the byte on the BUS is used as an index
-; into the jump table. The value from that table at that index is then added to the value in the I register to
-; form the actual address to jump too, hence the need for the address to have matching high and low bytes values
-;****************************************************************************************************************
-                org     0xfefe                
-vbInt
-;                 di
-;                 push    af
-;                 ld      a, (sndFxDrtn)
-;                 or      a
-;                 jp      nz, _ply
-;                 ld      a, 0
-;                 and     248
-;                 out     (254), a
-;                 jp      _intDone
-
-; _ply
-;                 dec     a
-;                 ld      (sndFxDrtn), a
-;                 ld      a, 16
-;                 and     248
-;                 out     (254), a
-; _intDone
-;                 pop     af
-                ei
-                reti
-
 
                 END init
