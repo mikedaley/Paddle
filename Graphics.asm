@@ -42,21 +42,7 @@ SpriteHardBlock0:   db %11111111, %11111110, %00000000
 ; Ball Sprite
 ;*******************************************************************************************
 SpriteBallData:
-                    db 2                          ; Width in bytes
-                    db 8                          ; Height in pixels
-                    dw SpriteBall0, SpriteBall0 + 16 * 1, SpriteBall0 + 16 * 2, SpriteBall0 + 16 * 3
-                    dw SpriteBall0 + 16 * 4, SpriteBall0 + 16 * 5, SpriteBall0 + 16 * 7, SpriteBall0 + 16 * 7
-
-SpriteBall0:        db %00111100, %00000000
-                    db %01100110, %00000000
-                    db %11011111, %00000000
-                    db %10111111, %00000000
-                    db %10111111, %00000000
-                    db %11111111, %00000000
-                    db %01111110, %00000000
-                    db %00111100, %00000000
-
-                    ds 16 * 7
+;
 ;*******************************************************************************************
 ; Small Ball Data
 ;*******************************************************************************************
@@ -97,7 +83,7 @@ SpriteBatData0:
                     db %11111000, %00000000, %00011111, %00000000
                     db %01111111, %11111111, %11111110, %00000000
 
-                    ds 32 * 71     ; Create enough space for the shifted versions of this sprite frame
+                    ds 32 * 7     ; Create enough space for the shifted versions of this sprite frame
     
 SpriteBatDataFrame1:  
                     ; The bat is animated so there is a lookup table for each frame of animation
@@ -116,7 +102,7 @@ SpriteBatData1:
                     db %11111000, %00000000, %00011111, %00000000
                     db %01111111, %11111111, %11111110, %00000000
 
-                    ds 32 * 71
+                    ds 32 * 7
 
 SpriteBatDataFrame2:  
                     db 4                          ; Width in bytes
@@ -134,7 +120,7 @@ SpriteBatData2:
                     db %11111000, %00000000, %00011111, %00000000
                     db %01111111, %11111111, %11111110, %00000000
 
-                    ds 32 * 71
+                    ds 32 * 7
 
 ;*******************************************************************************************
 ; Score Sprite
