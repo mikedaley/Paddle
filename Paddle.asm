@@ -261,7 +261,7 @@ init
                 xor     a                           ; Set the border colour
                 out     (0xfe), a                   ; Output the border colour to the FE port
                         
-                ld      a, 5                        ; Set the ink colour
+                ld      a, CYAN + BRIGHT            ; Set the ink colour
                 ld      (0x5c8d), a                 ; Set the SYSVAR for ink colour  
 
                 call    shftSprts                   ; Create shifted versions of the sprites being used
@@ -352,10 +352,11 @@ strtNewGame
                 
                 xor     a                           ; Reset the level...
                 ld      (lvlBlckCnt), a             ; ...block count
-                ld      a, 1
+                ld      a, 0
                 ld      (crrntLvl), a               ; Save the level 
-                call    ldLvl                       ; Load the current level
                 call    drwUI 
+                call    ldLvl                       ; Load the current level
+                call    drwBrdrs
 
                 ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISPLAY LEVEL
                 ld      (gmeStte), a                ; Save the game state
@@ -532,6 +533,7 @@ _chckGmeSttePlyrDead
                 ld      bc, gmeOvrTxtEnd - gmeOvrTxt
                 call    ROMPRINT
                 call    watFrSpc
+                call    fdeToBlck
                 jp      menu
 
 ;****************************************************************************************************************
@@ -719,7 +721,6 @@ drwUI
                 ld      bc, rndTxt
                 call    prntStrng
 
-                call    drwBrdrs
                 ret
 
 ;****************************************************************************************************************
@@ -1454,14 +1455,14 @@ rmvBlck
                 jr      z, _even
 
 _odd             
-                ld      a, 5                        ; Load A with 5 = Cyan on Black
+                ld      a, CYAN + BRIGHT            ; Load A with 5 = Cyan on Black
                 push    de                          ; Save the coords in DE
                 call    setChrctrAttr               ; set the attribute at DE to a value of 5
                 pop     de                          ; Restore DE
                 ld      a, e                        ; Load A with E
                 sub     1                           ; Subtract 1 to get the preceeding attribute X value
                 ld      e, a                        ; Load E with the new X coord value
-                ld      a, 5                        ; Load A with 5 for Cyan on Black
+                ld      a, CYAN + BRIGHT            ; Load A with 5 for Cyan on Black
                 push    de                          ; Save DE on the stack
                 call    setChrctrAttr               ; Set this attribute as well
                 pop     de                          ; Restore DE
@@ -1492,12 +1493,12 @@ _odd
                 ret
 
 _even           
-                ld      a, 5
+                ld      a, CYAN + BRIGHT
                 push    de
                 call    setChrctrAttr
                 pop     de
                 inc     e
-                ld      a, 5
+                ld      a, CYAN + BRIGHT
                 push    de
                 call    setChrctrAttr
                 pop     de
