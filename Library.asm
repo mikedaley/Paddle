@@ -751,11 +751,11 @@ wpeScrn
                 ld      a, 0xfe                     ; Make sure that the upper screen area is select
                 call    0x1601                      ; Before clearing the screen
 
-                ld      hl, ATTRSCRNADDR            ; Fill the attribute file with cyan on black
-                ld      de, ATTRSCRNADDR + 1
-                ld      (hl), CYAN
-                ld      bc, 768
-                ldir
+;                 ld      hl, ATTRSCRNADDR            ; Fill the attribute file with cyan on black
+;                 ld      de, ATTRSCRNADDR + 1
+;                 ld      (hl), CYAN
+;                 ld      bc, 768
+;                 ldir
 
                 ld      hl, BTMPSCRNSDDR
                 ld      b, 192
@@ -770,7 +770,7 @@ _wpeLp
                 ldir
                 pop     hl
                 call    moveLineDown
-                ld      de, 600
+                ld      de, 400
 _wpePause       
                 dec     de
                 ld      a, d
@@ -781,27 +781,43 @@ _wpePause
                 djnz    _wpeLp
                 ret                                        
 
+;****************************************************************************************************************
+; Fade to black diagonaly from left to right. This only changes the attributes and does not effect the screen
+; file
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, H, L
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
 fdeToBlck
                 ld      a, 0xfe                     ; Make sure that the upper screen area is select
                 call    0x1601                      ; Before clearing the screen
 
-                ld      de, ATTRSCRNADDR + ATTRSCRNSZ - 1
-                ld      a, (de)
-                or      a
-                ret     z
-                ld      hl, ATTRSCRNADDR + ATTRSCRNSZ - 1 - 32
-                ld      bc, 23 * 32                     ; 23 rows * 32 cols
-                halt
-                lddr
-                ld      c, e
-                add     hl, bc
-                lddr
-                ld      a, (de)
-                add     a, l
-                sbc     a, l
-                ld      (de), a
-                jr      fdeToBlck
+                ld      a, 7
+_fdeLoop                
+                ld      hl, ATTRSCRNADDR
+                ld      de, ATTRSCRNADDR + 1
+                ld      bc, ATTRSCRNSZ
+                ld      (hl), a
+                ldir
 
+                push    af
+                ld      de, 3000
+_fdePause       dec     de
+                ld      a, d
+                or      e
+                jr      nz, _fdePause
+                pop     af
+
+                dec     a
+                or      a
+                jr      nz, _fdeLoop
+                ret
+
+                
 
 
 
