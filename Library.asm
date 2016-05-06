@@ -67,6 +67,49 @@ watFrSpc
                 jp      watFrSpc                    ; ...otherwise keep on waiting
 
 ;****************************************************************************************************************
+; Wait For Space
+; Loops until the space key is pressed
+;
+; Entry Registers:
+;   NONE
+; Registers Used:
+;   A, B, C
+; Returned Registers:
+;   NONE
+;****************************************************************************************************************
+watFrFire
+                ld      a, (inptOption)             ; Get the currently selected input option
+
+                cp      0                           ; KEYBOARD
+                jr      nz, _sincJoystick
+                ld      bc, 0x7ffe                  ; B = 0xDF (QUIOP), C = port 0xFE
+                in      a, (c)                      ; Load A with the keys that have been pressed
+                rra                                 ; Outermost bit = key 1
+                jp      nc, _mvBtRght               ; Move the bat left
+                ret
+_sincJoystick
+                cp      1                           ; SINCLAIR PORT 1
+                jr      nz, _kempJoystick 
+                ld      bc, 0xf7fe
+                in      a, (c)
+                rra
+                jp      nc, _mvBtLft
+                rra
+                jp      nc, _mvBtRght
+                ret
+_kempJoystick                                      ; KEMPSTON
+                cp      2
+                ret     nz
+                ld      bc, 31
+                in      a, (c)
+                and     2
+                jp      nz, _mvBtLft
+                in      a, (c)
+                and     1
+                jp      nz, _mvBtRght
+                ret
+
+;****************************************************************************************************************
 ; Calculate the screen address of a pixel location
 ;
 ; Entry Registers:
@@ -536,7 +579,7 @@ _ntAlph
                 sla     a                           ; ...into the font data
                 ld      l, a                        ; Place A into L...
                 ld      h, 0                        ; ...and reset H
-                ld      bc, NumberFont              ; Point BC to the start of our font data
+                ld      bc, 0x3d00 + 16 * 8         ; Point BC to the start of the numeric font data
                 add     hl, bc                      ; Add in the index we calculated to the character we want 
                 ex      de, hl                      ; Exchange DE, HL as we want DE to contain the font pointer
 
@@ -635,7 +678,7 @@ getChrctrAttr
                 ld      c, e
                 add     hl, bc                      ; Add it to the Y position 
 
-                ld      de, ATTRSCRNADDR            ; Add on the base ATTR screen address
+                ld      de, ATTRSCRNADDR            ; Add on the base CC_ATTR screen address
                 add     hl, de
 
                 ld      a, (hl)                     ; Load the attribute at HL
@@ -743,7 +786,7 @@ romPrntStrng
 ; Entry Registers:
 ;   NONE
 ; Used Registers:
-;   A, H, L
+;   A, B, C, D, E, H, L
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
@@ -788,7 +831,7 @@ _wpePause
 ; Entry Registers:
 ;   NONE
 ; Used Registers:
-;   A, H, L
+;   A, B, C, D, E, H, L
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
