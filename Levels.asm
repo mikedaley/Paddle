@@ -2,7 +2,7 @@
 ; Level Table Constants
 ;****************************************************************************************************************
 
-LEVEL_BAT_SPEEDS    equ     224
+LEVEL_BCC_AT_SPEEDS    equ     224
 LEVEL_TITLE         equ     228
 
 BLOCKS_PER_ROW      equ     11
@@ -174,10 +174,10 @@ Level1
 Level1BatSpeed      
                 db 1, 2, 2, 3
 Level1Title         
-                db Level1TitleEnd - 1 - Level1Title, FLASH, 1, PAPER, BLUE, INK, RED, AT, LVL_TTL_Y_POS, 11, ' ROUND 1 ', FLASH, 0
+                db Level1TitleEnd - 1 - Level1Title, CC_FLASH, 1, CC_PAPER, BLUE, CC_INK, YELLOW, CC_AT, LVL_TTL_Y_POS, 11, ' ROUND 1 ', CC_FLASH, 0
 Level1TitleEnd
 Level1TitleClear    
-                db Level1TitleClearEnd - 1 - Level1TitleClear, PAPER, BLACK, INK, CYAN, AT, LVL_TTL_Y_POS, 11, '         '
+                db Level1TitleClearEnd - 1 - Level1TitleClear, CC_PAPER, BLACK, CC_INK, CYAN, CC_AT, LVL_TTL_Y_POS, 11, '         '
 Level1TitleClearEnd
 
 ;****************************************************************************************************************
@@ -201,9 +201,9 @@ Level2
 Level2BatSpeed      
                 db 1, 2, 2, 3
 Level2Title         
-                db Level2TitleEnd - 1 - Level2Title, FLASH, 1, PAPER, BLUE, INK, YELLOW, AT, LVL_TTL_Y_POS, 11, ' ROUND 2 ', FLASH , 0
+                db Level2TitleEnd - 1 - Level2Title, CC_FLASH, 1, CC_PAPER, BLUE, CC_INK, YELLOW, CC_AT, LVL_TTL_Y_POS, 11, ' ROUND 2 ', CC_FLASH , 0
 Level2TitleEnd
 Level2TitleClear    
-                db Level2TitleClearEnd - 1 - Level2TitleClear, PAPER, BLACK, INK, CYAN, AT, LVL_TTL_Y_POS, 11, '         '
+                db Level2TitleClearEnd - 1 - Level2TitleClear, CC_PAPER, BLACK, CC_INK, CYAN, CC_AT, LVL_TTL_Y_POS, 11, '         '
 Level2TitleClearEnd
 
