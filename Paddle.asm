@@ -28,7 +28,7 @@ BTMPSCRNSDDR            equ                 16384   ; Address of bitmap screen f
 BTMPSCRSZ               equ                 6144    ; Size of the bitmap screen
 ATTRSCRNADDR            equ                 22528   ; Address of screen attribute data
 ATTRSCRNSZ              equ                 768     ; Size of the screen attribute data
-SCRNSZ                  equ                 6911    ; Size of bitmap screen file + screen attributes
+SCRNSZ                  equ                 BTMPSCRSZ + ATTRSCRNSZ
 
 ; Screen boundaries in pixels used when bouncing the ball
 SCRNLFT                 equ                 16
@@ -51,14 +51,14 @@ BLLHLFWIDTH             equ                 3
 BTMXRGHT                equ                 SCRNRGHT - BTPXLWDTH ; Furthest pixel to the right the paddle can be drawn
 BTMXLFT                 equ                 SCRNLFT       ; Furthes pixel to the left the bat can be drawn
 
-; Offsets into the BAT structure        
+; Offsets into the BCC_AT structure        
 BTXPS                   equ                 0
 BTSPD                   equ                 1
 BTYPS                   equ                 2
 BTANMTONDLY             equ                 3
 BTANMTONFRM             equ                 4
             
-; BAT constants         
+; BCC_AT constants         
 BTPXLHGHT               equ                 8
 BTPXLWDTH               equ                 24
 BTHLFWDTH               equ                 BTPXLWDTH / 2
@@ -86,11 +86,11 @@ WHITE                   equ                 7
 BRIGHT                  equ                 64
 
 
-PAPER                   equ                 17      ; RST 10 control codes for colour
-INK                     equ                 16
-AT                      equ                 22      ; RST 10 control codes for location
-FLASH                   equ                 18
-BRGHT                   equ                 19
+CC_PAPER                equ                 17      ; RST 10 control codes for colour
+CC_INK                  equ                 16
+CC_AT                   equ                 22      ; RST 10 control codes for location
+CC_FLASH                equ                 18
+CC_BRIGHT               equ                 19
 
 NUMPRTCLS               equ                 6
 
@@ -103,9 +103,14 @@ PWRUP_BEER              equ                 1
 ; Start of Contended Memory
 ;****************************************************************************************************************           
 
-                org     CONTENDEDADDR               ; Set origin just above the system variables in contended memory
+                org         CONTENDEDADDR           ; Set origin just above the system variables in contended memory
 
-                include Contended.asm               ; Load data and code that can sit in contended memory
+                include     Menu.asm                ; Load the main menu code
+                include     Font.asm                ; Load the custom font graphics
+                include     Levels.asm              ; Load the level code
+
+bffrLkup                                            ; Location for the screen buffer line lookup table
+                    ds 384
 
 ;****************************************************************************************************************
 ; PAGE 0: Page boundary for tables and variables
@@ -146,22 +151,25 @@ crrntPwrUps     db      0                           ; Each bit of this byte defi
                                                     
 sndFxDrtn       db      0
 
+inptOption      db      0                           ; Holds the input selection that has been chossen
+                                                    ; 0 = Keyboard, 1 = Sinclair, 2 = Kempston
+
 ; Text
                         ; Colour, Yellow, Position, X, Y, Text
-scrLblTxt       db      INK, YELLOW, AT, 0, 1, 'SCORE'
+scrLblTxt       db      CC_INK, YELLOW, CC_AT, 0, 1, 'SCORE'
 scrLblTxtEnd
 
 scrTxt          db      '0000000', 0x00
 scrTxtEnd
 
-lvsLblTxt       db      INK, YELLOW, AT, 0, 24, 'LIVES'
+lvsLblTxt       db      CC_INK, YELLOW, CC_AT, 0, 24, 'LIVES'
 lvsLblTxtEnd
 
 lvsTxt          db      '5', 0x00
 
 rndTxt          db      '1', 0x00
 
-gmeOvrTxt       db      FLASH, 1, INK, WHITE, PAPER, RED, AT, 15, 11, ' GAME OVER ', FLASH, 0
+gmeOvrTxt       db      CC_FLASH, 1, CC_INK, WHITE, CC_PAPER, RED, CC_AT, 15, 11, ' GAME OVER ', CC_FLASH, 0
 gmeOvrTxtEnd
 
 ; Object data
@@ -261,8 +269,8 @@ init
                 xor     a                           ; Set the border colour
                 out     (0xfe), a                   ; Output the border colour to the FE port
                         
-                ld      a, CYAN + BRIGHT            ; Set the ink colour
-                ld      (0x5c8d), a                 ; Set the SYSVAR for ink colour  
+                ld      a, CYAN + BRIGHT            ; Set the CC_INK colour
+                ld      (0x5c8d), a                 ; Set the SYSVAR for CC_INK colour  
 
                 call    shftSprts                   ; Create shifted versions of the sprites being used
                 call    menu                        ; Start off by showing the main menu
@@ -316,7 +324,7 @@ dbgPrnt
                 ld      e, 168
                 ld      d, 8 * 4
                 call    getPixelAddr
-                ld      a, (index)               ; Bat X Position
+                ld      a, (inptOption)               ; Bat X Position
                 call    HexByte
 
 ;                 ld      e, 168
@@ -427,11 +435,41 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
 
                 call    genRndmNmbr
                 
-                ld      bc, 0x7ffe                  ; Want to see if SPACE has been pressed
-                in      a, (c)                      ; Read the port
-                rra                                 ; Rotate Right
-                jp      c, mnLp                     ; Loop if SPACE has not been pressed
-                
+;                 ld      bc, 0x7ffe                  ; Want to see if SPACE has been pressed
+;                 in      a, (c)                      ; Read the port
+;                 rra                                 ; Rotate Right
+;                 jp      c, mnLp                     ; Loop if SPACE has not been pressed
+
+                ld      a, (inptOption)             ; Get the currently selected input option
+_keybrdFire
+                cp      0                           ; KEYBOARD
+                jr      nz, _sincJoyFire
+                ld      bc, 0x7ffe                  ; B = 0xDF (QUIOP), C = port 0xFE
+                in      a, (c)                      ; Load A with the keys that have been pressed
+                rra                                 ; Outermost bit = key 1
+                jp      nc, _gameOn                 ; Space bar has been pressed
+                jp      mnLp
+_sincJoyFire
+                cp      1                           ; SINCLAIR PORT 1
+                jr      nz, _kempJoyFire 
+                ld      bc, 0xf7fe
+                in      a, (c)
+                rra
+                rra
+                rra
+                rra
+                rra
+                jp      nc, _gameOn
+                jp      mnLp
+_kempJoyFire                                        ; KEMPSTON
+                cp      2
+                ret     nz
+                ld      bc, 31
+                in      a, (c)
+                and     16
+                jp      nz, _gameOn
+                jp      mnLp         
+_gameOn
                 ld      a, GMESTTE_PLYNG            ; Otherwise update the game state to GMESTTE_PLYNG
                 ld      (gmeStte), a                ; Save the game state
                 jp      mnLp                        ; Loop
@@ -692,7 +730,7 @@ updtBllChrPs                                       ; Update the balls character 
                 ret                                 ; Return
 
 ;****************************************************************************************************************
-; Draw the UI elements of the game e.g. labels and borders
+; Draw the text UI elements e.g. the score, round and lives
 ;
 ; Entry Registers:
 ;   NONE
@@ -702,20 +740,28 @@ updtBllChrPs                                       ; Update the balls character 
 ;   NONE
 ;****************************************************************************************************************
 drwUI
-                ld      de, scrLblTxt               ; Point DE to the score label text
-                ld      bc, 10                      ; Set the length of the string
-                call    ROMPRINT                    ; ROM print
 
-                ld      de, lvsLblTxt               ; Point DE to lives label text
-                ld      bc, lvsLblTxtEnd - lvsLblTxt; Set the length of the string
-                call    ROMPRINT                    ; ROM print
+                call    romPrntStrng
+                db      CC_INK, YELLOW, CC_AT, 0, 1, 'SCORE', 0xff
+
+                call    romPrntStrng
+                db      CC_PAPER, GREEN, CC_INK, BLACK, CC_AT, 0, 7, '0000000', 0xff
+
+                call    romPrntStrng
+                db      CC_PAPER, BLACK, CC_INK, YELLOW, CC_AT, 0, 24, 'LIVES', 0xff
+
+                call    romPrntStrng
+                db      CC_PAPER, GREEN, CC_INK, BLACK, CC_AT, 0, 30, '5', 0xff
 
                 ld      de, 0xf000
                 ld      bc, lvsTxt                  ; Load DE with the address of the Lives Text
                 call    prntStrng
 
                 call    romPrntStrng
-                db      PAPER, BLACK, INK, YELLOW, AT, 0, 15, "ROUND 1", 0xff
+                db      CC_PAPER, BLACK, CC_INK, YELLOW, CC_AT, 0, 15, "ROUND", 0xff
+
+                call    romPrntStrng
+                db      CC_PAPER, GREEN, CC_INK, BLACK, CC_AT, 0, 21, "01", 0xff
 
                 ld      de, 0xa800
                 ld      bc, rndTxt
@@ -929,15 +975,38 @@ drwBt
 ;   NONE
 ;************************************************************************************************************************
 rdCntrlKys 
-                ; Check if keys O or P
                 ld      hl, objctBat                ; HL = X Position
-
+                ld      a, (inptOption)             ; Get the currently selected input option
+_keybrd
+                cp      0                           ; KEYBOARD
+                jr      nz, _sincJoy
                 ld      bc, 0xdffe                  ; B = 0xDF (QUIOP), C = port 0xFE
                 in      a, (c)                      ; Load A with the keys that have been pressed
                 rra                                 ; Outermost bit = key 1
                 jp      nc, _mvBtRght               ; Move the bat left
                 rra                                 ; Next bit is key 2
                 jp      nc, _mvBtLft                ; Move the bat right
+                ret
+_sincJoy
+                cp      1                           ; SINCLAIR PORT 1
+                jr      nz, _kempJoy 
+                ld      bc, 0xf7fe
+                in      a, (c)
+                rra
+                jp      nc, _mvBtLft
+                rra
+                jp      nc, _mvBtRght
+                ret
+_kempJoy                                            ; KEMPSTON
+                cp      2
+                ret     nz
+                ld      bc, 31
+                in      a, (c)
+                and     2
+                jp      nz, _mvBtLft
+                in      a, (c)
+                and     1
+                jp      nz, _mvBtRght
                 ret
 _mvBtLft     
                 ld      a, (hl)                     ; Put X pos into A
@@ -1113,7 +1182,7 @@ _bllMvngRght
                 cp      6                           ;
                 jr      nc, _rArea2
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BAT_SPEEDS + 0
+                ld      de, LEVEL_BCC_AT_SPEEDS + 0
                 add     hl, de
                 ld      a, (hl)
                 pop     hl
@@ -1123,7 +1192,7 @@ _bllMvngRght
 _rArea2         cp      12
                 jr      nc, _rArea3
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BAT_SPEEDS + 1
+                ld      de, LEVEL_BCC_AT_SPEEDS + 1
                 add     hl, de
                 ld      a, (hl)
                 pop     hl
@@ -1133,7 +1202,7 @@ _rArea2         cp      12
 _rArea3         cp      18
                 jr      nc, _rArea4
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BAT_SPEEDS + 2
+                ld      de, LEVEL_BCC_AT_SPEEDS + 2
                 add     hl, de
                 ld      a, (hl)
                 pop     hl
@@ -1143,7 +1212,7 @@ _rArea3         cp      18
 _rArea4         cp      24
                 jr      nc, _bncUp
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BAT_SPEEDS + 3
+                ld      de, LEVEL_BCC_AT_SPEEDS + 3
                 add     hl, de
                 ld      a, (hl)
                 pop     hl
@@ -1156,7 +1225,7 @@ _bllMvngLft
                 cp      6
                 jr      nc, _lArea2
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BAT_SPEEDS + 3
+                ld      de, LEVEL_BCC_AT_SPEEDS + 3
                 add     hl, de
                 ld      a, (hl)
                 neg
@@ -1167,7 +1236,7 @@ _bllMvngLft
 _lArea2         cp      12
                 jr      nc, _lArea3
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BAT_SPEEDS + 2
+                ld      de, LEVEL_BCC_AT_SPEEDS + 2
                 add     hl, de
                 ld      a, (hl)
                 neg
@@ -1178,7 +1247,7 @@ _lArea2         cp      12
 _lArea3         cp      18
                 jr      nc, _lArea4
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BAT_SPEEDS + 1
+                ld      de, LEVEL_BCC_AT_SPEEDS + 1
                 add     hl, de
                 ld      a, (hl)
                 neg
@@ -1189,7 +1258,7 @@ _lArea3         cp      18
 _lArea4         cp      24
                 jr      nc, _bncUp
                 ld      hl, (crrntLvlAddr)
-                ld      de, LEVEL_BAT_SPEEDS + 0
+                ld      de, LEVEL_BCC_AT_SPEEDS + 0
                 add     hl, de
                 ld      a, (hl)
                 neg
@@ -1212,7 +1281,7 @@ _bncUp
 ; the block and bounce the ball.  By checking each collision point around the ball sprite we can find out which
 ; part of the ball has hit a tile. This then allows us to update the sprites X or Y speed causing the ball to 
 ; appear to bounce off the tile. A collision is identified if the attribute at the collision point is not 5 which
-; represents a black background and cyan ink.
+; represents a black background and cyan CC_INK.
 ;
 ; Entry Registers:
 ;   NONE
@@ -1594,11 +1663,9 @@ _dthSndLp       push    bc
 ;****************************************************************************************************************
 ; Includes
 ;****************************************************************************************************************
-                include     Menu.asm
                 include     Library.asm
                 include     Particles.asm
                 include     Maths.asm
-                include     Levels.asm
                 include     Graphics.asm
 
         IF .debug
