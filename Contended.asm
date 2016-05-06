@@ -80,7 +80,7 @@ CharFont        ; Letters A-O
                 
                 ; Make space for the standard ROM font that will be copied here. The numbers
                 ; and letters A-Z will then be loaded over the top
-Font            ds 768
+Font            ds 1
 
 ; ; ASM data file from a ZX-Paintbrush picture with 256 x 192 pixels (= 32 x 24 characters)
 ; ; and an attribute area of 768 bytes
