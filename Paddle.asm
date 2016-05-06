@@ -33,7 +33,7 @@ SCRNSZ                  equ                 BTMPSCRSZ + ATTRSCRNSZ
 ; Screen boundaries in pixels used when bouncing the ball
 SCRNLFT                 equ                 16
 SCRNRGHT                equ                 240
-SCRNTP                  equ                 10
+SCRNTP                  equ                 17
 SCRNBTTM                equ                 180
             
 ; Offsets into the BALL structure       
@@ -384,16 +384,28 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 call    rdCntrlKys                  ; Read the keyboard
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Draw the ball
-                call    drwPrtcls                   ; Draw any active particles
+;                 call    drwPrtcls                   ; Draw any active particles
                 call    updtBtAnmtnFrm              ; Update the bats animation frame
                 call    drwBt                       ; Draw the bat
+
+;                 ld      de, PodSpriteData
+;                 ld      b, 0
+;                 ld      c, 0
+;                 ld      a, 0
+;                 call    drwSprt
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
-                call    rstrScrBckgrnd              ; Restore the background behind the particles
+;                 call    rstrScrBckgrnd              ; Restore the background behind the particles
                 call    drwBt                       ; Erase the bat (XOR)
-                call    updtPrtcls                  ; Update any active particles
+;                 call    updtPrtcls                  ; Update any active particles
+
+;                 ld      de, PodSpriteData
+;                 ld      b, 0
+;                 ld      c, 0
+;                 ld      a, 0
+;                 call    drwSprt
 
                 call    genRndmNmbr                 ; Generate three random numbers
 
@@ -422,16 +434,16 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
                 
                 call    drwBll                      ; Draw the ball
-                call    drwPrtcls
+;                 call    drwPrtcls
                 call    updtBtAnmtnFrm
                 call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
-                call    rstrScrBckgrnd
+;                 call    rstrScrBckgrnd
                 call    drwBt                       ; Erase the bat (XOR)
-                call    updtPrtcls
+;                 call    updtPrtcls
 
                 call    genRndmNmbr
                 
@@ -781,80 +793,123 @@ drwUI
 ;   NONE
 ;****************************************************************************************************************
 drwBrdrs
+                ; Setup the attributes for the borders
+                ld      d, 1
+                ld      e, 1
+_hrzClr
+                ld      a, MAGENTA
+                push    de
+                call    setChrctrAttr
+                pop     de
+                inc     e
+                ld      a, e
+                cp      31
+                jr      nz, _hrzClr
+
+                ld      d, 1
+                ld      e, 1
+_VrtClr
+                ld      e, 1
+                ld      a, MAGENTA
+                push    de
+                call    setChrctrAttr
+                pop     de
+                ld      e, 30
+                push    de
+                call    setChrctrAttr
+                pop     de
+
+                inc     d
+                ld      a, d
+                cp      24
+                jr      nz, _VrtClr
+
                 ; Draw top wall
                 ld      h, 0
                 ld      b, SCRNLFT
-                ld      c, 2
+                ld      c, 8
 _hrzntlLp
                 push    hl
                 push    bc
-                ld      de, HorizBlockData
+                ld      de, LoopHSpriteData
                 xor     a
                 call    drwSprt
                 pop     bc
                 push    bc
-                ld      de, HorizBlockData
+                ld      de, LoopHSpriteData
                 ld      a, 1
                 call    drwSprt
                 pop     bc                
                 pop     hl
                 ld      a, b
-                add     a, 8
+                add     a, 16
                 ld      b, a
                 inc     h
                 ld      a, h
-                cp      28
+                cp      14
                 jr      nz, _hrzntlLp
 
                 ; Draw right hand wall
                 ld      h, 0
                 ld      b, SCRNRGHT
-                ld      c, 9
+                ld      c, 16
 _vrtclLp1
                 push    hl
                 push    bc
-                ld      de, VertLBlockData
+                ld      de, LoopVSpriteData
                 xor     a
                 call    drwSprt
-                pop     bc
-                push    bc
-                ld      de, VertLBlockData
-                ld      a, 1
-                call    drwSprt
+;                 pop     bc
+;                 push    bc
+;                 ld      de, LoopVSpriteData
+;                 ld      a, 1
+;                 call    drwSprt
                 pop     bc                
                 pop     hl
                 ld      a,c
-                add     a, 8
+                add     a, 16
                 ld      c, a
                 inc     h
                 ld      a, h
-                cp      22
+                cp      11
                 jr      nz, _vrtclLp1
 
                 ; Draw Left hand wall
                 ld      h, 0
                 ld      b, SCRNLFT - 8
-                ld      c, 9
+                ld      c, 16
 _vrtclLp2
                 push    hl
                 push    bc
-                ld      de, VertRBlockData
+                ld      de, LoopVSpriteData
                 xor     a
                 call    drwSprt
-                pop     bc
-                push    bc
-                ld      de, VertRBlockData
-                ld      a, 1
-                call    drwSprt
+;                 pop     bc
+;                 push    bc
+;                 ld      de, LoopVSpriteData
+;                 ld      a, 1
+;                 call    drwSprt
                 pop     bc                
                 pop     hl
                 ld      a,c
-                add     a, 8
+                add     a, 16
                 ld      c, a
                 inc     h
                 ld      a, h
-                cp      22
+                cp      11
                 jr      nz, _vrtclLp2
+
+                ld      de, LoopLCSpriteData
+                ld      b, SCRNLFT - 8
+                ld      c, 8
+                ld      a, 0
+                call    drwSprt
+
+                ld      de, LoopRCSpriteData
+                ld      b, SCRNRGHT
+                ld      c, 8
+                ld      a, 0
+                call    drwSprt
 
                 ret
 
