@@ -220,10 +220,10 @@ VertLBlockData0
 BeerSpriteData
                     db 2                          ; Width in bytes
                     db 13                          ; Height in pixels
-                    dw BeetSpriteData0, BeetSpriteData0, BeetSpriteData0, BeetSpriteData0
-                    dw BeetSpriteData0, BeetSpriteData0, BeetSpriteData0, BeetSpriteData0
+                    dw BeerSpriteData0, BeerSpriteData0, BeerSpriteData0, BeerSpriteData0
+                    dw BeerSpriteData0, BeerSpriteData0, BeerSpriteData0, BeerSpriteData0
 
-BeetSpriteData0
+BeerSpriteData0
                     db %00111111, %11100000
                     db %01111111, %11110000
                     db %01111111, %11111100
@@ -237,6 +237,178 @@ BeetSpriteData0
                     db %00101011, %01010000
                     db %00100000, %00010000
                     db %00011111, %11100000
+
+;*******************************************************************************************
+; Pod
+;*******************************************************************************************
+PodSpriteData
+                    db 2                          ; Width in bytes
+                    db 24                          ; Height in pixels
+                    dw PodSpriteData0, PodSpriteData0, PodSpriteData0, PodSpriteData0
+                    dw PodSpriteData0, PodSpriteData0, PodSpriteData0, PodSpriteData0
+
+PodSpriteData0
+                    db %00000011, %11000000
+                    db %00001111, %11110000
+                    db %00011111, %00111000
+                    db %00111111, %11011100
+                    db %01111111, %11101110
+                    db %01111111, %11111110
+                    db %11011101, %01000001
+                    db %11110111, %01000001
+                    db %11111101, %00010001
+                    db %11101010, %01000001
+                    db %11111101, %00000101
+                    db %11110111, %01000001
+                    db %11111101, %00000001
+                    db %11101010, %01000101
+                    db %11111101, %00000001
+                    db %11110111, %01010001
+                    db %11111101, %00000001
+                    db %11101010, %01000001
+                    db %01111111, %11111110
+                    db %01111111, %11110110
+                    db %00111111, %11001100
+                    db %00011111, %10111000
+                    db %00001111, %11110000
+                    db %00000011, %11000000
+
+;*******************************************************************************************
+; Pod1
+;*******************************************************************************************
+Pod1SpriteData
+                    db 1                          ; Width in bytes
+                    db 16                          ; Height in pixels
+                    dw Pod1SpriteData0, Pod1SpriteData0, Pod1SpriteData0, Pod1SpriteData0
+                    dw Pod1SpriteData0, Pod1SpriteData0, Pod1SpriteData0, Pod1SpriteData0
+
+Pod1SpriteData0
+                    db %00011000
+                    db %00111100
+                    db %01111110
+                    db %11110011
+                    db %11111101
+                    db %11111101
+                    db %11111111
+                    db %11111111
+                    db %01111110
+                    db %00111100
+                    db %00011000
+                    db %00111100
+                    db %01000010
+                    db %10000001
+                    db %01000010
+                    db %00111100
+
+;*******************************************************************************************
+; Pod2R
+;*******************************************************************************************
+Pod2RSpriteData
+                    db 1                          ; Width in bytes
+                    db 2                          ; Height in pixels
+                    dw Pod2RSpriteData0, Pod2RSpriteData0, Pod2RSpriteData0, Pod2RSpriteData0
+                    dw Pod2RSpriteData0, Pod2RSpriteData0, Pod2RSpriteData0, Pod2RSpriteData0
+
+Pod2RSpriteData0
+                    db %11101000
+                    db %10110100
+
+;*******************************************************************************************
+; Pod2R
+;*******************************************************************************************
+Pod2LSpriteData
+                    db 1                          ; Width in bytes
+                    db 2                          ; Height in pixels
+                    dw Pod2LSpriteData0, Pod2LSpriteData0, Pod2LSpriteData0, Pod2LSpriteData0
+                    dw Pod2LSpriteData0, Pod2LSpriteData0, Pod2LSpriteData0, Pod2LSpriteData0
+
+Pod2LSpriteData0
+                    db %00101110
+                    db %01011010
+
+;*******************************************************************************************
+; Loop Vertical
+;*******************************************************************************************
+LoopVSpriteData
+                    db 1                          ; Width in bytes
+                    db 16                          ; Height in pixels
+                    dw LoopVSpriteData0, LoopVSpriteData0, LoopVSpriteData0, LoopVSpriteData0
+                    dw LoopVSpriteData0, LoopVSpriteData0, LoopVSpriteData0, LoopVSpriteData0
+
+LoopVSpriteData0
+                    db %11000011
+                    db %11000011
+                    db %01100010
+                    db %00111000
+                    db %00001100
+                    db %01100110
+                    db %11000011
+                    db %11011011
+                    db %11011011
+                    db %11000011
+                    db %01100010
+                    db %00111000
+                    db %00001100
+                    db %01100110
+                    db %11000011
+                    db %11000011
+
+;*******************************************************************************************
+; Loop Horizontal
+;*******************************************************************************************
+LoopHSpriteData
+                    db 2                          ; Width in bytes
+                    db 8                          ; Height in pixels
+                    dw LoopHSpriteData0, LoopHSpriteData0, LoopHSpriteData0, LoopHSpriteData0
+                    dw LoopHSpriteData0, LoopHSpriteData0, LoopHSpriteData0, LoopHSpriteData0
+
+LoopHSpriteData0
+                    db %11000011, %11000011
+                    db %11100111, %11100111
+                    db %00001100, %00001100
+                    db %00011001, %10011000
+                    db %00010001, %10010000
+                    db %00110100, %00110100
+                    db %11100111, %11100111
+                    db %11000011, %11000011
+
+;*******************************************************************************************
+; Loop Left Corner
+;*******************************************************************************************
+LoopLCSpriteData
+                    db 1                          ; Width in bytes
+                    db 8                          ; Height in pixels
+                    dw LoopLCSpriteData0, LoopLCSpriteData0, LoopLCSpriteData0, LoopLCSpriteData0
+                    dw LoopLCSpriteData0, LoopLCSpriteData0, LoopLCSpriteData0, LoopLCSpriteData0
+
+LoopLCSpriteData0
+                    db %00000011
+                    db %00000111
+                    db %00001100
+                    db %00001000
+                    db %00111100
+                    db %01101110
+                    db %11000111
+                    db %11000011
+
+;*******************************************************************************************
+; Loop Right Corner
+;*******************************************************************************************
+LoopRCSpriteData
+                    db 1                          ; Width in bytes
+                    db 8                          ; Height in pixels
+                    dw LoopRCSpriteData0, LoopRCSpriteData0, LoopRCSpriteData0, LoopRCSpriteData0
+                    dw LoopRCSpriteData0, LoopRCSpriteData0, LoopRCSpriteData0, LoopRCSpriteData0
+
+LoopRCSpriteData0
+                    db %11000000
+                    db %11100000
+                    db %00110000
+                    db %00010000
+                    db %00111100
+                    db %01110110
+                    db %11100011
+                    db %11000011
 
 ;*******************************************************************************************
 ; Diamond Particle
