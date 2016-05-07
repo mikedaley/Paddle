@@ -797,7 +797,7 @@ drwBrdrs
                 ld      d, 1
                 ld      e, 1
 _hrzClr
-                ld      a, MAGENTA
+                ld      a, GREEN
                 push    de
                 call    setChrctrAttr
                 pop     de
@@ -810,7 +810,7 @@ _hrzClr
                 ld      e, 1
 _VrtClr
                 ld      e, 1
-                ld      a, MAGENTA
+                ld      a, GREEN
                 push    de
                 call    setChrctrAttr
                 pop     de
@@ -831,7 +831,7 @@ _VrtClr
 _hrzntlLp
                 push    hl
                 push    bc
-                ld      de, LoopHSpriteData
+                ld      de, Brdr3HSprtData
                 xor     a
                 call    drwSprt
                 pop     bc
@@ -856,7 +856,7 @@ _hrzntlLp
 _vrtclLp1
                 push    hl
                 push    bc
-                ld      de, LoopVSpriteData
+                ld      de, Brdr3RSprtData
                 xor     a
                 call    drwSprt
 ;                 pop     bc
@@ -881,7 +881,7 @@ _vrtclLp1
 _vrtclLp2
                 push    hl
                 push    bc
-                ld      de, LoopVSpriteData
+                ld      de, Brdr3LSprtData
                 xor     a
                 call    drwSprt
 ;                 pop     bc
