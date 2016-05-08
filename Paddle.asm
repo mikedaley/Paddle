@@ -831,7 +831,7 @@ _VrtClr
 _hrzntlLp
                 push    hl
                 push    bc
-                ld      de, Brdr3HSprtData
+                ld      de, LoopHSpriteData
                 xor     a
                 call    drwSprt
                 pop     bc
@@ -856,7 +856,7 @@ _hrzntlLp
 _vrtclLp1
                 push    hl
                 push    bc
-                ld      de, Brdr3RSprtData
+                ld      de, LoopVSpriteData
                 xor     a
                 call    drwSprt
 ;                 pop     bc
@@ -881,7 +881,7 @@ _vrtclLp1
 _vrtclLp2
                 push    hl
                 push    bc
-                ld      de, Brdr3LSprtData
+                ld      de, LoopVSpriteData
                 xor     a
                 call    drwSprt
 ;                 pop     bc
@@ -1020,7 +1020,8 @@ drwBt
 ;************************************************************************************************************************
 ; Read Control Keys
 ; Checks the control keys used in the game e.g. O = left, P = right, SPACE = fire when using the keyboard. If either of these keys are pressed then the bats
-; current location is updated based on the key being pressed
+; current location is updated based on the key being pressed. When the bat is moved, if the balls x position is more than 10 pixels from either end of the bat
+; then the bat moves at double speed until the ball is within range. This helps deal with balls that come off the bat or blocks at an oblique angle 
 ;
 ; Entry Registers:
 ;   NONE
@@ -1030,7 +1031,6 @@ drwBt
 ;   NONE
 ;************************************************************************************************************************
 rdCntrlKys 
-                ld      hl, objctBat                ; HL = X Position
                 ld      a, (inptOption)             ; Get the currently selected input option
 _keybrd
                 cp      0                           ; KEYBOARD
@@ -1038,9 +1038,9 @@ _keybrd
                 ld      bc, 0xdffe                  ; B = 0xDF (QUIOP), C = port 0xFE
                 in      a, (c)                      ; Load A with the keys that have been pressed
                 rra                                 ; Outermost bit = key 1
-                jp      nc, _mvBtRght               ; Move the bat left
+                jp      nc, mvBtRght               ; Move the bat left
                 rra                                 ; Next bit is key 2
-                jp      nc, _mvBtLft                ; Move the bat right
+                jp      nc, mvBtLft                ; Move the bat right
                 ret
 _sincJoy
                 cp      1                           ; SINCLAIR PORT 1
@@ -1048,9 +1048,9 @@ _sincJoy
                 ld      bc, 0xf7fe
                 in      a, (c)
                 rra
-                jp      nc, _mvBtLft
+                jp      nc, mvBtLft
                 rra
-                jp      nc, _mvBtRght
+                jp      nc, mvBtRght
                 ret
 _kempJoy                                            ; KEMPSTON
                 cp      2
@@ -1058,16 +1058,29 @@ _kempJoy                                            ; KEMPSTON
                 ld      bc, 31
                 in      a, (c)
                 and     2
-                jp      nz, _mvBtLft
+                jp      nz, mvBtLft
                 in      a, (c)
                 and     1
-                jp      nz, _mvBtRght
+                jp      nz, mvBtRght
                 ret
-_mvBtLft     
+
+;************************************************************************************************************************
+; Responsible for moving the players bat to the left. It manages the bat colliding with the left edge of the screen and
+; also doubles the speed of the bat while the bats left edge is more than 15 pixels away from the x position of the ball 
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, D, E, H, L
+; Returned Registers:
+;   NONE
+;************************************************************************************************************************
+mvBtLft     
+                ld      hl, objctBat                ; HL = X Position
                 ld      a, (hl)                     ; Grab te bars X position into A
                 ld      de, (objctBall + BLLXPS)    ; Grab the balls current X position into E
                 sub     e                           ; Subtract the balls X pos from the bats X pos
-                cp      10                          ; Check it the difference is >= 20...
+                cp      15                          ; Check it the difference is >= 20...
                 jp      m, _noLftBoost              ; ...and if not then don't update the bats x speed
                 ld      a, (hl)
                 inc     l
@@ -1089,7 +1102,19 @@ _btHtLftEdg
                 ld      (hl), BTMXLFT               ; Hit the edge so set the X pos to the BTMXLFT value
                 ret 
 
-_mvBtRght    
+;************************************************************************************************************************
+; Responsible for moving the players bat to the left. It manages the bat colliding with the right edge of the screen and
+; also doubles the speed of the bat while the bats right edge is more than 10 pixels away from the x position of the ball
+;
+; Entry Registers:
+;   NONE
+; Used Registers:
+;   A, D, E, H, L
+; Returned Registers:
+;   NONE
+;************************************************************************************************************************
+mvBtRght    
+                ld      hl, objctBat                ; HL = X Position
                 ld      a, (hl)                     ; Put X pos into A
                 ld      de, (objctBall + BLLXPS)
                 add     a, BTPXLWDTH

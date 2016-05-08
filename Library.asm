@@ -67,49 +67,6 @@ watFrSpc
                 jp      watFrSpc                    ; ...otherwise keep on waiting
 
 ;****************************************************************************************************************
-; Wait For Space
-; Loops until the space key is pressed
-;
-; Entry Registers:
-;   NONE
-; Registers Used:
-;   A, B, C
-; Returned Registers:
-;   NONE
-;****************************************************************************************************************
-watFrFire
-                ld      a, (inptOption)             ; Get the currently selected input option
-
-                cp      0                           ; KEYBOARD
-                jr      nz, _sincJoystick
-                ld      bc, 0x7ffe                  ; B = 0xDF (QUIOP), C = port 0xFE
-                in      a, (c)                      ; Load A with the keys that have been pressed
-                rra                                 ; Outermost bit = key 1
-                jp      nc, _mvBtRght               ; Move the bat left
-                ret
-_sincJoystick
-                cp      1                           ; SINCLAIR PORT 1
-                jr      nz, _kempJoystick 
-                ld      bc, 0xf7fe
-                in      a, (c)
-                rra
-                jp      nc, _mvBtLft
-                rra
-                jp      nc, _mvBtRght
-                ret
-_kempJoystick                                      ; KEMPSTON
-                cp      2
-                ret     nz
-                ld      bc, 31
-                in      a, (c)
-                and     2
-                jp      nz, _mvBtLft
-                in      a, (c)
-                and     1
-                jp      nz, _mvBtRght
-                ret
-
-;****************************************************************************************************************
 ; Calculate the screen address of a pixel location
 ;
 ; Entry Registers:
