@@ -1019,13 +1019,13 @@ drwBt
 
 ;************************************************************************************************************************
 ; Read Control Keys
-; Checks the control keys used in the game i.e. 1 = left, 2 = right and if either of these keys are pressed then the bats
+; Checks the control keys used in the game e.g. O = left, P = right, SPACE = fire when using the keyboard. If either of these keys are pressed then the bats
 ; current location is updated based on the key being pressed
 ;
 ; Entry Registers:
 ;   NONE
 ; Used Registers:
-;   A, F, B, C, H, L
+;   A, F, B, C, D, E, H, L
 ; Returned Registers:
 ;   NONE
 ;************************************************************************************************************************
@@ -1064,10 +1064,23 @@ _kempJoy                                            ; KEMPSTON
                 jp      nz, _mvBtRght
                 ret
 _mvBtLft     
+                ld      a, (hl)                     ; Grab te bars X position into A
+                ld      de, (objctBall + BLLXPS)    ; Grab the balls current X position into E
+                sub     e                           ; Subtract the balls X pos from the bats X pos
+                cp      10                          ; Check it the difference is >= 20...
+                jp      m, _noLftBoost              ; ...and if not then don't update the bats x speed
+                ld      a, (hl)
+                inc     l
+                sub     (hl)
+                sub     (hl)
+                dec     l
+                jp      _sveLftBtXpos
+_noLftBoost
                 ld      a, (hl)                     ; Put X pos into A
-                inc     hl                          ; Move to the X Speed position 
+                inc     l                           ; Move to the X Speed position 
                 sub     (hl)                        ; Subtract the X speed from the X pos
-                dec     hl                          ; Move HL to the X pos
+                dec     l                           ; Move HL to the X pos
+_sveLftBtXpos
                 cp      BTMXLFT                     ; Check if we are past the left hand edge of the screen
                 jp      c, _btHtLftEdg              ; and jump if we are jump to hitLeftEdge
                 ld      (hl), a                     ; Update the X position with A
@@ -1075,11 +1088,26 @@ _mvBtLft
 _btHtLftEdg         
                 ld      (hl), BTMXLFT               ; Hit the edge so set the X pos to the BTMXLFT value
                 ret 
+
 _mvBtRght    
                 ld      a, (hl)                     ; Put X pos into A
-                inc     hl                          ; Move HL to the X Speed
-                add     a, (hl)                     ; Add the X speed to the X pos
-                dec     hl                          ; Move HL to the X Pos
+                ld      de, (objctBall + BLLXPS)
+                add     a, BTPXLWDTH
+                sub     e
+                cp      -10
+                jp      p, _noRghtBoost
+                ld      a, (hl)
+                inc     l
+                add     a, (hl)
+                add     a, (hl)
+                dec     l
+                jp      _sveRghtBtXpos
+_noRghtBoost
+                ld      a, (hl)
+                inc     l
+                add     a, (hl)
+                dec     l
+_sveRghtBtXpos
                 cp      BTMXRGHT                    ; Check if the bat is past left edge
                 jp      nc, _btHtRghtEdg            ; and jump if it is
                 ld      (hl), a                     ; Update the X Position with A
