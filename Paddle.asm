@@ -348,7 +348,6 @@ ENDIF
 ; Start new game
 ;****************************************************************************************************************
 strtNewGame
-;                 call    wpeScrn
                 call    fdeToBlck
                 call    romClrScrn
                 call    rstScr                      ; Reset the score
@@ -362,7 +361,7 @@ strtNewGame
                 
                 xor     a                           ; Reset the level...
                 ld      (lvlBlckCnt), a             ; ...block count
-                ld      a, 0
+                ld      a, 1
                 ld      (crrntLvl), a               ; Save the level 
                 call    drwUI 
                 call    ldLvl                       ; Load the current level
@@ -385,41 +384,17 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
 
                 call    rdCntrlKys                  ; Read the keyboard
                 call    mvBll                       ; Move the ball
-                call    drwBll                      ; Draw the ball
-;                 call    drwPrtcls                   ; Draw any active particles
+                call    drwBll                      ; Erase the ball (XOR)
+                call    drwPrtcls                   ; Draw any active particles
                 call    updtBtAnmtnFrm              ; Update the bats animation frame
                 call    drwBt                       ; Draw the bat
 
-                ld      b, 64
-                ld      c, 24
-                ld      de, tempSprite
-                ld      h, 2
-                ld      l, 16
-                call    sveScrnBlck
-
-                ld      de, MskdBeerSprtData
-                ld      b, 67
-                ld      c, 24
-                call    drwMskdSprt
-
                 halt                                ; Wait for the scan line to reach the top of the screen
 
-                call    drwBll                      ; Erase the ball (XOR)
-;                 call    rstrScrBckgrnd              ; Restore the background behind the particles
+                call    drwBll                      ; Draw the ball
+                call    rstrScrBckgrnd              ; Restore the background behind the particles
                 call    drwBt                       ; Erase the bat (XOR)
-;                 call    updtPrtcls                  ; Update any active particles
-
-                ld      b, 64
-                ld      c, 24
-                ld      de, tempSprite
-                ld      h, 2
-                ld      l, 16
-                call    rstrScrBckgrnd
-;                 ld      de, PodSpriteData
-;                 ld      b, 0
-;                 ld      c, 0
-;                 ld      a, 0
-;                 call    drwSprt
+                call    updtPrtcls                  ; Update any active particles
 
                 call    genRndmNmbr                 ; Generate three random numbers
 
@@ -448,21 +423,13 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
                 
                 call    drwBll                      ; Draw the ball
-;                 call    drwPrtcls
                 call    updtBtAnmtnFrm
                 call    drwBt                       ; Draw the bat
-
-                ld      de, MskdMltiBllSprtData
-                ld      b, 64
-                ld      c, 90
-                call    drwMskdSprt
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
                 call    drwBll                      ; Erase the ball (XOR)
-;                 call    rstrScrBckgrnd
                 call    drwBt                       ; Erase the bat (XOR)
-;                 call    updtPrtcls
 
                 call    genRndmNmbr
                 
@@ -617,7 +584,7 @@ _chckGmeSttePlyrDead
 ;****************************************************************************************************************
 stupPrtcls
                 ld      hl, objctPrtcls             ; Point HL at the particle pool
-                ld      bc, NUMPRTCLS * 20          ; Load BC with the number of bytes to clear
+                ld      bc, NUMPRTCLS * 26          ; Load BC with the number of bytes to clear
                 call    clrMem                      ; Call the clear mem routine
                 ret
 
@@ -792,11 +759,11 @@ drwUI
                 db      CC_PAPER, BLACK, CC_INK, YELLOW, CC_AT, 0, 15, "ROUND", 0xff
 
                 call    romPrntStrng
-                db      CC_PAPER, GREEN, CC_INK, BLACK, CC_AT, 0, 21, "01", 0xff
+                db      CC_PAPER, GREEN, CC_INK, BLACK, CC_AT, 0, 21, "02", 0xff
 
-                ld      de, 0xa800
-                ld      bc, rndTxt
-                call    prntStrng
+;                 ld      de, 0xa800
+;                 ld      bc, rndTxt
+;                 call    prntStrng
 
                 ret
 
@@ -816,7 +783,7 @@ drwBrdrs
                 ld      d, 1
                 ld      e, 1
 _hrzClr
-                ld      a, GREEN
+                ld      a, MAGENTA
                 push    de
                 call    setChrctrAttr
                 pop     de
@@ -829,7 +796,7 @@ _hrzClr
                 ld      e, 1
 _VrtClr
                 ld      e, 1
-                ld      a, GREEN
+                ld      a, MAGENTA
                 push    de
                 call    setChrctrAttr
                 pop     de
@@ -878,11 +845,11 @@ _vrtclLp1
                 ld      de, LoopVSpriteData
                 xor     a
                 call    drwSprt
-;                 pop     bc
-;                 push    bc
-;                 ld      de, LoopVSpriteData
-;                 ld      a, 1
-;                 call    drwSprt
+                pop     bc
+                push    bc
+                ld      de, LoopVSpriteData
+                ld      a, 1
+                call    drwSprt
                 pop     bc                
                 pop     hl
                 ld      a,c
@@ -903,11 +870,11 @@ _vrtclLp2
                 ld      de, LoopVSpriteData
                 xor     a
                 call    drwSprt
-;                 pop     bc
-;                 push    bc
-;                 ld      de, LoopVSpriteData
-;                 ld      a, 1
-;                 call    drwSprt
+                pop     bc
+                push    bc
+                ld      de, LoopVSpriteData
+                ld      a, 1
+                call    drwSprt
                 pop     bc                
                 pop     hl
                 ld      a,c
