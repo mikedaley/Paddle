@@ -154,6 +154,8 @@ sndFxDrtn       db      0
 inptOption      db      0                           ; Holds the input selection that has been chossen
                                                     ; 0 = Keyboard, 1 = Sinclair, 2 = Kempston
 
+tempSprite      ds      2 * 13
+
 ; Text
                         ; Colour, Yellow, Position, X, Y, Text
 scrLblTxt       db      CC_INK, YELLOW, CC_AT, 0, 1, 'SCORE'
@@ -388,11 +390,17 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 call    updtBtAnmtnFrm              ; Update the bats animation frame
                 call    drwBt                       ; Draw the bat
 
-;                 ld      de, PodSpriteData
-;                 ld      b, 0
-;                 ld      c, 0
-;                 ld      a, 0
-;                 call    drwSprt
+                ld      b, 64
+                ld      c, 24
+                ld      de, tempSprite
+                ld      h, 2
+                ld      l, 16
+                call    sveScrnBlck
+
+                ld      de, MskdBeerSprtData
+                ld      b, 67
+                ld      c, 24
+                call    drwMskdSprt
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
@@ -401,6 +409,12 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 call    drwBt                       ; Erase the bat (XOR)
 ;                 call    updtPrtcls                  ; Update any active particles
 
+                ld      b, 64
+                ld      c, 24
+                ld      de, tempSprite
+                ld      h, 2
+                ld      l, 16
+                call    rstrScrBckgrnd
 ;                 ld      de, PodSpriteData
 ;                 ld      b, 0
 ;                 ld      c, 0
@@ -437,6 +451,11 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
 ;                 call    drwPrtcls
                 call    updtBtAnmtnFrm
                 call    drwBt                       ; Draw the bat
+
+                ld      de, MskdMltiBllSprtData
+                ld      b, 64
+                ld      c, 90
+                call    drwMskdSprt
 
                 halt                                ; Wait for the scan line to reach the top of the screen
 
@@ -617,7 +636,7 @@ updtBtAnmtnFrm
                 ld      a, (objctBat + BTANMTONDLY) ; Point DE at the animation delay counter
                 inc     a                           ; Increment the frame delay counter
                 ld      (objctBat + BTANMTONDLY), a ; Save the new delay amount
-                cp      5                           ; Check the delay (1/50 * n)
+                cp      7                           ; Check the delay (1/50 * n)
                 ret     nz                          ; and return if we've not reached the delay value
 
                 xor     a                           ; Delay has been reached so reset the delay...
