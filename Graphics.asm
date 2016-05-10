@@ -74,14 +74,10 @@ SpriteBatDataFrame0:
                     dw SpriteBatData0 + 32 * 4, SpriteBatData0 + 32 * 5, SpriteBatData0 + 32 * 6, SpriteBatData0 + 32 * 7
 
 SpriteBatData0:     
-                    db %00000000, %00000000, %00000000, %00000000
-                    db %01010101, %01011010, %10101010, %00000000
-                    db %11110000, %00111100, %00001111, %00000000
-                    db %10111111, %11100111, %11111101, %00000000
-                    db %11011111, %11100111, %11111011, %00000000
-                    db %10110000, %00111100, %00001101, %00000000
-                    db %11111000, %00000000, %00011111, %00000000
-                    db %01111111, %11111111, %11111110, %00000000
+    DEFB     63,255,252,  0,120,  0, 26,  0
+    DEFB    240, 60, 11,  0,255,231,255,  0
+    DEFB    255,231,255,  0,208, 60, 15,  0
+    DEFB     88,  0, 30,  0, 63,255,252,  0
 
                     ds 32 * 7     ; Create enough space for the shifted versions of this sprite frame
     
@@ -93,14 +89,10 @@ SpriteBatDataFrame1:
                     dw SpriteBatData1 + 32 * 4, SpriteBatData1 + 32 * 5, SpriteBatData1 + 32 * 6, SpriteBatData1 + 32 * 7
 
 SpriteBatData1:     
-                    db %00000000, %00000000, %00000000, %00000000
-                    db %01010101, %01011010, %10101010, %00000000
-                    db %11110000, %11000011, %00001111, %00000000
-                    db %10111111, %10011001, %11111101, %00000000
-                    db %11011111, %10011001, %11111011, %00000000
-                    db %10110000, %11000011, %00001101, %00000000
-                    db %11111000, %00000000, %00011111, %00000000
-                    db %01111111, %11111111, %11111110, %00000000
+    DEFB     63,255,252,  0,120,  0, 30,  0
+    DEFB    240,195, 15,  0,223,153,251,  0
+    DEFB    223,153,251,  0,240,195, 15,  0
+    DEFB    120,  0, 30,  0, 63,255,252,  0
 
                     ds 32 * 7
 
@@ -111,14 +103,10 @@ SpriteBatDataFrame2:
                     dw SpriteBatData2 + 32 * 4, SpriteBatData2 + 32 * 5, SpriteBatData2 + 32 * 6, SpriteBatData2 + 32 * 7
 
 SpriteBatData2:     
-                    db %00000000, %00000000, %00000000, %00000000
-                    db %01010101, %01011010, %10101010, %00000000
-                    db %11110011, %00000000, %11001111, %00000000
-                    db %10111110, %01111110, %01111101, %00000000
-                    db %11011110, %01111110, %01111011, %00000000
-                    db %10110011, %00000000, %11001101, %00000000
-                    db %11111000, %00000000, %00011111, %00000000
-                    db %01111111, %11111111, %11111110, %00000000
+    DEFB     63,255,252,  0, 88,  0, 30,  0
+    DEFB    211, 24,207,  0,254, 44,127,  0
+    DEFB    254, 60,127,  0,243, 24,203,  0
+    DEFB    120,  0, 26,  0, 63,255,252,  0
 
                     ds 32 * 7
 
@@ -213,30 +201,6 @@ VertLBlockData0
                     db %10000100
                     db %10000010
                     db %10000001
-
-;*******************************************************************************************
-; Beer Glass
-;*******************************************************************************************
-BeerSpriteData
-                    db 2                          ; Width in bytes
-                    db 13                          ; Height in pixels
-                    dw BeerSpriteData0, BeerSpriteData0, BeerSpriteData0, BeerSpriteData0
-                    dw BeerSpriteData0, BeerSpriteData0, BeerSpriteData0, BeerSpriteData0
-
-BeerSpriteData0
-                    db %00111111, %11100000
-                    db %01111111, %11110000
-                    db %01111111, %11111100
-                    db %01111001, %11010010
-                    db %01101000, %11010010
-                    db %00100000, %10010010
-                    db %00100000, %00010010
-                    db %00101011, %01010010
-                    db %00101011, %01010010
-                    db %00101011, %01011100
-                    db %00101011, %01010000
-                    db %00100000, %00010000
-                    db %00011111, %11100000
 
 ;*******************************************************************************************
 ; Pod
@@ -546,6 +510,82 @@ LoopRCSpriteData0
                     db %11000011
 
 ;*******************************************************************************************
+; MASKED SPRITES
+;*******************************************************************************************
+
+;*******************************************************************************************
+; Beer Glass
+;*******************************************************************************************
+MskdBeerSprtData
+                    db 2                            ; Width in bytes
+                    db 16                           ; Height in pixels
+                    dw MsdkBeerSprtData0, MsdkBeerSprtData0, MsdkBeerSprtData0, MsdkBeerSprtData0
+                    dw MsdkBeerSprtData0, MsdkBeerSprtData0, MsdkBeerSprtData0, MsdkBeerSprtData0
+
+MsdkBeerSprtData0
+                    DEFB    255,  0,255,  0,240,  0, 15,  0
+                    DEFB    224,  7,  7,224,192, 15,  1,240
+                    DEFB    192, 27,  0,124,192, 27,  0, 50
+                    DEFB    192, 26,  0, 50,192, 10,  0, 18
+                    DEFB    224,  8,  0, 20,224,  8,  1, 24
+                    DEFB    224, 10,  3, 80,224, 10,  7, 80
+                    DEFB    224, 10,  7, 80,224,  8,  7, 16
+                    DEFB    224,  7,  7,224,240,  0, 15,  0
+
+;*******************************************************************************************
+; Multi Ball
+;*******************************************************************************************
+MskdMltiBllSprtData
+                    db 2                            ; Width in bytes
+                    db 16                           ; Height in pixels
+                    dw MskdMltiBllSprtData0, MskdMltiBllSprtData0, MskdMltiBllSprtData0, MskdMltiBllSprtData0
+                    dw MskdMltiBllSprtData0, MskdMltiBllSprtData0, MskdMltiBllSprtData0, MskdMltiBllSprtData0
+
+MskdMltiBllSprtData0
+                    DEFB    255,  0,255,  0,255,  0,255,  0
+                    DEFB    225,  0,135,  0,192, 12,  3, 48
+                    DEFB    192, 30,  3,120,192, 30,  3,120
+                    DEFB    192, 12,  3, 48,224,  0,  7,  0
+                    DEFB    248,  1, 31,128,248,  3, 31,192
+                    DEFB    248,  3, 31,192,248,  1, 31,128
+                    DEFB    252,  0, 63,  0,255,  0,255,  0
+                    DEFB    255,  0,255,  0,255,  0,255,  0
+
+;*******************************************************************************************
+; Clock
+;*******************************************************************************************
+MskdClckSprtData
+                    db 2                            ; Width in bytes
+                    db 16                           ; Height in pixels
+                    dw MskdClckSprtData0, MskdClckSprtData0, MskdClckSprtData0, MskdClckSprtData0
+                    dw MskdClckSprtData0, MskdClckSprtData0, MskdClckSprtData0, MskdClckSprtData0
+
+MskdClckSprtData0
+                    DEFB    255,  0,255,  0,252,  0, 63,  0
+                    DEFB    240,  1, 15,128,224,  6,  7, 96
+                    DEFB    192,  8,  3, 16,192, 17,  3,  8
+                    DEFB    128, 17,  1,  8,128, 33,  1,  4
+                    DEFB    128, 33,  1,196,128, 16,  1,  8
+                    DEFB    192, 16,  3,  8,192,  8,  3, 16
+                    DEFB    224,  6,  7, 96,240,  1, 15,128
+                    DEFB    252,  0, 63,  0,255,  0,255,  0
+
+;*******************************************************************************************
+; Ball
+;*******************************************************************************************
+MskdBllSprtData
+                    db 1                            ; Width in bytes
+                    db 8                           ; Height in pixels
+                    dw MskdBallSprtData0, MskdBallSprtData0, MskdBallSprtData0, MskdBallSprtData0
+                    dw MskdBallSprtData0, MskdBallSprtData0, MskdBallSprtData0, MskdBallSprtData0
+
+MskdBallSprtData0
+                    DEFB    195,  0,129, 24,  0, 36,  0, 82
+                    DEFB      0, 66,  0, 36,129, 24,195,  0
+
+
+
+;*******************************************************************************************
 ; Diamond Particle
 ;*******************************************************************************************
 ParticleSpriteData
@@ -555,8 +595,8 @@ ParticleSpriteData
                     dw ParticleSpriteData0 + 20 * 4, ParticleSpriteData0 + 20 * 5, ParticleSpriteData0 + 20 * 6, ParticleSpriteData0 + 20 * 7
 
 ParticleSpriteData0
-                    db %00010000, %00000000                  ; Mask
-                    db %11111111, %11111111                  ; Sprite
+                    db %00010000, %00000000                  ; Mask     1 = Transparent, 0 = Blank
+                    db %11111111, %11111111                  ; Sprite   1 = Transparent, 0 = Blank
                     db %00111000, %00000000                  ; Mask 
                     db %11101111, %11111111                  ; Sprite
                     db %01111100, %00000000
