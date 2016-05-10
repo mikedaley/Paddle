@@ -215,7 +215,7 @@ _prShftX
 ;   NONE
 ;****************************************************************************************************************
 drwSprt
-                ld      (_scrnLoc + 1), a           ; Save the screen locaion param for use later
+                ld      (_scrnLoc + 1), a           ; Save the screen location param for use later
                 ld      a, (de)                     ; Grab the sprite width...
                 ld      (_sprtWdth + 1), a          ; ...and save it for use later in the routine
                 inc     de                          ; Move DE to the sprite height
@@ -272,12 +272,12 @@ _nxtSprtClmn
                 inc     de                          ; Move DE to the next byte of sprite data
                 xor     (hl)                        ; XOR A with the contents of the screen
                 ld      (hl), a                     ; Write A to the screen
-                inc     l                           ; Move to the next screen locatiojn 
+                inc     l                           ; Move to the next screen location 
                 djnz    _nxtSprtClmn                ; Loop of there are more sprite columns to draw
 
                 ex      af, af'                     ; Switch back to primary register AF
                 dec     a                           ; Reduce A which is tracking the height of the sprite...
-                jp nz, _nxtSprtRw                   ; ...and loop if necessary
+                jp      nz, _nxtSprtRw              ; ...and loop if necessary
                 ret
 
 ;****************************************************************************************************************
@@ -293,8 +293,13 @@ _nxtSprtClmn
 ;   NONE
 ;****************************************************************************************************************
 drwMskdSprt      
-                inc     de
-                inc     de
+
+                ld      a, (de)                     ; Grab the sprite width...
+                ld      (_mskdSprtWdth + 1), a      ; ...and save it for use later in the routine
+                inc     de                          ; Move DE to the sprite height
+                ld      a, (de)                     ; Grab the sprite height...
+                ld      (_mskdSprtHght + 1), a      ; ...and save it for use later in the routine
+                inc     de                          ; Move DE to the sprite lookup table
 
                 ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
                 and     7   
@@ -321,7 +326,7 @@ drwMskdSprt
                 add     hl, bc                      ; ...twice as the table contains words
                 dec     hl                          ; Dec HL so that its ready to be INC'd inside the loop later
                 ld      (_sprtMskdLnLkup + 1), hl   ; Save the value in HL to the LD command later
-                ld      a, 5                        ; Load A with the height put into this command earlier
+_mskdSprtHght   ld      a, 0                        ; Load A with the height put into this command earlier
 
 _nxtMskdSprtRw
                 ex      af, af'                     ; Move to the alt AF register which saves the current contents of A
@@ -333,38 +338,26 @@ _sprtMskdLnLkup ld      hl, 0                       ; Load HL with the value mod
 _sprtMskdXOffst or      0                           ; Merge in the XOffset saved earlier
                 ld      h, (hl)                     ; Load the high byte of H with (HL)
                 ld      l, a                        ; Load the low byte in A into L
-                ld      b, 1                        ; Load BC with the width in bytes to copy as set earlier
+_mskdSprtWdth   ld      b, 0                        ; Load BC with the width in bytes to copy as set earlier
 
 _nxtMskdSprtClmn
-                ld      a, (de)                     ; Load A with the sprite Data
-                inc     de                          ; Move DE to the next byte of sprite data
-                or     (hl)                         ; XOR A with the contents of the screen
-                ld      (hl), a                     ; Write A to the screen
-                inc     l                           ; Move to the next screen locatiojn 
-
-
-                ld      a, (de)                     ; Load A with the sprite Data
-                inc     de                          ; Move DE to the next byte of sprite data
-                or     (hl)                         ; XOR A with the contents of the screen
-                ld      (hl), a                     ; Write A to the screen
-                dec     l                           ; Move to the next screen locatiojn 
-
-                ld      a, (de)
-                inc     de
-                and     (hl)
-                ld      (hl), a
-                inc     l
-
-                ld      a, (de)
-                inc     de
-                and     (hl)
+                ld      a, (de)                     ; OR the mask data byte with the screen contents
+                inc     de     
+                and     (hl)   
                 ld      (hl), a
 
-                djnz    _nxtMskdSprtClmn            ; Loop of there are more sprite columns to draw
+                ld      a, (de)                     ; AND the sprite data byte with the screen contents
+                inc     de     
+                or      (hl)
+                ld      (hl), a
+
+                inc     l                           ; Move to the next screen location
+
+                djnz    _nxtMskdSprtClmn            ; Loop if there are more sprite columns to draw
 
                 ex      af, af'                     ; Switch back to primary register AF
                 dec     a                           ; Reduce A which is tracking the height of the sprite...
-                jp nz, _nxtMskdSprtRw               ; ...and loop if necessary
+                jp      nz, _nxtMskdSprtRw          ; ...and loop if necessary
                 ret
 
 ;****************************************************************************************************************
