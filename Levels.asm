@@ -155,7 +155,6 @@ lvlLkup         dw      Level1, Level2, Level1, Level2, Level1, Level2, Level1
 ;****************************************************************************************************************
 ; Level 1
 ;****************************************************************************************************************
-;                 org     ($ + 255) & $ff00
 Level1
                 ; Colour, # of hits to destroy
                 ; Each column represents a block which is 16 pixels wide and 8 pixels deep
