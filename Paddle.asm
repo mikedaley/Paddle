@@ -110,7 +110,7 @@ PWRUP_BEER              equ                 1
                 include     Levels.asm              ; Load the level code
 
 bffrLkup                                            ; Location for the screen buffer line lookup table
-                    ds 384
+                ds 384
 
 ;****************************************************************************************************************
 ; PAGE 0: Page boundary for tables and variables
@@ -170,9 +170,6 @@ lvsLblTxtEnd
 lvsTxt          db      '5', 0x00
 
 rndTxt          db      '1', 0x00
-
-gmeOvrTxt       db      CC_FLASH, 1, CC_INK, WHITE, CC_PAPER, RED, CC_AT, 15, 11, ' GAME OVER ', CC_FLASH, 0
-gmeOvrTxtEnd
 
 ; Object data
                         ; Xpos, XSpeed, Ypos, YSpeed
@@ -504,6 +501,8 @@ _setGmeStteDead
                 ld      (gmeStte), a
                 jp      mnLp
 
+;****************************************************************************************************************
+; NEXT LEVEL
 _gmeStteNxtLvl                                      ; *** Game state NEXT LEVEL
                 cp      GMESTTE_NXTLVL              ; Is the game state NEXT LEVEL
                 jr      nz, _chckGmeStteDsplyLvl    ; If not then check if the game state is DISPLAY LEVEL
@@ -565,9 +564,10 @@ _lvlDsplyWtng
 _chckGmeSttePlyrDead
                 cp      GMESTTE_DEAD
                 jp      nz, mnLp
-                ld      de, gmeOvrTxt
-                ld      bc, gmeOvrTxtEnd - gmeOvrTxt
-                call    ROMPRINT
+
+                call    romPrntStrng
+                db      CC_FLASH, 1, CC_INK, WHITE, CC_PAPER, RED, CC_AT, 15, 11, ' GAME OVER ', CC_FLASH, 0, 0xff
+
                 call    watFrSpc
                 call    fdeToBlck
                 jp      menu
