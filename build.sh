@@ -1,6 +1,7 @@
 #!/bin/bash
-pasmo --name paddle --tapbas -1 Paddle.asm Paddle.tap > debug.txt
-retval=$?
-if [ $retval -eq 0 ]; then
-    /Applications/Spectrum\ Emulators/Fuse.app/Contents/MacOS/Fuse Paddle.tap
-fi
+
+echo -ne "Assembling file:" $1 "\n"
+tapFile=$(basename $1 .asm).tap
+echo -ne "Generating TAP file:" $tapFile "\n"
+echo -ne "************************************************************************\n\n"
+/usr/local/bin/pasmo --tapbas -1 "$1" "$tapFile"
