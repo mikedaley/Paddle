@@ -380,6 +380,11 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 jr      nz, _chckGmeStteWtng        ; If not then check if the state is WAITING
 
                 call    rdCntrlKys                  ; Read the keyboard
+
+                ld      de, MskdBeerSprtData
+                ld      bc, 0x1845
+                call    drwMskdSprt
+
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Erase the ball (XOR)
                 call    drwPrtcls                   ; Draw any active particles
