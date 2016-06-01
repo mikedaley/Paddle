@@ -163,7 +163,7 @@ moveLineDown
 ; Entry Registers:
 ;   HL = Sprite source Addr
 ;   DE = First shift sprite Addr
-;   B = Pixels wide
+;   B = Bytes wide
 ;   C = Pixel high
 ; Registers Used:
 ;   A, B, C, D, E, H, L
