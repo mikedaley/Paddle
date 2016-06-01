@@ -544,14 +544,14 @@ _lvlDsplyWtng
                 ld      hl, (crrntLvlAddr)          ; Load HL with the address of the current level data
                 ld      de, LEVEL_TITLE             ; Load DE with the levels title position...
                 add     hl, de                      ; ...and add it to DE
-                ld      b, 0                        ; Set the
-                ld      c, (hl)
-                add     hl, bc
+                ld      b, 0                        ; Reset B
+                ld      c, (hl)                     ; Put the length of the level title into C
+                add     hl, bc                      
                 ld      b, 0
                 inc     hl
                 ld      c, (hl)
-                ld      d, h 
                 ld      e, l
+                ld      d, h 
                 inc     de
                 call    ROMPRINT
                 ld      a, GMESTTE_WTNG             ; Set the game state to WAITING
@@ -620,8 +620,8 @@ _svBtFrm
 ;****************************************************************************************************************
 ; Restores the background behind each active particle. When a particle sprite is drawn the contents of the screen
 ; buffer at the particles location is saved to the particle to be drawn. This data is then restored to erase the
-; particle sprite and restore the background underneath it.
-; 
+; particle sprite and restore the background underneath it using this routine.
+;
 ; Entry Registers:
 ;   NONE
 ; Used Registers:
