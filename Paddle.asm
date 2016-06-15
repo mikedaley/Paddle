@@ -55,8 +55,10 @@ BTMXLFT                 equ                 SCRNLFT       ; Furthes pixel to the
 BTXPS                   equ                 0
 BTSPD                   equ                 1
 BTYPS                   equ                 2
-BTANMTONDLY             equ                 3
-BTANMTONFRM             equ                 4
+BTANMTONCNT             equ                 3       ; Counter used to time frames
+BTANMTONFRM             equ                 4       ; Current frame number
+BTANMTONDLY             equ                 5       ; 50/n frame delay between changing frames
+BTANMTONTOTAL           equ                 6       ; Total number of frames in animation
             
 ; BCC_AT constants         
 BTPXLHGHT               equ                 8
@@ -94,6 +96,8 @@ CC_BRIGHT               equ                 19
 
 NUMPRTCLS               equ                 6
 
+MAX_BLOCK_DATA_INDEX    equ                 112
+
 ROMPRINT                equ                 8252
 
 ; Powerups
@@ -110,13 +114,13 @@ PWRUP_BEER              equ                 1
                 include     Levels.asm              ; Load the level code
 
 bffrLkup                                            ; Location for the screen buffer line lookup table
-                ds 384
+                ds      0x180
 
 ;****************************************************************************************************************
 ; PAGE 0: Page boundary for tables and variables
 ;****************************************************************************************************************
 PAGE0           
-                org     32768
+                org     0x8000
 
 gmeStte         db      0                           ; 1 = GMESTTE_PLYNG, 2 = GMESTTE_WTNG to Start, 4 = GMESTTE_DEAD
 lvlBlckCnt      db      0                           ; Number of blocks in this level
@@ -177,9 +181,10 @@ objctBall       db      0, 1, 0, -2
     
                         ; Xpos, XSpeed, Ypos
 objctBat        db      112, 4, 150         
-                db      0 ; Delay counter used to time how long each frame should be visible
-                db      0 ; Animation Frame
-                db      0 ; Frame delay
+                db      0x00         ; Delay counter used to time how long each frame should be visible
+                db      0x00         ; Animation Frame
+                db      0x06         ; Frame delay
+                db      0x04         ; Total number of frames
 
 ; PAGE0 END
 ;****************************************************************************************************************
@@ -187,24 +192,24 @@ objctBat        db      112, 4, 150
 ;****************************************************************************************************************
 ; PAGE 1: Page boundary Temp Level Data
 PAGE1
-                org     ($ + 255) & $ff00
+                org     ($ + 0xff) & $ff00
                         
 lvlData         ; Temp Level Data. Holds a copy of the levels row data that defines how many hits it takes to destroy a block
-                ds      224
+                ds      0xe0
 ; PAGE1 END
 ;****************************************************************************************************************
 
 ;****************************************************************************************************************
 ; PAGE 2: Page boundary Particle Storage
 PAGE2
-                org     ($ + 255) & $ff00
+                org     ($ + 0xff) & $ff00
 
 objctPrtcls             
                 db      0                           ; Lifespan
                 db      0                           ; Timer
                 dw      0x0000, 0x0000              ; Xvector, Xpos
                 dw      0x0000, 0x0000              ; YVector, Ypos
-                ds      10                          ; Space needed to store the background of the particle sprite
+                ds      0x0a                        ; Space needed to store the background of the particle sprite
 objctPrtclsEnd
 PRTCLSZ         equ     objctPrtclsEnd - objctPrtcls; Calculate the size of a particle
                 ds      PRTCLSZ * (NUMPRTCLS - 1)   ; Reserve the space for particles
@@ -218,7 +223,7 @@ PAGE3
                 org     ($ + 255) & $ff00
 
 intJmpTbl
-                ds      256
+                ds      0x100
 
 ; PAGE3 END
 ;****************************************************************************************************************
@@ -226,7 +231,7 @@ intJmpTbl
 ;****************************************************************************************************************
 ; PAGE 4: Page boundary Particle Storage
 PAGE4
-                org     ($ + 255) & $ff00
+                org     ($ + 0xff) & $ff00
 
 pxlData
                 db      %10000000, %01111111
@@ -244,7 +249,7 @@ pxlData
 ;****************************************************************************************************************
 ; PAGE 5: Page boundary Powerups
 PAGE5
-                org     ($ + 255) & $ff00
+                org     ($ + 0xff) & $ff00
 objctPwrUps
                 db      0                           ; Xpos
                 db      0                           ; YPos
@@ -283,34 +288,34 @@ init
 shftSprts
                 ld      hl, SpriteBlock0
                 ld      de, SpriteBlock0 + 3 * 8
-                ld      b, 3
-                ld      c, 8
+                ld      b, 0x03
+                ld      c, 0x08
                 call    prShft
 
                 ; Shift Sprite Ball
                 ld      hl, SmallBallData0
                 ld      de, SmallBallData0 + 2 * 5
-                ld      b, 2
-                ld      c, 5
+                ld      b, 0x02
+                ld      c, 0x05
                 call    prShft
 
                 ; Shift Sprite Bat animation frames
                 ld      hl, SpriteBatData0
                 ld      de, SpriteBatData0 + 4 * 8
-                ld      b, 4
-                ld      c, 8
+                ld      b, 0x04
+                ld      c, 0x08
                 call    prShft
 
                 ld      hl, SpriteBatData1
                 ld      de, SpriteBatData1 + 4 * 8
-                ld      b, 4
-                ld      c, 8
+                ld      b, 0x04
+                ld      c, 0x08
                 call    prShft
 
                 ld      hl, SpriteBatData2
                 ld      de, SpriteBatData2 + 4 * 8
-                ld      b, 4
-                ld      c, 8
+                ld      b, 0x04
+                ld      c, 0x08
                 call    prShft
 
                 ret
@@ -351,14 +356,14 @@ strtNewGame
                 call    rstBt
                 call    stupPrtcls
 
-                ld      a, 5 
+                ld      a, 0x05 
                 ld      (lives), a
-                ld      a, 53                       ; The number five in the character set
+                ld      a, 0x35                     ; The number five in the character set
                 ld      (lvsTxt), a
                 
                 xor     a                           ; Reset the level...
                 ld      (lvlBlckCnt), a             ; ...block count
-                ld      a, 1
+                ld      a, 0x01
                 ld      (crrntLvl), a               ; Save the level 
                 call    drwUI 
                 call    ldLvl                       ; Load the current level
@@ -388,7 +393,8 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Erase the ball (XOR)
                 call    drwPrtcls                   ; Draw any active particles
-                call    updtBtAnmtnFrm              ; Update the bats animation frame
+                ld      ix, objctBat
+                call    updtAnmtn                   ; Update the bats animation frame
                 call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
@@ -425,7 +431,8 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
                 
                 call    drwBll                      ; Draw the ball
-                call    updtBtAnmtnFrm
+                ld      ix, objctBat
+                call    updtAnmtn
                 call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
@@ -442,7 +449,7 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
 
                 ld      a, (inptOption)             ; Get the currently selected input option
 _keybrdFire
-                cp      0                           ; KEYBOARD
+                cp      0x00                        ; KEYBOARD
                 jr      nz, _sincJoyFire
                 ld      bc, 0x7ffe                  ; B = 0xDF (QUIOP), C = port 0xFE
                 in      a, (c)                      ; Load A with the keys that have been pressed
@@ -450,7 +457,7 @@ _keybrdFire
                 jp      nc, _gameOn                 ; Space bar has been pressed
                 jp      mnLp
 _sincJoyFire
-                cp      1                           ; SINCLAIR PORT 1
+                cp      0x01                        ; SINCLAIR PORT 1
                 jr      nz, _kempJoyFire 
                 ld      bc, 0xf7fe
                 in      a, (c)
@@ -462,11 +469,11 @@ _sincJoyFire
                 jp      nc, _gameOn
                 jp      mnLp
 _kempJoyFire                                        ; KEMPSTON
-                cp      2
+                cp      0x02
                 ret     nz
-                ld      bc, 31
+                ld      bc, 0x1f                    ; 31
                 in      a, (c)
-                and     16
+                and     0x10                        ; 16
                 jp      nz, _gameOn
                 jp      mnLp         
 _gameOn
@@ -484,7 +491,7 @@ _chckGmeStteLstLfe                                  ; *** Game state LOST LIFE
 
                 push    af                          ; Save AF
                 ld      (lives), a                  ; Save the new number of lives
-                add     a, 48                       ; Add 48 to the number of lives to get the character code for the lives number
+                add     a, 0x30                     ; Add 48 to the number of lives to get the character code for the lives number
                 ld      (lvsTxt), a                 ; Update the lives text with the new lives character at position 5 in the string
 
                 ld      de, 0xf000
@@ -514,9 +521,9 @@ _gmeStteNxtLvl                                      ; *** Game state NEXT LEVEL
                 ld      a, (crrntLvl)               ; Load A with the current level
                 inc     a                           ; +1 to the current level
                 ld      (crrntLvl), a               ; Save the current level
-                cp      2                           ; Is the current level 2?
+                cp      0x02                        ; Is the current level 2?
                 jr      nz, _incLvl                 ; If not then increment the level
-                ld      a, 1                        ; Otherwise set the level back to 1
+                ld      a, 0x0                      ; Otherwise set the level back to 1
                 ld      (crrntLvl), a               ; and save it.
 _incLvl         
                 ld      a, GMESTTE_DSPLYLVL         ; Set the game state to DISPLAY LEVEL
@@ -533,13 +540,13 @@ _chckGmeStteDsplyLvl                                ; *** Game state DISPLAY LEV
                 ld      hl, (crrntLvlAddr)          ; Load HL with the current level address
                 ld      de, LEVEL_TITLE             ; Load DE with the offset in the level data to the level title
                 add     hl, de                      ; Move HL to the level title
-                ld      b, 0                        ; Set b to 0                            
+                ld      b, 0x00                     ; Set b to 0                            
                 ld      c, (hl)                     ; Load C with the length of the string to print
                 ld      d, h                        ; Load HL the address of the text...
                 ld      e, l                        ; ...into DE
                 inc     de                          ; + 1 DE which is the start of the actual string
                 call    ROMPRINT                    ; ROM print the title
-                ld      de, 100                     ; Load DE with 100 for a delay loop
+                ld      de, 0x64                    ; Load DE with 100 for a delay loop
 _lvlDsplyWtng   
                 halt                                ; Wait for the scan line to reach the top of the screen (50hz)
                 dec     de                          ; -1 from DE
@@ -549,10 +556,10 @@ _lvlDsplyWtng
                 ld      hl, (crrntLvlAddr)          ; Load HL with the address of the current level data
                 ld      de, LEVEL_TITLE             ; Load DE with the levels title position...
                 add     hl, de                      ; ...and add it to DE
-                ld      b, 0                        ; Reset B
+                ld      b, 0x00                     ; Reset B
                 ld      c, (hl)                     ; Put the length of the level title into C
                 add     hl, bc                      
-                ld      b, 0
+                ld      b, 0x00
                 inc     hl
                 ld      c, (hl)
                 ld      e, l
@@ -594,32 +601,37 @@ stupPrtcls
                 ret
 
 ;****************************************************************************************************************
-; Update bat animation
-; Updates the bats sprite frame number which is used to identify which sprite frame to draw
+; Updates a sprites animation frame. The delay between frames being updated and how many frames a sprite has is 
+; taken from the sprite data that is pointed at by IX
 ;
 ; Entry Registers:
-;   NONE
+;   IX = Address of animation object
 ; Registers Used:
 ;   A, B, D, E, H, L
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
-updtBtAnmtnFrm
-                ld      a, (objctBat + BTANMTONDLY) ; Point DE at the animation delay counter
-                inc     a                           ; Increment the frame delay counter
-                ld      (objctBat + BTANMTONDLY), a ; Save the new delay amount
-                cp      7                           ; Check the delay (1/50 * n)
+updtAnmtn
+                ld      a, (ix + BTANMTONCNT)       ; Get the current frame timer
+                inc     a                           ; Increment the frame timer
+                ld      (ix + BTANMTONCNT), a       ; Save it
+                ld      b, a
+                ld      a, (ix + BTANMTONDLY)
+                cp      b                           ; Check the delay (1/50 * n)
                 ret     nz                          ; and return if we've not reached the delay value
 
                 xor     a                           ; Delay has been reached so reset the delay...
-                ld      (objctBat + BTANMTONDLY), a ; ...and save it
-                ld      a, (objctBat + BTANMTONFRM) ; Load A with the current frame count
+                ld      (ix + BTANMTONCNT), a       ; ...and save it
+                ld      a, (ix + BTANMTONFRM)       ; Load A with the current frame count
                 inc     a                           ; Increment the counter
-                cp      4                           ; Compare it against the max value allowed...
-                jp      nz, _svBtFrm                ; ...and save the new frame count if the max has not been reached
+                ld      b, a                        ; Switch the frame counter so we can check
+                ld      a, (ix + BTANMTONTOTAL)     
+                cp      b                           ; Compare it against the max value allowed...
+                ld      a, b
+                jp      nz, _svFrm                  ; ...and save the new frame count if the max has not been reached
                 xor     a                           ; Reset the animation frame to 0
-_svBtFrm
-                ld      (objctBat + BTANMTONFRM), a ; Save the new frame number
+_svFrm
+                ld      (ix + BTANMTONFRM), a       ; Save the new frame number
                 ret                                 ; Return
 
 ;****************************************************************************************************************
@@ -785,8 +797,8 @@ drwUI
 ;****************************************************************************************************************
 drwBrdrs
                 ; Setup the attributes for the borders
-                ld      d, 1
-                ld      e, 1
+                ld      d, 0x01
+                ld      e, 0x01
 _hrzClr
                 ld      a, MAGENTA
                 push    de
@@ -797,10 +809,10 @@ _hrzClr
                 cp      31
                 jr      nz, _hrzClr
 
-                ld      d, 1
-                ld      e, 1
+                ld      d, 0x01
+                ld      e, 0x01
 _VrtClr
-                ld      e, 1
+                ld      e, 0x01
                 ld      a, MAGENTA
                 push    de
                 call    setChrctrAttr
@@ -812,13 +824,13 @@ _VrtClr
 
                 inc     d
                 ld      a, d
-                cp      24
+                cp      0x18
                 jr      nz, _VrtClr
 
                 ; Draw top wall
-                ld      h, 0
+                ld      h, 0x00
                 ld      b, SCRNLFT
-                ld      c, 8
+                ld      c, 0x08
 _hrzntlLp
                 push    hl
                 push    bc
@@ -828,22 +840,22 @@ _hrzntlLp
                 pop     bc
                 push    bc
                 ld      de, LoopHSpriteData
-                ld      a, 1
+                ld      a, 0x01
                 call    drwSprt
                 pop     bc                
                 pop     hl
                 ld      a, b
-                add     a, 16
+                add     a, 0x10
                 ld      b, a
                 inc     h
                 ld      a, h
-                cp      14
+                cp      0x0e
                 jr      nz, _hrzntlLp
 
                 ; Draw right hand wall
-                ld      h, 0
+                ld      h, 0x00
                 ld      b, SCRNRGHT
-                ld      c, 16
+                ld      c, 0x10
 _vrtclLp1
                 push    hl
                 push    bc
@@ -853,22 +865,22 @@ _vrtclLp1
                 pop     bc
                 push    bc
                 ld      de, LoopVSpriteData
-                ld      a, 1
+                ld      a, 0x01
                 call    drwSprt
                 pop     bc                
                 pop     hl
                 ld      a,c
-                add     a, 16
+                add     a, 0x10
                 ld      c, a
                 inc     h
                 ld      a, h
-                cp      11
+                cp      0x0b
                 jr      nz, _vrtclLp1
 
                 ; Draw Left hand wall
-                ld      h, 0
+                ld      h, 0x00
                 ld      b, SCRNLFT - 8
-                ld      c, 16
+                ld      c, 0x10
 _vrtclLp2
                 push    hl
                 push    bc
@@ -878,28 +890,28 @@ _vrtclLp2
                 pop     bc
                 push    bc
                 ld      de, LoopVSpriteData
-                ld      a, 1
+                ld      a, 0x01
                 call    drwSprt
                 pop     bc                
                 pop     hl
                 ld      a,c
-                add     a, 16
+                add     a, 0x10
                 ld      c, a
                 inc     h
                 ld      a, h
-                cp      11
+                cp      0x0b
                 jr      nz, _vrtclLp2
 
                 ld      de, LoopLCSpriteData
                 ld      b, SCRNLFT - 8
-                ld      c, 8
-                ld      a, 0
+                ld      c, 0x08
+                ld      a, 0x00
                 call    drwSprt
 
                 ld      de, LoopRCSpriteData
                 ld      b, SCRNRGHT
-                ld      c, 8
-                ld      a, 0
+                ld      c, 0x08
+                ld      a, 0x00
                 call    drwSprt
 
                 ret
@@ -993,7 +1005,7 @@ drwBll
 drwBt 
                 ld      a, (objctBat + BTANMTONFRM) ; Load the current frame number
                 ld      e, a                        ; Load the frame into E...
-                ld      d, 0                        ; ...and clear D
+                ld      d, 0x00                     ; ...and clear D
                 ld      hl, SpriteBatFrameTable     ; Load HL with the address of the frame table
                 add     hl, de                      ; Add the frame number to the frame table...
                 add     hl, de                      ; ...twice as the table is made up of word entries
@@ -1024,17 +1036,17 @@ drwBt
 rdCntrlKys 
                 ld      a, (inptOption)             ; Get the currently selected input option
 _keybrd
-                cp      0                           ; KEYBOARD
+                cp      0x00                        ; KEYBOARD
                 jr      nz, _sincJoy
                 ld      bc, 0xdffe                  ; B = 0xDF (QUIOP), C = port 0xFE
                 in      a, (c)                      ; Load A with the keys that have been pressed
                 rra                                 ; Outermost bit = key 1
-                jp      nc, mvBtRght               ; Move the bat left
+                jp      nc, mvBtRght                ; Move the bat left
                 rra                                 ; Next bit is key 2
-                jp      nc, mvBtLft                ; Move the bat right
+                jp      nc, mvBtLft                 ; Move the bat right
                 ret
 _sincJoy
-                cp      1                           ; SINCLAIR PORT 1
+                cp      0x01                        ; SINCLAIR PORT 1
                 jr      nz, _kempJoy 
                 ld      bc, 0xf7fe
                 in      a, (c)
@@ -1044,14 +1056,14 @@ _sincJoy
                 jp      nc, mvBtRght
                 ret
 _kempJoy                                            ; KEMPSTON
-                cp      2
+                cp      0x02
                 ret     nz
-                ld      bc, 31
+                ld      bc, 0x1f
                 in      a, (c)
-                and     2
+                and     0x02
                 jp      nz, mvBtLft
                 in      a, (c)
-                and     1
+                and     0x01
                 jp      nz, mvBtRght
                 ret
 
@@ -1071,7 +1083,7 @@ mvBtLft
                 ld      a, (hl)                     ; Grab te bars X position into A
                 ld      de, (objctBall + BLLXPS)    ; Grab the balls current X position into E
                 sub     e                           ; Subtract the balls X pos from the bats X pos
-                cp      15                          ; Check it the difference is >= 20...
+                cp      0x0f                        ; Check it the difference is >= 20...
                 jp      m, _noLftBoost              ; ...and if not then don't update the bats x speed
                 ld      a, (hl)
                 inc     l
@@ -1110,7 +1122,7 @@ mvBtRght
                 ld      de, (objctBall + BLLXPS)
                 add     a, BTPXLWDTH
                 sub     e
-                cp      -10
+                cp      0xf7                        ; -10
                 jp      p, _noRghtBoost
                 ld      a, (hl)
                 inc     l
@@ -1266,7 +1278,7 @@ _chkHrzntlPstn
                 ret     nc                          ; If it is then ball to the right of the bat
 
                 push    af                          ; Save A as we are going to play a click which uses it
-                ld      b, 20                       ; Load B with the length of the click 
+                ld      b, 0x14                     ; Load B with the length of the click 
                 call    plyClck                     ; Play the click
 
                 ; Check the balls x direction and based on that perform the bats collision checks
@@ -1278,7 +1290,7 @@ _chkHrzntlPstn
 _bllMvngRght  
                 pop     af                          ; Restore A which holds ball.x in bat space
                 push    hl
-                cp      6                           ;
+                cp      0x06                           ;
                 jr      nc, _rArea2
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BCC_AT_SPEEDS + 0
@@ -1288,7 +1300,7 @@ _bllMvngRght
                 ld      (hl), a
                 jp      _bncUp
 
-_rArea2         cp      12
+_rArea2         cp      0x0c
                 jr      nc, _rArea3
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BCC_AT_SPEEDS + 1
@@ -1298,7 +1310,7 @@ _rArea2         cp      12
                 ld      (hl), a
                 jp      _bncUp
 
-_rArea3         cp      18
+_rArea3         cp      0x12
                 jr      nc, _rArea4
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BCC_AT_SPEEDS + 2
@@ -1308,7 +1320,7 @@ _rArea3         cp      18
                 ld      (hl), a
                 jp      _bncUp
 
-_rArea4         cp      24
+_rArea4         cp      0x18
                 jr      nc, _bncUp
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BCC_AT_SPEEDS + 3
@@ -1321,7 +1333,7 @@ _rArea4         cp      24
 _bllMvngLft  
                 pop     af
                 push    hl
-                cp      6
+                cp      0x06
                 jr      nc, _lArea2
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BCC_AT_SPEEDS + 3
@@ -1332,7 +1344,7 @@ _bllMvngLft
                 ld      (hl), a
                 jp      _bncUp
 
-_lArea2         cp      12
+_lArea2         cp      0x0c
                 jr      nc, _lArea3
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BCC_AT_SPEEDS + 2
@@ -1343,7 +1355,7 @@ _lArea2         cp      12
                 ld      (hl), a
                 jp      _bncUp
 
-_lArea3         cp      18
+_lArea3         cp      0x12
                 jr      nc, _lArea4
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BCC_AT_SPEEDS + 1
@@ -1354,7 +1366,7 @@ _lArea3         cp      18
                 ld      (hl), a
                 jp      _bncUp
 
-_lArea4         cp      24
+_lArea4         cp      0x18
                 jr      nc, _bncUp
                 ld      hl, (crrntLvlAddr)
                 ld      de, LEVEL_BCC_AT_SPEEDS + 0
@@ -1408,7 +1420,7 @@ chckBlckCllsn
                 or      a
                 jp      nz, _mddlBttm
                 call    rmvBlck
-                ld      hl, 125
+                ld      hl, 0x7d                    ; TODO: Make scores level and block dependent
                 call    incScr
                 call    prntScr
 
@@ -1426,7 +1438,7 @@ _mddlBttm
                 or      a
                 jp      nz, _mddlRght
                 call    rmvBlck
-                ld      hl, 125
+                ld      hl, 0x7d
                 call    incScr
                 call    prntScr
 
@@ -1447,7 +1459,7 @@ _mddlRght
                 or      a
                 jp      nz, _mddlLft
                 call    rmvBlck
-                ld      hl, 125
+                ld      hl, 0x7d
                 call    incScr
                 call    prntScr
 
@@ -1468,7 +1480,7 @@ _mddlLft
                 or      a
                 ret     nz
                 call    rmvBlck
-                ld      hl, 125
+                ld      hl, 0x7d
                 call    incScr
                 call    prntScr
                 ret
@@ -1490,7 +1502,7 @@ _mddlLft
 chkBlckState
                 ld      a, e                        ; Grab the X pos
                 rra                                 ; Divide by 8
-                sub     1                           ; Sub 1
+                sub     0x01                        ; Sub 1
                 ld      b, a                        ; Save the result in B
 
                 ld      a, d                        ; Grab the Y pos
@@ -1498,12 +1510,12 @@ chkBlckState
 
                 jp      p, _calcIndx                ; If the result is positive then calculate the index of the block
 _LssThnZro
-                ld      a, 0                        ; Index was < 0 so set A to 0 
+                ld      a, 0x00                     ; Index was < 0 so set A to 0 
                 ret                                 ; and return
 _calcIndx
-                ld      l, 0                        
-                ld      h, 14                       ; Multiplier
-                ld      d, 0
+                ld      l, 0x00                        
+                ld      h, 0x0e                     ; Multiplier
+                ld      d, 0x00
                 ld      e, a                        ; Multipland
                 call    mult_H_E                    ; Multiply H with E
 
@@ -1511,7 +1523,7 @@ _calcIndx
                 add     a, b                        ; and add it to the index in B
                 ld      (index), a                  ; Save the index to memory 
 
-                cp      112                         ; Maximum block data index
+                cp      MAX_BLOCK_DATA_INDEX        ; Maximum block data index
                 jp      c, _inRnge
 _outRnge
                 ld      a, 0                        ; Index is out of range so set A to 0
@@ -1521,9 +1533,9 @@ _inRnge
                 ld      ix, lvlData                 ; Grab the lvlData location
                 add     a, a                        ; Double A as each column is two bytes
                 ld      e, a                        ; Put the index into E
-                ld      d, 0                        ; Clear D
+                ld      d, 0x00                     ; Clear D
                 add     ix, de                      ; Add the index to the level data location
-                ld      b, 0                        ; B = 0 on return means remove the block as this is the last hit
+                ld      b, 0x00                     ; B = 0 on return means remove the block as this is the last hit
                 ld      a, (ix + BLCK_HIT_CNT)      ; Get the hit count for the block
                 or      a                           ; See if its 0
                 jr      z, _chkBlckFnsh             ; and if so then no need to save it
@@ -1531,9 +1543,9 @@ _inRnge
                 ld      (ix + BLCK_HIT_CNT), a      ; and save it back to the block
                 or      a                           ; Check if A == 0
                 jp      z, _htZro                   ; and if so then the block should be hit AND removed
-                ld      b, 1                        ; B = 1 on return a block was hit but should NOT be removed
+                ld      b, 0x01                     ; B = 1 on return a block was hit but should NOT be removed
 _htZro
-                ld      a, 1                        ; Return 1 to say that the block should be hit
+                ld      a, 0x01                     ; Return 1 to say that the block should be hit
 _chkBlckFnsh
                 ret
 
@@ -1548,9 +1560,9 @@ _chkBlckFnsh
 ;   NONE
 ;****************************************************************************************************************
 incScr
-                ld      b, 6                        ; Number of digits in score - 1 
+                ld      b, 0x06                     ; Number of digits in score - 1 
 _scrLp
-                ld      c, 10                       ; Load C with the devisor we want to use
+                ld      c, 0x0a                     ; Load C with the devisor we want to use
                 call    dvd_HL_C                    ; Divide HL by C
                 ld      c, a                        ; Load C with the remainder
                 push    bc 
@@ -1563,8 +1575,8 @@ _scrLp
 _addToScr
                 ld      hl, scrTxt                  ; Point HL at the score string address
                 ld      e, b                        ; Load E with B which holds the digit count
-                ld      d, 0                        ; Reset D so DE holds just the digit count
-                add         hl, de                  ; Add the digit count to HL (string address)
+                ld      d, 0x00                     ; Reset D so DE holds just the digit count
+                add     hl, de                      ; Add the digit count to HL (string address)
 _cryOneLp
                 ld      a, (hl)                     ; Load A with the digit al HL    
                 add     a, c                        ; Add A with C (the remainder)
@@ -1572,9 +1584,9 @@ _cryOneLp
                 jr      c, _incScrDn                ; If yes then we are done with this digit
                 
                 ; Move on
-                sub     10                          ; If not then sub 10 from A
+                sub     0x0a                        ; If not then sub 10 from A
                 ld      (hl), a                     ; and load the digit back into the string
-                ld      c, 1                        ; Set C to 1
+                ld      c, 0x01                     ; Set C to 1
                 dec     hl                          ; Move along the score string
                 djnz    _cryOneLp                   ; Loop if digits left
                 ret
@@ -1609,7 +1621,7 @@ prntScr
 ;   NONE
 ;****************************************************************************************************************
 rmvBlck
-                ld      b, 100
+                ld      b, 0x64
                 call    plyClck
 
                 ld      a, (lvlBlckCnt) 
@@ -1618,7 +1630,7 @@ rmvBlck
 
                 ; Remove the block
                 ld      a, e
-                and     1                           ; Check to see if the number is _odd
+                and     0x01                        ; Check to see if the number is _odd
                 or      a
                 jr      z, _even
 
@@ -1628,7 +1640,7 @@ _odd
                 call    setChrctrAttr               ; set the attribute at DE to a value of 5
                 pop     de                          ; Restore DE
                 ld      a, e                        ; Load A with E
-                sub     1                           ; Subtract 1 to get the preceeding attribute X value
+                sub     0x01                        ; Subtract 1 to get the preceeding attribute X value
                 ld      e, a                        ; Load E with the new X coord value
                 ld      a, CYAN + BRIGHT            ; Load A with 5 for Cyan on Black
                 push    de                          ; Save DE on the stack
@@ -1653,7 +1665,7 @@ _odd
                 call    drwSprt                     ; Draw the block (XOR) to remove block
                 pop     bc 
                 ld      de, SpriteBlockData
-                ld      a, 1
+                ld      a, 0x01
                 call    drwSprt
 
                 pop     bc                          ; Restore BC which holds the pixel location of the block
@@ -1688,7 +1700,7 @@ _even
                 ld      de, SpriteBlockData         ; Point to the block data
                 call    drwSprt                     ; XOR the sprite onto the screen file
                 pop     bc
-                ld      a, 1                        ; A = 1 as we are drawing the block to the back buffer
+                ld      a, 0x01                     ; A = 1 as we are drawing the block to the back buffer
                 ld      de, SpriteBlockData         ; Point to the block sprite data
                 call    drwSprt                     ; XOR the sprite onto the back buffer
 
@@ -1700,11 +1712,11 @@ _even
 ; Reset the bats X pos to the center of play area
 ;****************************************************************************************************************
 rstBt    
-                ld      a, 112
+                ld      a, 0x70
                 ld      (objctBat + BTXPS), a
-                ld      a, 175
+                ld      a, 0xaf
                 ld      (objctBat + BTYPS), a
-                ld      a, -2
+                ld      a, 0xfe                     ; -2
                 ld      (objctBall + BLLYSPD), a
                 ret
 
@@ -1714,7 +1726,7 @@ rstBt
 rstScr
                 ld      hl, scrTxt                  ; Point HL at the score string address
                 ld      de, scrTxt + 1              ; Point DE at the score string address + 1
-                ld      bc, 6                       ; Load BC with the length of the string
+                ld      bc, 0x06                    ; Load BC with the length of the string
                 ld      (hl), '0'                   ; Load (HL) with a 0 which will be copied using...
                 ldir                                ; ...LDIR
                 call    prntScr
@@ -1724,21 +1736,21 @@ rstScr
 ; Play click sound with b = length of the loop
 ;****************************************************************************************************************
 plyClck       
-                ld      a, 16
-                and     248
-                out     (254), a
+                ld      a, 0x10
+                and     0xf8
+                out     (0xfe), a
 _clickLp0       djnz    _clickLp0
                 xor     a
-                and     248
-                out     (254), a
+                and     0xf8
+                out     (0xfe), a
 
-                ld      a, 16
-                and     248
-                out     (254), a
+                ld      a, 0x10
+                and     0xf8
+                out     (0xfe), a
 _clickLp1       djnz    _clickLp1
                 xor     a
-                and     248
-                out     (254), a
+                and     0xf8
+                out     (0xfe), a
                 ret
 
 ;****************************************************************************************************************
@@ -1746,13 +1758,13 @@ _clickLp1       djnz    _clickLp1
 ;****************************************************************************************************************
 plyDthSnd
                 xor     a
-                ld      (23624), a                  ; Set the Border colour BASIC variable to black
-                ld      hl,500                      ; starting pitch.
-                ld      b,150                       ; length of pitch bend.
+                ld      (0x5c48), a                 ; Set the Border colour BASIC variable to black
+                ld      hl, 0x1f4                   ; starting pitch.
+                ld      b, 0x96                     ; length of pitch bend.
 _dthSndLp       push    bc
                 push    hl                          ; store pitch.
-                ld      de,1                        ; very short duration.
-                call    949                         ; ROM beeper routine.
+                ld      de, 0x01                    ; very short duration.
+                call    0x3b5                       ; ROM beeper routine.
                 pop     hl                          ; restore pitch.
                 inc     hl                          ; pitch going up.
                 pop     bc
