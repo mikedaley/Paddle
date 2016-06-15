@@ -32,7 +32,7 @@
 ;   NONE
 ;****************************************************************************************************************
 clrMem
-                ld      e, 0
+                ld      e, 0x00
 clrByte         ld      (hl), e
                 inc     hl
                 dec     bc
@@ -80,14 +80,14 @@ watFrSpc
 genLnrYLkupTbl
                 ld      hl, bffrLkup
                 ld      de, SCRNBFFR
-                ld      b, 192
+                ld      b, 0xc0
 _yLkupLp
                 ld      (hl), e
                 inc     hl
                 ld      (hl), d
                 inc     hl
                 push    hl
-                ld      hl, 32
+                ld      hl, 0x20
                 add     hl, de
                 ex      de, hl
                 pop     hl
@@ -109,19 +109,19 @@ getPixelAddr
             srl     a                                   ; Rotate A three time to the left
             srl     a
             srl     a
-            and     24                                  ; 
-            or      64
+            and     0x18                                  ; 
+            or      0x40
 
             ld      h,a
             ld      a,e
-            and     7
+            and     0x07
             or      h
             ld      h,a
 
             ld      a,e
             add     a,a
             add     a,a
-            and     224
+            and     0xe0
             ld      l,a
 
             ld      a,d
@@ -144,15 +144,15 @@ getPixelAddr
 ;****************************************************************************************************************
 moveLineDown   
             inc     h
-            ld      a,h
-            and     7
+            ld      a, h
+            and     0x07
             ret     nz
-            ld      a,l
-            add     a,32
-            ld      l,a
+            ld      a, l
+            add     a, 0x20
+            ld      l, a
             ret     c
-            ld      a,h
-            sub     8
+            ld      a, h
+            sub     0x08
             ld      h,a                 
             ret
 
@@ -175,7 +175,7 @@ prShft
                 ld      (prShftWdth), a             ; Save width
                 ld      a, c
                 ld      (prShftHght), a             ; Save height
-                ld      c, 7                        ; Load B with the number of shifts to perform
+                ld      c, 0x07                     ; Load B with the number of shifts to perform
 
 _prNxtShft
                 ld      a, (prShftHght)             ; Load the height of the sprite to be shifted
@@ -224,11 +224,11 @@ drwSprt
                 inc     de                          ; Move DE to the sprite lookup table
 
                 ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
-                and     7   
+                and     0x07   
         
                 ; Load DE with the address of the sprite we need to use based on the x location offset in memory
                 ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
+                ld      h, 0x00                     ; Reset the HL high byte
                 add     hl, hl                      ; Double HL as the lookup table entries are words
                 add     hl, de                      ; Add base address of sprite table which is held in DE
                 ld      e, (hl)                     ; Load E with the contents of (HL)
@@ -240,32 +240,32 @@ drwSprt
                 rra
                 rra
                 rra
-                and     31
+                and     0x1f
                 ld      (_sprtXOffst + 1), a        ; Save the x Offset for use later in the routine
-_scrnLoc        ld      a, 0                        ; Updated to load A with the value passed in (self modding)
+_scrnLoc        ld      a, 0xff                     ; Updated to load A with the value passed in (self modding)
                 or      a                           ; Check to see if A is zero or not
                 jr      nz, _bffrLkup               ; != 0 means we are drawind to the buffered screen
                 ld      hl, scrnLnLkup              ; Otherwise point to the screen file lookup table
                 jr      _addYPos                    
 _bffrLkup       ld      hl, bffrLkup                ; Point to the screen buffer lookup table
-_addYPos        ld      b, 0                        ; Clear out the X pos as that is not needed now
+_addYPos        ld      b, 0x00                     ; Clear out the X pos as that is not needed now
                 add     hl, bc                      ; ...and add in the Y position...
                 add     hl, bc                      ; ...twice as the table contains words
                 dec     hl                          ; Dec HL so that its ready to be INC'd inside the loop later
                 ld      (_sprtLnLkup + 1), hl       ; Save the value in HL to the LD command later
-_sprtHght       ld      a, 0                        ; Load A with the height put into this command earlier
+_sprtHght       ld      a, 0xff                     ; Load A with the height put into this command earlier
 
 _nxtSprtRw
                 ex      af, af'                     ; Move to the alt AF register which saves the current contents of A
-_sprtLnLkup     ld      hl, 0                       ; Load HL with the value modified in earlier
+_sprtLnLkup     ld      hl, 0xff                    ; Load HL with the value modified in earlier
                 inc     hl                          ; Increment HL to point to the next line lookup table entry
                 ld      a, (hl)                     ; Load A with the low byte value in the table
                 inc     hl                          ; Move HL to the high byte in the table
                 ld      (_sprtLnLkup + 1), hl       ; Save this new value for use next time around
-_sprtXOffst     or      0                           ; Merge in the XOffset saved earlier
+_sprtXOffst     or      0xff                        ; Merge in the XOffset saved earlier
                 ld      h, (hl)                     ; Load the high byte of H with (HL)
                 ld      l, a                        ; Load the low byte in A into L
-_sprtWdth       ld      b, 0                        ; Load BC with the width in bytes to copy as set earlier
+_sprtWdth       ld      b, 0x00                     ; Load BC with the width in bytes to copy as set earlier
 
 _nxtSprtClmn
                 ld      a, (de)                     ; Load A with the sprite Data
@@ -302,11 +302,11 @@ drwMskdSprt
                 inc     de                          ; Move DE to the sprite lookup table
 
                 ld      a, b                        ; Get the Bit rotate count (lower 3 bits of X position)
-                and     7   
+                and     0x07   
         
                 ; Load DE with the address of the sprite we need to use based on the x location offset in memory
                 ld      l, a                        ; Load A with the number of shifts needed
-                ld      h, 0                        ; Reset the HL high byte
+                ld      h, 0x00                     ; Reset the HL high byte
                 add     hl, hl                      ; Double HL as the lookup table entries are words
                 add     hl, de                      ; Add base address of sprite table which is held in DE
                 ld      e, (hl)                     ; Load E with the contents of (HL)
@@ -318,27 +318,27 @@ drwMskdSprt
                 rra
                 rra
                 rra
-                and     31
+                and     0x1f
                 ld      (_sprtMskdXOffst + 1), a    ; Save the x Offset for use later in the routine
                 ld      hl, scrnLnLkup              ; Otherwise point to the screen file lookup table
-                ld      b, 0                        ; Clear out the X pos as that is not needed now
+                ld      b, 0x00                     ; Clear out the X pos as that is not needed now
                 add     hl, bc                      ; ...and add in the Y position...
                 add     hl, bc                      ; ...twice as the table contains words
                 dec     hl                          ; Dec HL so that its ready to be INC'd inside the loop later
                 ld      (_sprtMskdLnLkup + 1), hl   ; Save the value in HL to the LD command later
-_mskdSprtHght   ld      a, 0                        ; Load A with the height put into this command earlier
+_mskdSprtHght   ld      a, 0x00                     ; Load A with the height put into this command earlier
 
 _nxtMskdSprtRw
                 ex      af, af'                     ; Move to the alt AF register which saves the current contents of A
-_sprtMskdLnLkup ld      hl, 0                       ; Load HL with the value modified in earlier
+_sprtMskdLnLkup ld      hl, 0x00                    ; Load HL with the value modified in earlier
                 inc     hl                          ; Increment HL to point to the next line lookup table entry
                 ld      a, (hl)                     ; Load A with the low byte value in the table
                 inc     hl                          ; Move HL to the high byte in the table
                 ld      (_sprtMskdLnLkup + 1), hl   ; Save this new value for use next time around
-_sprtMskdXOffst or      0                           ; Merge in the XOffset saved earlier
+_sprtMskdXOffst or      0xff                        ; Merge in the XOffset saved earlier
                 ld      h, (hl)                     ; Load the high byte of H with (HL)
                 ld      l, a                        ; Load the low byte in A into L
-_mskdSprtWdth   ld      b, 0                        ; Load BC with the width in bytes to copy as set earlier
+_mskdSprtWdth   ld      b, 0x00                     ; Load BC with the width in bytes to copy as set earlier
 
 _nxtMskdSprtClmn
                 ld      a, (de)                     ; OR the mask data byte with the screen contents
@@ -375,7 +375,7 @@ pltPxl
                 ld      d, b
                 call    getPixelAddr
                 ld      a, b
-                and     7
+                and     0x07
                 ld      bc, pxlData
                 add     a, c
                 add     a, c
@@ -415,28 +415,28 @@ sveScrnBlck
                 rra
                 rra
                 rra
-                and     31
+                and     0x1f
                 ld      (_sveXOffst + 1), a         ; Save the x Offset for use later in the routine
-                ld      b, 0                        ; Clear out the X pos as that is not needed now
+                ld      b, 0x00                     ; Clear out the X pos as that is not needed now
                 ld      hl, bffrLkup                ; Load HL with the address of the buffer line lookup table...
                 add     hl, bc                      ; ...and add in the Y position...
                 add     hl, bc                      ; ...twice as the table contains words
                 dec     hl                          ; Dec HL so that its ready to be INC'd inside the loop later
                 ld      (_sveLnLkup + 1), hl        ; Save the value in HL to the LD command later
 
-_sveHght        ld      a, 0                        ; Load A with the height put into this command earlier
+_sveHght        ld      a, 0xff                     ; Load A with the height put into this command earlier
 _nxtSvrRw
                 ex      af, af'                     ; Move to the alt AF register which saves the current contents of A
-_sveLnLkup      ld      hl, 0                       ; Load HL with the value modified in earlier
+_sveLnLkup      ld      hl, 0xff                    ; Load HL with the value modified in earlier
                 inc     hl                          ; Increment HL to point to the next line lookup table entry
                 ld      a, (hl)                     ; Load A with the low byte value in the table
                 inc     hl                          ; Move HL to the high byte in the table
                 ld      (_sveLnLkup + 1), hl        ; Save this new value for use next time around
-_sveXOffst      or      0                           ; Merge in the XOffset saved earlier
+_sveXOffst      or      0xff                        ; Merge in the XOffset saved earlier
                 ld      h, (hl)                     ; Load the high byte of H with (HL)
                 ld      l, a                        ; Load the low byte in A into L
                 ex      af, af'                     ; Switch back to primary register AF
-_sveWidth       ld      bc, 0                       ; Load BC with the width in bytes to copy as set earlier
+_sveWidth       ld      bc, 0xff                    ; Load BC with the width in bytes to copy as set earlier
                 ldir                                ; Move the bytes from location in HL to location in DE
                 dec     a                           ; Reduce A which is tracking the height of the sprite...
                 jp nz, _nxtSvrRw                    ; ...and loop if necessary
@@ -464,28 +464,28 @@ rstrScrnBlck
                 rra
                 rra
                 rra
-                and     31
+                and     0x1f
                 ld      (_rstrXOffst + 1), a        ; Save the x Offset for use later in the routine
-                ld      b, 0                        ; Clear out the X pos as that is not needed now
+                ld      b, 0x00                     ; Clear out the X pos as that is not needed now
                 ld      hl, scrnLnLkup              ; Load HL with the address of the screen line lookup table...
                 add     hl, bc                      ; ...and add in the Y position...
                 add     hl, bc                      ; ...twice as the table contains words
                 dec     hl                          ; Dec HL so that its ready to be INC'd inside the loop later
                 ld      (_rstrLnLkup + 1), hl       ; Save the value in HL to the LD command later
 
-_rstrHght       ld      a, 0                        ; Load A with the height put into this command earlier
+_rstrHght       ld      a, 0xff                     ; Load A with the height put into this command earlier
 _nxtrstrRw
                 ex      af, af'                     ; Move to the alt AF register which saves the current contents of A
-_rstrLnLkup     ld      hl, 0                       ; Load HL with the value modified in earlier
+_rstrLnLkup     ld      hl, 0xff                    ; Load HL with the value modified in earlier
                 inc     hl                          ; Increment HL to point to the next line lookup table entry
                 ld      a, (hl)                     ; Load A with the low byte value in the table
                 inc     hl                          ; Move HL to the high byte in the table
                 ld      (_rstrLnLkup + 1), hl       ; Save this new value for use next time around
-_rstrXOffst     or      0                           ; Merge in the XOffset saved earlier
+_rstrXOffst     or      0xff                        ; Merge in the XOffset saved earlier
                 ld      h, (hl)                     ; Load the high byte of H with (HL)
                 ld      l, a                        ; Load the low byte in A into L
                 ex      af, af'                     ; Switch back to primary register AF
-_rstrWidth      ld      bc, 0                       ; Load BC with the width in bytes to copy as set earlier
+_rstrWidth      ld      bc, 0xff                    ; Load BC with the width in bytes to copy as set earlier
                 ex      de, hl                      ; Switch DE, HL as we need to copy from DE and write to HL
                 ldir                                ; Move the bytes from location in HL to location in DE
                 ex      de, hl                      ; Switch DE and HL back again
@@ -519,8 +519,8 @@ _chrLp1
 _ntSpc
                 push    bc                          ; Save BC as it holds the string pointer
                 push    hl
-                sub     48                          ; Sub the ASCII value for 0...
-                cp      10                          ; ...and compare against 10
+                sub     0x30                        ; Sub the ASCII value for 0...
+                cp      0x0a                        ; ...and compare against 10
                 jr      c, _ntAlph                  ; If Carry then this is a number
                 sub     65 - 48 - 10                ; Otherwise adjust the index for an alpha
 _ntAlph
@@ -528,14 +528,14 @@ _ntAlph
                 sla     a                           ; ... to get the index...
                 sla     a                           ; ...into the font data
                 ld      l, a                        ; Place A into L...
-                ld      h, 0                        ; ...and reset H
+                ld      h, 0x00                     ; ...and reset H
                 ld      bc, 0x3d00 + 16 * 8         ; Point BC to the start of the numeric font data
                 add     hl, bc                      ; Add in the index we calculated to the character we want 
                 ex      de, hl                      ; Exchange DE, HL as we want DE to contain the font pointer
 
                 pop     hl                          ; Restore HL which is our screen address
                 push    hl
-                ld      b, 8                        ; The font is 8 pixels high
+                ld      b, 0x08                     ; The font is 8 pixels high
 _chrLp2
                 ld      a, (de)                     ; Load A with a byte of font data
                 ld      (hl), a                     ; Place that Font data on screen
@@ -585,7 +585,7 @@ getChrLctn
 ;   NONE
 ;****************************************************************************************************************
 setChrctrAttr 
-                ld      h, 0                        ; Get the Y pos from the corner
+                ld      h, 0x00                     ; Get the Y pos from the corner
                 ld      l, d
 
                 add     hl, hl                      ; Multiply the Y position by 32
@@ -594,7 +594,7 @@ setChrctrAttr
                 add     hl, hl
                 add     hl, hl
 
-                ld      b, 0                        ; Get the X position
+                ld      b, 0x00                     ; Get the X position
                 ld      c, e
                 add     hl, bc                      ; Add it to the Y position 
 
@@ -615,7 +615,7 @@ setChrctrAttr
 ;   A = Attribute to load
 ;****************************************************************************************************************
 getChrctrAttr 
-                ld      h, 0                        ; Get the Y pos from the corner
+                ld      h, 0x00                     ; Get the Y pos from the corner
                 ld      l, d
 
                 add     hl, hl                      ; Multiply the Y position by 32
@@ -645,7 +645,7 @@ getChrctrAttr
 ;   NONE
 ;****************************************************************************************************************
 stupFont
-                ld      hl, 0x3D00                  ; Copy the ROM standard font
+                ld      hl, 0x3d00                  ; Copy the ROM standard font
                 ld      de, Font                    ; ...to the font table in game
                 ld      bc, 0x300                     
                 ldir
@@ -657,11 +657,11 @@ stupFont
 
                 ld      hl, CharFont                ; Copy the custom Characters font data...
                 ld      de, Font + (8 * 33)         ; ...making sure it is position in memory like the ROM font
-                ld      bc, 0xD0
+                ld      bc, 0xd0
                 ldir
 
                 ld      hl, Font - 0x100            ; Point HL to our new font data - 256 and...
-                ld      (0x5C36), hl                ; ...update the CHARS sysvar with the new location 
+                ld      (0x5c36), hl                ; ...update the CHARS sysvar with the new location 
 
                 ret
 
@@ -689,7 +689,7 @@ stupInt
 
                 ld      hl, intJmpTbl               ; Point HL at the jump table address
                 ld      de, intJmpTbl + 1           ; Point DE at the jump table address + 1
-                ld      bc, 256                     ; We are doing to fill the table using LDIR so set BC to the size
+                ld      bc, 0x100                   ; We are doing to fill the table using LDIR so set BC to the size
 
                 ld      a, h                        ; Load A with the high byte of the int table
                 ld      i, a                        ; Load that value into the I register
@@ -704,7 +704,7 @@ stupInt
                 ld      de, 0x4ded                  ; RETI
                 ld      (0xfeff), de                ; Save it
 
-                im      2                           ; Enable IM 2
+                im      0x02                        ; Enable IM 2
                 ei                                  ; Start interrupts
 
                 ret
@@ -751,19 +751,19 @@ wpeScrn
 ;                 ldir
 
                 ld      hl, BTMPSCRNSDDR
-                ld      b, 192
+                ld      b, 0xc0
 _wpeLp  
                 push    bc
                 push    hl
                 ld      e, l
                 ld      d, h
                 inc     de
-                ld      (hl), 0
-                ld      bc, 31
+                ld      (hl), 0x00
+                ld      bc, 0x1f
                 ldir
                 pop     hl
                 call    moveLineDown
-                ld      de, 400
+                ld      de, 0x190
 _wpePause       
                 dec     de
                 ld      a, d
@@ -789,7 +789,7 @@ fdeToBlck
                 ld      a, 0xfe                     ; Make sure that the upper screen area is select
                 call    0x1601                      ; Before clearing the screen
 
-                ld      a, 7
+                ld      a, 0x07
 _fdeLoop                
                 ld      hl, ATTRSCRNADDR
                 ld      de, ATTRSCRNADDR + 1
@@ -798,7 +798,7 @@ _fdeLoop
                 ldir
 
                 push    af
-                ld      de, 3000
+                ld      de, 0xbb8
 _fdePause       dec     de
                 ld      a, d
                 or      e
