@@ -122,40 +122,40 @@ bffrLkup                                            ; Location for the screen bu
 PAGE0           
                 org     0x8000
 
-gmeStte         db      0                           ; 1 = GMESTTE_PLYNG, 2 = GMESTTE_WTNG to Start, 4 = GMESTTE_DEAD
-lvlBlckCnt      db      0                           ; Number of blocks in this level
-crrntLvl        db      0                           ; Stores the current level index
-currntBlckRw    db      0                           ; Variables used to store detalis of the blocks when rendering...
-currntBlckCl    db      0                           ; ...a level
-currntBlckY     db      0
-currntBlckX     db      0
-crrntLvlAddr    dw      0                           ; Address of the currently loaded level
+gmeStte         db      0x00                        ; 1 = GMESTTE_PLYNG, 2 = GMESTTE_WTNG to Start, 4 = GMESTTE_DEAD
+lvlBlckCnt      db      0x00                        ; Number of blocks in this level
+crrntLvl        db      0x00                        ; Stores the current level index
+currntBlckRw    db      0x00                        ; Variables used to store detalis of the blocks when rendering...
+currntBlckCl    db      0x00                        ; ...a level
+currntBlckY     db      0x00
+currntBlckX     db      0x00
+crrntLvlAddr    dw      0x00                        ; Address of the currently loaded level
 
 ; Stores the x, y attr position of the balls collision points
-ballMT          dw      0                           ; Middle Top
-ballMR          dw      0                           ; Middle Right
-ballMB          dw      0                           ; Middle Bottom
-ballML          dw      0                           ; Middle Left
+ballMT          dw      0x00                        ; Middle Top
+ballMR          dw      0x00                        ; Middle Right
+ballMB          dw      0x00                        ; Middle Bottom
+ballML          dw      0x00                        ; Middle Left
 
-lives           db      5                           ; Number of lives each player has at the start of the game
+lives           db      0x05                        ; Number of lives each player has at the start of the game
 
-prShftWdth      db      0                           ; Holds the width of the sprite to be shifted
-prShftHght      db      0                           ; Holds the height of the sprite to be shifted
-prShftSize      dw      0                           ; Holds the size of a sprite to shift in bytes
+prShftWdth      db      0x00                        ; Holds the width of the sprite to be shifted
+prShftHght      db      0x00                        ; Holds the height of the sprite to be shifted
+prShftSize      dw      0x00                        ; Holds the size of a sprite to shift in bytes
 
-crrntScrCnt     db      0                           ; How many scores are visible on screen
+crrntScrCnt     db      0x00                        ; How many scores are visible on screen
 
 grvty           dw      0x0035                      ; Gravity to be applied to particles each frame
 
-index           db      0                           ; Index into the level data for collision detection
+index           db      0x00                        ; Index into the level data for collision detection
 
-pwrUpCnt        db      0                           ; Stores the number of current powerups on screen
+pwrUpCnt        db      0x00                        ; Stores the number of current powerups on screen
 
-crrntPwrUps     db      0                           ; Each bit of this byte defines a different powerup. 1 = active
+crrntPwrUps     db      0x00                        ; Each bit of this byte defines a different powerup. 1 = active
                                                     
-sndFxDrtn       db      0
+sndFxDrtn       db      0x00
 
-inptOption      db      0                           ; Holds the input selection that has been chossen
+inptOption      db      0x00                        ; Holds the input selection that has been chossen
                                                     ; 0 = Keyboard, 1 = Sinclair, 2 = Kempston
 
 tempSprite      ds      2 * 13
@@ -177,14 +177,16 @@ rndTxt          db      '1', 0x00
 
 ; Object data
                         ; Xpos, XSpeed, Ypos, YSpeed
-objctBall       db      0, 1, 0, -2
+objctBall       db      0x00, 0x01, 0x00, -2
     
                         ; Xpos, XSpeed, Ypos
-objctBat        db      112, 4, 150         
-                db      0x00         ; Delay counter used to time how long each frame should be visible
-                db      0x00         ; Animation Frame
-                db      0x06         ; Frame delay
-                db      0x04         ; Total number of frames
+objctBat        db      0x70        ; X position (112)
+                db      0x04        ; X Speed (4)
+                db      0x96        ; Y position (150)
+                db      0x00        ; Delay counter used to time how long each frame should be visible
+                db      0x00        ; Animation Frame
+                db      0x08        ; Frame delay
+                db      0x04        ; Total number of frames
 
 ; PAGE0 END
 ;****************************************************************************************************************
@@ -393,8 +395,8 @@ _chckGmeSttePlyng                                   ; *** Game state PLAYING
                 call    mvBll                       ; Move the ball
                 call    drwBll                      ; Erase the ball (XOR)
                 call    drwPrtcls                   ; Draw any active particles
-                ld      ix, objctBat
-                call    updtAnmtn                   ; Update the bats animation frame
+                ld      ix, objctBat                ; Point IX at the sprite whos animation is to be updated
+                call    updtAnmtn                   ; Update the sprites animation frame
                 call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
@@ -431,8 +433,8 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
                 ld      (objctBall + BLLXPS), a     ; Save the new X pos for the ball
                 
                 call    drwBll                      ; Draw the ball
-                ld      ix, objctBat
-                call    updtAnmtn
+                ld      ix, objctBat                ; Point IX at the sprite whos animation is to be updated
+                call    updtAnmtn                   ; Update the sprites animation frame
                 call    drwBt                       ; Draw the bat
 
                 halt                                ; Wait for the scan line to reach the top of the screen
@@ -442,11 +444,6 @@ _chckGmeStteWtng                                    ; *** Game state WAITING
 
                 call    genRndmNmbr
                 
-;                 ld      bc, 0x7ffe                  ; Want to see if SPACE has been pressed
-;                 in      a, (c)                      ; Read the port
-;                 rra                                 ; Rotate Right
-;                 jp      c, mnLp                     ; Loop if SPACE has not been pressed
-
                 ld      a, (inptOption)             ; Get the currently selected input option
 _keybrdFire
                 cp      0x00                        ; KEYBOARD
@@ -590,7 +587,7 @@ _chckGmeSttePlyrDead
 ; Entry Registers:
 ;   NONE
 ; Registers Used:
-;   A, B, D, E, H, L
+;   H, L, B, C
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
@@ -607,7 +604,7 @@ stupPrtcls
 ; Entry Registers:
 ;   IX = Address of animation object
 ; Registers Used:
-;   A, B, D, E, H, L
+;   A, B
 ; Returned Registers:
 ;   NONE
 ;****************************************************************************************************************
@@ -624,11 +621,11 @@ updtAnmtn
                 ld      (ix + BTANMTONCNT), a       ; ...and save it
                 ld      a, (ix + BTANMTONFRM)       ; Load A with the current frame count
                 inc     a                           ; Increment the counter
-                ld      b, a                        ; Switch the frame counter so we can check
-                ld      a, (ix + BTANMTONTOTAL)     
-                cp      b                           ; Compare it against the max value allowed...
+                ld      b, a                        ; Setup checking the current counter...
+                ld      a, (ix + BTANMTONTOTAL)     ; 
+                cp      b                           ; ...and compare it against the max value allowed...
                 ld      a, b
-                jp      nz, _svFrm                  ; ...and save the new frame count if the max has not been reached
+                jr      nz, _svFrm                  ; ...and save the new frame count if the max has not been reached
                 xor     a                           ; Reset the animation frame to 0
 _svFrm
                 ld      (ix + BTANMTONFRM), a       ; Save the new frame number
